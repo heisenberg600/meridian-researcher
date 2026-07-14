@@ -34,6 +34,63 @@ export const listForStudy = query({
   },
 });
 
+export const analyticsForStudy = query({
+  args: { studyId: v.id("studies") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_auth_token_identifier", (q) =>
+        q.eq("authTokenIdentifier", identity.tokenIdentifier),
+      )
+      .unique();
+    const study = await ctx.db.get(args.studyId);
+    if (!user?.defaultOrganizationId || study?.organizationId !== user.defaultOrganizationId) {
+      throw new Error("Study not found");
+    }
+    const records = await ctx.db
+      .query("interviewCallRecords")
+      .withIndex("by_study", (q) => q.eq("studyId", args.studyId))
+      .collect();
+    const scored = records.filter((record) => record.qualityScores && record.extractedMetrics);
+    const average = (key: keyof NonNullable<(typeof scored)[number]["qualityScores"]>) =>
+      scored.length
+        ? Math.round(scored.reduce((sum, record) => sum + (record.qualityScores?.[key] ?? 0), 0) / scored.length)
+        : 0;
+    const frequencies = (values: string[]) =>
+      [...values.reduce((counts, value) => {
+        const normalized = value.trim();
+        if (normalized) counts.set(normalized, (counts.get(normalized) ?? 0) + 1);
+        return counts;
+      }, new Map<string, number>()).entries()]
+        .map(([label, count]) => ({ label, count }))
+        .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
+        .slice(0, 8);
+    return {
+      totalCalls: records.length,
+      analyzedCalls: scored.length,
+      averageScores: {
+        overall: average("overall"),
+        goalCoverage: average("goalCoverage"),
+        responseDepth: average("responseDepth"),
+        specificity: average("specificity"),
+        engagement: average("engagement"),
+        interviewerQuality: average("interviewerQuality"),
+      },
+      averageParticipantWords: scored.length
+        ? Math.round(scored.reduce((sum, record) => sum + (record.extractedMetrics?.participantWordCount ?? 0), 0) / scored.length)
+        : 0,
+      sentiment: frequencies(scored.map((record) => record.extractedMetrics!.sentiment)),
+      themes: frequencies(scored.flatMap((record) => record.analysis?.themes ?? [])),
+      needs: frequencies(scored.flatMap((record) => record.extractedMetrics?.needs ?? [])),
+      painPoints: frequencies(scored.flatMap((record) => record.extractedMetrics?.painPoints ?? [])),
+      objections: frequencies(scored.flatMap((record) => record.extractedMetrics?.objections ?? [])),
+      opportunities: frequencies(scored.flatMap((record) => record.extractedMetrics?.opportunities ?? [])),
+    };
+  },
+});
+
 export const schedule = internalMutation({
   args: {
     participantId: v.id("studyParticipants"),
@@ -106,6 +163,28 @@ export const backfillAll = internalMutation({
   },
 });
 
+export const reanalyzeAll = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const records = await ctx.db.query("interviewCallRecords").collect();
+    let scheduled = 0;
+    for (const record of records) {
+      if (!record.transcript?.length || record.status !== "completed") continue;
+      await ctx.db.patch(record._id, {
+        status: "scheduled",
+        attempts: 0,
+        error: undefined,
+        updatedAt: Date.now(),
+      });
+      await ctx.scheduler.runAfter(0, internal.callRecords.pullAndAnalyze, {
+        callRecordId: record._id,
+      });
+      scheduled += 1;
+    }
+    return { scheduled };
+  },
+});
+
 export const getInternal = internalQuery({
   args: { callRecordId: v.id("interviewCallRecords") },
   handler: async (ctx, args) => await ctx.db.get(args.callRecordId),
@@ -151,7 +230,14 @@ export const pullAndAnalyze = internalAction({
       await ctx.runMutation(internal.callRecords.complete, {
         callRecordId: record._id,
         transcript,
-        analysis,
+        analysis: {
+          summary: analysis.summary,
+          themes: analysis.themes,
+          notableQuotes: analysis.notableQuotes,
+          completionAssessment: analysis.completionAssessment,
+        },
+        qualityScores: analysis.qualityScores,
+        extractedMetrics: analysis.extractedMetrics,
         durationSeconds:
           typeof conversation.metadata?.call_duration_secs === "number"
             ? conversation.metadata.call_duration_secs
@@ -213,6 +299,28 @@ export const complete = internalMutation({
       notableQuotes: v.array(v.string()),
       completionAssessment: v.string(),
     }),
+    qualityScores: v.object({
+      overall: v.number(),
+      goalCoverage: v.number(),
+      responseDepth: v.number(),
+      specificity: v.number(),
+      engagement: v.number(),
+      interviewerQuality: v.number(),
+    }),
+    extractedMetrics: v.object({
+      sentiment: v.union(
+        v.literal("positive"),
+        v.literal("neutral"),
+        v.literal("negative"),
+        v.literal("mixed"),
+      ),
+      substantiveAnswerCount: v.number(),
+      participantWordCount: v.number(),
+      needs: v.array(v.string()),
+      painPoints: v.array(v.string()),
+      objections: v.array(v.string()),
+      opportunities: v.array(v.string()),
+    }),
     durationSeconds: v.optional(v.number()),
     terminationReason: v.optional(v.string()),
   },
@@ -220,6 +328,8 @@ export const complete = internalMutation({
     await ctx.db.patch(args.callRecordId, {
       transcript: args.transcript,
       analysis: args.analysis,
+      qualityScores: args.qualityScores,
+      extractedMetrics: args.extractedMetrics,
       durationSeconds: args.durationSeconds,
       terminationReason: args.terminationReason,
       status: "completed",
@@ -253,6 +363,7 @@ async function analyzeTranscript(
     process.env.VERCEL_AI_GATEWAY_API_KEY ??
     process.env.VERCEL_AI_GATEWAY_KEY;
   if (!apiKey || transcript.length === 0) {
+    const participantTurns = transcript.filter((turn) => turn.role === "user");
     return {
       summary: typeof fallback.transcript_summary === "string"
         ? fallback.transcript_summary
@@ -260,6 +371,26 @@ async function analyzeTranscript(
       themes: [],
       notableQuotes: [],
       completionAssessment: transcript.length > 1 ? "Partial interview" : "Insufficient response",
+      qualityScores: {
+        overall: participantTurns.length ? 35 : 0,
+        goalCoverage: 20,
+        responseDepth: participantTurns.length ? 30 : 0,
+        specificity: participantTurns.length ? 25 : 0,
+        engagement: participantTurns.length ? 40 : 0,
+        interviewerQuality: transcript.length > 1 ? 40 : 10,
+      },
+      extractedMetrics: {
+        sentiment: "neutral" as const,
+        substantiveAnswerCount: participantTurns.length,
+        participantWordCount: participantTurns.reduce(
+          (count, turn) => count + turn.message.split(/\s+/).filter(Boolean).length,
+          0,
+        ),
+        needs: [],
+        painPoints: [],
+        objections: [],
+        opportunities: [],
+      },
     };
   }
   const response = await fetch("https://ai-gateway.vercel.sh/v1/chat/completions", {
@@ -271,7 +402,14 @@ async function analyzeTranscript(
       messages: [
         {
           role: "system",
-          content: "Analyze this customer research interview. Return only JSON with summary, themes (string array), notableQuotes (verbatim string array), and completionAssessment. Stay faithful to the transcript and do not invent findings.",
+          content: [
+            "You are a second-pass research quality analyst. Analyze this customer interview independently.",
+            "Return only JSON with this exact shape:",
+            '{"summary":"...","themes":["..."],"notableQuotes":["verbatim participant quote"],"completionAssessment":"...","qualityScores":{"overall":0,"goalCoverage":0,"responseDepth":0,"specificity":0,"engagement":0,"interviewerQuality":0},"extractedMetrics":{"sentiment":"positive|neutral|negative|mixed","substantiveAnswerCount":0,"participantWordCount":0,"needs":["..."],"painPoints":["..."],"objections":["..."],"opportunities":["..."]}}',
+            "All scores are integers from 0 to 100. Score overall research usefulness, not respondent desirability.",
+            "Normalize evidence labels into short reusable phrases so they aggregate across calls.",
+            "Quotes must be verbatim. Stay faithful to the transcript and do not invent evidence.",
+          ].join(" "),
         },
         { role: "user", content: JSON.stringify(transcript) },
       ],
@@ -284,6 +422,18 @@ async function analyzeTranscript(
   const parsed = JSON.parse(raw) as Record<string, unknown>;
   const strings = (value: unknown) =>
     (Array.isArray(value) ? value : []).flatMap((item) => typeof item === "string" ? [item] : []);
+  const scoreRecord = parsed.qualityScores && typeof parsed.qualityScores === "object"
+    ? parsed.qualityScores as Record<string, unknown>
+    : {};
+  const metricRecord = parsed.extractedMetrics && typeof parsed.extractedMetrics === "object"
+    ? parsed.extractedMetrics as Record<string, unknown>
+    : {};
+  const score = (value: unknown) =>
+    Math.round(Math.min(100, Math.max(0, typeof value === "number" ? value : 0)));
+  const participantTurns = transcript.filter((turn) => turn.role === "user");
+  const sentiment = ["positive", "neutral", "negative", "mixed"].includes(String(metricRecord.sentiment))
+    ? metricRecord.sentiment as "positive" | "neutral" | "negative" | "mixed"
+    : "neutral";
   return {
     summary: typeof parsed.summary === "string" ? parsed.summary : "Analysis completed.",
     themes: strings(parsed.themes),
@@ -292,5 +442,31 @@ async function analyzeTranscript(
       typeof parsed.completionAssessment === "string"
         ? parsed.completionAssessment
         : "Review transcript",
+    qualityScores: {
+      overall: score(scoreRecord.overall),
+      goalCoverage: score(scoreRecord.goalCoverage),
+      responseDepth: score(scoreRecord.responseDepth),
+      specificity: score(scoreRecord.specificity),
+      engagement: score(scoreRecord.engagement),
+      interviewerQuality: score(scoreRecord.interviewerQuality),
+    },
+    extractedMetrics: {
+      sentiment,
+      substantiveAnswerCount:
+        typeof metricRecord.substantiveAnswerCount === "number"
+          ? Math.max(0, Math.round(metricRecord.substantiveAnswerCount))
+          : participantTurns.length,
+      participantWordCount:
+        typeof metricRecord.participantWordCount === "number"
+          ? Math.max(0, Math.round(metricRecord.participantWordCount))
+          : participantTurns.reduce(
+              (count, turn) => count + turn.message.split(/\s+/).filter(Boolean).length,
+              0,
+            ),
+      needs: strings(metricRecord.needs),
+      painPoints: strings(metricRecord.painPoints),
+      objections: strings(metricRecord.objections),
+      opportunities: strings(metricRecord.opportunities),
+    },
   };
 }

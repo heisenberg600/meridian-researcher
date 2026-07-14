@@ -1718,6 +1718,7 @@ function StudyParticipants({ selectedStudy }: { selectedStudy: Doc<"studies"> })
 
 function StudyCalls({ selectedStudy }: { selectedStudy: Doc<"studies"> }) {
   const calls = useQuery(api.callRecords.listForStudy, { studyId: selectedStudy._id });
+  const analytics = useQuery(api.callRecords.analyticsForStudy, { studyId: selectedStudy._id });
   const [selectedCallId, setSelectedCallId] = useState<Id<"interviewCallRecords"> | null>(null);
   const selectedCall = calls?.find((call) => call._id === selectedCallId) ?? calls?.[0] ?? null;
   return (
@@ -1731,6 +1732,24 @@ function StudyCalls({ selectedStudy }: { selectedStudy: Doc<"studies"> }) {
         </div>
         <Badge tone="info">{calls?.length ?? 0} calls</Badge>
       </div>
+
+      {analytics?.analyzedCalls ? (
+        <section className="mt-6 border border-[var(--border-default)] bg-[var(--surface-card)]">
+          <div className="grid divide-y divide-[var(--border-default)] sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-5">
+            <CallMetric label="Analyzed" value={`${analytics.analyzedCalls}/${analytics.totalCalls}`} />
+            <CallMetric label="Call score" value={`${analytics.averageScores.overall}`} suffix="/100" />
+            <CallMetric label="Goal coverage" value={`${analytics.averageScores.goalCoverage}`} suffix="/100" />
+            <CallMetric label="Response depth" value={`${analytics.averageScores.responseDepth}`} suffix="/100" />
+            <CallMetric label="Avg. participant words" value={`${analytics.averageParticipantWords}`} />
+          </div>
+          <div className="grid gap-5 border-t border-[var(--border-default)] px-5 py-4 md:grid-cols-2 xl:grid-cols-4">
+            <InsightFrequency label="Top themes" items={analytics.themes} />
+            <InsightFrequency label="Pain points" items={analytics.painPoints} />
+            <InsightFrequency label="Needs" items={analytics.needs} />
+            <InsightFrequency label="Opportunities" items={analytics.opportunities} />
+          </div>
+        </section>
+      ) : null}
 
       <div className="mt-6">
         {calls === undefined ? (
@@ -1813,8 +1832,24 @@ function StudyCalls({ selectedStudy }: { selectedStudy: Doc<"studies"> }) {
                     </div>
                   </section>
                   <section className="bg-[var(--bg-sunken)] p-4">
-                    <h3 className="[font:var(--text-body)] font-semibold text-[var(--text-heading)]">Analysis</h3>
+                    <div className="flex items-center justify-between gap-3">
+                      <h3 className="[font:var(--text-body)] font-semibold text-[var(--text-heading)]">Analysis</h3>
+                      {selectedCall.qualityScores ? (
+                        <span className="[font:var(--text-heading-sm)] text-[var(--accent-active)]">
+                          {selectedCall.qualityScores.overall}<span className="[font:var(--text-caption)] text-[var(--text-muted)]">/100</span>
+                        </span>
+                      ) : null}
+                    </div>
                     <p className="mt-2 [font:var(--text-body-sm)] text-[var(--text-secondary)]">{selectedCall.analysis?.summary}</p>
+                    {selectedCall.qualityScores ? (
+                      <div className="mt-4 space-y-2 border-t border-[var(--border-default)] pt-4">
+                        <ScoreRow label="Goal coverage" value={selectedCall.qualityScores.goalCoverage} />
+                        <ScoreRow label="Response depth" value={selectedCall.qualityScores.responseDepth} />
+                        <ScoreRow label="Specificity" value={selectedCall.qualityScores.specificity} />
+                        <ScoreRow label="Engagement" value={selectedCall.qualityScores.engagement} />
+                        <ScoreRow label="Interviewer" value={selectedCall.qualityScores.interviewerQuality} />
+                      </div>
+                    ) : null}
                     {selectedCall.analysis?.themes.length ? (
                       <div className="mt-4 flex flex-wrap gap-2">{selectedCall.analysis.themes.map((theme) => <Badge key={theme}>{theme}</Badge>)}</div>
                     ) : null}
@@ -1826,6 +1861,46 @@ function StudyCalls({ selectedStudy }: { selectedStudy: Doc<"studies"> }) {
           </div>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+function CallMetric({ label, value, suffix }: { label: string; value: string; suffix?: string }) {
+  return (
+    <div className="px-5 py-4">
+      <p className="[font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--text-muted)]">{label}</p>
+      <p className="mt-1 [font:var(--text-heading-sm)] text-[var(--text-heading)]">
+        {value}{suffix ? <span className="ml-1 [font:var(--text-caption)] text-[var(--text-muted)]">{suffix}</span> : null}
+      </p>
+    </div>
+  );
+}
+
+function InsightFrequency({ label, items }: { label: string; items: Array<{ label: string; count: number }> }) {
+  return (
+    <div>
+      <p className="[font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--text-muted)]">{label}</p>
+      <div className="mt-2 space-y-1.5">
+        {items.slice(0, 4).map((item) => (
+          <div key={item.label} className="flex items-center justify-between gap-3 [font:var(--text-body-sm)] text-[var(--text-secondary)]">
+            <span className="truncate">{item.label}</span>
+            <span className="text-[var(--text-muted)]">{item.count}</span>
+          </div>
+        ))}
+        {items.length === 0 ? <p className="[font:var(--text-body-sm)] text-[var(--text-muted)]">No signal yet</p> : null}
+      </div>
+    </div>
+  );
+}
+
+function ScoreRow({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="grid grid-cols-[110px_minmax(0,1fr)_28px] items-center gap-2">
+      <span className="[font:var(--text-caption)] text-[var(--text-muted)]">{label}</span>
+      <span className="h-1.5 overflow-hidden bg-[var(--ivory-300)]">
+        <span className="block h-full bg-[var(--accent)]" style={{ width: `${value}%` }} />
+      </span>
+      <span className="text-right [font:var(--text-caption)] text-[var(--text-secondary)]">{value}</span>
     </div>
   );
 }

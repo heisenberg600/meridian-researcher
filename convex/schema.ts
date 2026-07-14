@@ -311,6 +311,32 @@ export default defineSchema({
         completionAssessment: v.string(),
       }),
     ),
+    qualityScores: v.optional(
+      v.object({
+        overall: v.number(),
+        goalCoverage: v.number(),
+        responseDepth: v.number(),
+        specificity: v.number(),
+        engagement: v.number(),
+        interviewerQuality: v.number(),
+      }),
+    ),
+    extractedMetrics: v.optional(
+      v.object({
+        sentiment: v.union(
+          v.literal("positive"),
+          v.literal("neutral"),
+          v.literal("negative"),
+          v.literal("mixed"),
+        ),
+        substantiveAnswerCount: v.number(),
+        participantWordCount: v.number(),
+        needs: v.array(v.string()),
+        painPoints: v.array(v.string()),
+        objections: v.array(v.string()),
+        opportunities: v.array(v.string()),
+      }),
+    ),
     durationSeconds: v.optional(v.number()),
     terminationReason: v.optional(v.string()),
     error: v.optional(v.string()),
