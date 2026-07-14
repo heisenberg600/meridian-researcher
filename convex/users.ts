@@ -1,7 +1,20 @@
 import { mutation, query } from "./_generated/server";
 
-function displayNameFromIdentity(identity: { name?: string; email?: string }) {
-  return identity.name ?? identity.email ?? "Meridian user";
+function workspaceNameFromIdentity(identity: { name?: string; email?: string }) {
+  const displayName = identity.name ?? identity.email;
+  return displayName ? `${displayName}'s workspace` : "Personal workspace";
+}
+
+function shouldRepairDefaultWorkspaceName(name: string) {
+  return (
+    name === "Hermes user's workspace" ||
+    name === "Meridian user's workspace" ||
+    name === "Hermes Researcher's workspace"
+  );
+}
+
+function displayOrganizationName(name: string) {
+  return shouldRepairDefaultWorkspaceName(name) ? "Personal workspace" : name;
 }
 
 export const current = query({
@@ -22,7 +35,12 @@ export const current = query({
       ? await ctx.db.get(user.defaultOrganizationId)
       : null;
 
-    return { user, organization };
+    return {
+      user,
+      organization: organization
+        ? { ...organization, name: displayOrganizationName(organization.name) }
+        : null,
+    };
   },
 });
 
@@ -51,6 +69,13 @@ export const ensureCurrent = mutation({
     if (existing) {
       await ctx.db.patch(existing._id, values);
       if (existing.defaultOrganizationId) {
+        const organization = await ctx.db.get(existing.defaultOrganizationId);
+        if (organization && shouldRepairDefaultWorkspaceName(organization.name)) {
+          await ctx.db.patch(organization._id, {
+            name: workspaceNameFromIdentity(identity),
+            updatedAt: Date.now(),
+          });
+        }
         return {
           userId: existing._id,
           organizationId: existing.defaultOrganizationId,
@@ -59,7 +84,7 @@ export const ensureCurrent = mutation({
 
       const now = Date.now();
       const organizationId = await ctx.db.insert("organizations", {
-        name: `${displayNameFromIdentity(identity)}'s workspace`,
+        name: workspaceNameFromIdentity(identity),
         createdBy: existing._id,
         createdAt: now,
         updatedAt: now,
@@ -79,7 +104,7 @@ export const ensureCurrent = mutation({
     const userId = await ctx.db.insert("users", values);
     const now = Date.now();
     const organizationId = await ctx.db.insert("organizations", {
-      name: `${displayNameFromIdentity(identity)}'s workspace`,
+      name: workspaceNameFromIdentity(identity),
       createdBy: userId,
       createdAt: now,
       updatedAt: now,
