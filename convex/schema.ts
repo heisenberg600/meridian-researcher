@@ -475,7 +475,9 @@ export default defineSchema({
     startedAt: v.number(),
     updatedAt: v.number(),
     completedAt: v.optional(v.number()),
-  }).index("by_invite_session", ["inviteId", "sessionKey"]),
+  })
+    .index("by_invite_session", ["inviteId", "sessionKey"])
+    .index("by_study", ["studyId"]),
 
   interviewCallRecords: defineTable({
     organizationId: v.id("organizations"),
@@ -551,24 +553,38 @@ export default defineSchema({
     studyId: v.id("studies"),
     participantId: v.id("studyParticipants"),
     questionnaireVersionId: v.id("interviewBriefVersions"),
+    sourceKey: v.optional(v.string()),
     channel: v.union(v.literal("form"), v.literal("voice")),
     interviewSessionId: v.optional(v.id("interviewSessions")),
     callRecordId: v.optional(v.id("interviewCallRecords")),
     questionId: v.optional(v.string()),
+    questionLabel: v.optional(v.string()),
     topicId: v.optional(v.string()),
     excerpt: v.string(),
+    responseValue: v.optional(v.union(v.string(), v.array(v.string()))),
     answerLocator: v.optional(v.string()),
     timestampSeconds: v.optional(v.number()),
+    endTimestampSeconds: v.optional(v.number()),
     segment: v.optional(v.string()),
     createdAt: v.number(),
   })
     .index("by_study", ["studyId"])
-    .index("by_participant", ["participantId"]),
+    .index("by_participant", ["participantId"])
+    .index("by_source_key", ["sourceKey"]),
 
   analysisRuns: defineTable({
     organizationId: v.id("organizations"),
     studyId: v.id("studies"),
     evidenceIds: v.array(v.id("responseEvidence")),
+    snapshotKind: v.optional(v.union(v.literal("provisional"), v.literal("final"))),
+    reservationId: v.optional(v.id("creditReservations")),
+    model: v.optional(v.string()),
+    provider: v.optional(v.string()),
+    providerOperationId: v.optional(v.string()),
+    inputTokens: v.optional(v.number()),
+    outputTokens: v.optional(v.number()),
+    totalTokens: v.optional(v.number()),
+    finalizedCredits: v.optional(v.number()),
     status: v.union(
       v.literal("queued"),
       v.literal("running"),
@@ -588,6 +604,13 @@ export default defineSchema({
     organizationId: v.id("organizations"),
     studyId: v.id("studies"),
     analysisRunId: v.id("analysisRuns"),
+    viewType: v.optional(v.union(
+      v.literal("question"),
+      v.literal("segment"),
+      v.literal("theme"),
+      v.literal("contradiction"),
+      v.literal("limitation"),
+    )),
     title: v.string(),
     narrative: v.string(),
     findingType: v.union(
@@ -599,6 +622,7 @@ export default defineSchema({
     strength: v.union(v.literal("emerging"), v.literal("supported"), v.literal("strong")),
     supportingEvidenceIds: v.array(v.id("responseEvidence")),
     conflictingEvidenceIds: v.array(v.id("responseEvidence")),
+    questionId: v.optional(v.string()),
     segment: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
