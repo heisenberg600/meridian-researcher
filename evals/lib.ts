@@ -9,8 +9,9 @@
 // Load evals/.env (no extra dependency) so LMNR_PROJECT_API_KEY + AI_GATEWAY_API_KEY
 // are available regardless of how the eval is launched.
 import { readFileSync as _readEnv } from "node:fs";
+import { resolve as _resolveEnv } from "node:path";
 try {
-  const raw = _readEnv(new URL("./.env", import.meta.url), "utf8");
+  const raw = _readEnv(_resolveEnv(process.cwd(), "evals/.env"), "utf8");
   for (const line of raw.split("\n")) {
     const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
     if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, "");

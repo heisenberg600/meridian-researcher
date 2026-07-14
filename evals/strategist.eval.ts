@@ -11,6 +11,7 @@
 
 import { evaluate } from "@lmnr-ai/lmnr";
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { callModel, llmJudge } from "./lib";
 
 type Study = { title: string; businessDecision: string; status: string };
@@ -23,7 +24,7 @@ type CaseTarget = {
 };
 
 const cases: Array<{ name: string; data: CaseData; target: CaseTarget }> =
-  JSON.parse(readFileSync(new URL("./datasets/strategist-cases.json", import.meta.url), "utf8"));
+  JSON.parse(readFileSync(resolve(process.cwd(), "evals/datasets/strategist-cases.json"), "utf8"));
 
 // Source of truth: convex/meridian.ts buildSystemInstructions(). Trimmed to the
 // behavioural rules (org-memory bookkeeping omitted; not needed for these checks).
@@ -48,6 +49,8 @@ function buildSystemInstructions(d: CaseData): string {
 }
 
 evaluate({
+  name: "strategist",
+  groupName: "meridian-week10",
   data: cases.map((c) => ({ data: c, target: c.target })),
 
   executor: async (c: (typeof cases)[number]) =>
