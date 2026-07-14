@@ -119,6 +119,7 @@ export default defineSchema({
     ),
     activeSkillNames: v.array(v.string()),
     model: v.optional(v.string()),
+    laminarTraceId: v.optional(v.string()),
     startedBy: v.id("users"),
     startedAt: v.number(),
     completedAt: v.optional(v.number()),

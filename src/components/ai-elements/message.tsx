@@ -16,8 +16,10 @@ export function Message({ className, from, ...props }: MessageProps) {
   return (
     <div
       className={cn(
-        "group flex w-full max-w-[95%] flex-col gap-2",
-        from === "user" ? "is-user ml-auto items-end" : "is-assistant items-start",
+        "group flex w-full flex-col gap-2",
+        from === "user"
+          ? "is-user ml-auto max-w-[min(76%,36rem)] items-end"
+          : "is-assistant items-start",
         className,
       )}
       data-role={from}
@@ -32,9 +34,9 @@ export function MessageContent({ className, ...props }: MessageContentProps) {
   return (
     <div
       className={cn(
-        "min-w-0 max-w-full overflow-hidden rounded-[var(--radius-lg)] [font:var(--text-body)]",
-        "group-[.is-user]:bg-[var(--ink-900)] group-[.is-user]:px-4 group-[.is-user]:py-3 group-[.is-user]:text-[var(--text-inverse)]",
-        "group-[.is-assistant]:border group-[.is-assistant]:border-[var(--border-default)] group-[.is-assistant]:bg-[var(--surface-card)] group-[.is-assistant]:px-4 group-[.is-assistant]:py-3 group-[.is-assistant]:text-[var(--ink-700)]",
+        "min-w-0 max-w-full overflow-hidden [font:var(--text-body)]",
+        "group-[.is-user]:rounded-[var(--radius-lg)] group-[.is-user]:bg-[var(--ink-900)] group-[.is-user]:px-4 group-[.is-user]:py-3 group-[.is-user]:text-[var(--text-inverse)]",
+        "group-[.is-assistant]:w-full group-[.is-assistant]:py-1 group-[.is-assistant]:text-[var(--ink-700)]",
         className,
       )}
       {...props}

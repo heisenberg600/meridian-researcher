@@ -3,6 +3,7 @@
 import { UserButton, useUser } from "@clerk/react";
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useMemo, useState } from "react";
+import { HistoryIcon, MessageSquareIcon, PlusIcon } from "lucide-react";
 import "streamdown/styles.css";
 import { api } from "../convex/_generated/api";
 import type { Doc, Id } from "../convex/_generated/dataModel";
@@ -45,6 +46,7 @@ export function Portal() {
   const { user } = useUser();
   const ensureCurrent = useMutation(api.users.ensureCurrent);
   const createStudy = useMutation(api.studies.create);
+  const createChatSession = useMutation(api.chatSessions.create);
   const sendUserMessage = useMutation(api.messages.sendUserMessage);
   const archiveMemory = useMutation(api.organizationMemories.archive);
   const studies = useQuery(api.studies.listMine);
@@ -59,6 +61,7 @@ export function Portal() {
   const [businessDecision, setBusinessDecision] = useState("");
   const [messageText, setMessageText] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  const [isCreatingChat, setIsCreatingChat] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -118,6 +121,26 @@ export function Portal() {
     }
   }
 
+  async function handleCreateChat() {
+    if (!selectedStudy || isCreatingChat) return;
+
+    setIsCreatingChat(true);
+    setError(null);
+    try {
+      const chatSessionId = await createChatSession({
+        studyId: selectedStudy._id,
+        title: `Discussion ${(chatSessions?.length ?? 0) + 1}`,
+        purpose: "general",
+      });
+      setSelectedChatId(chatSessionId);
+      setMessageText("");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not create chat");
+    } finally {
+      setIsCreatingChat(false);
+    }
+  }
+
   function openStudy(studyId: Id<"studies">, tab: StudyTab = "overview") {
     setSelectedStudyId(studyId);
     setMainView("studies");
@@ -125,8 +148,8 @@ export function Portal() {
   }
 
   return (
-    <main className="min-h-screen bg-[var(--bg-page)] text-[var(--ink-700)]">
-      <div className="grid min-h-screen grid-cols-[240px_minmax(0,1fr)]">
+    <main className="h-screen overflow-hidden bg-[var(--bg-page)] text-[var(--ink-700)]">
+      <div className="grid h-full min-h-0 grid-cols-[240px_minmax(0,1fr)]">
         {selectedStudy && mainView === "studies" ? (
           <StudySidebar
             current={current}
@@ -150,12 +173,21 @@ export function Portal() {
           />
         )}
 
-        <section className="min-w-0 overflow-y-auto px-8 py-7">
+        <section
+          className={cx(
+            "min-w-0",
+            selectedStudy && mainView === "studies" && studyTab === "chat"
+              ? "overflow-hidden p-0"
+              : "overflow-y-auto px-8 py-7",
+          )}
+        >
           {mainView === "studies" ? (
             selectedStudy ? (
               <StudyDetail
                 chatSessions={chatSessions}
+                isCreatingChat={isCreatingChat}
                 messages={messages}
+                onCreateChat={handleCreateChat}
                 onSendMessage={handleSendMessage}
                 selectedChat={selectedChat}
                 selectedStudy={selectedStudy}
@@ -211,7 +243,7 @@ function StudiesHome({
   title: string;
 }) {
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto w-full max-w-7xl">
       <SectionHeader
         eyebrow="Workspace"
         title="Studies"
@@ -450,9 +482,11 @@ function StudySidebar({
 
 function StudyDetail({
   chatSessions,
+  isCreatingChat,
   isSending,
   messageText,
   messages,
+  onCreateChat,
   onSendMessage,
   selectedChat,
   selectedStudy,
@@ -461,9 +495,11 @@ function StudyDetail({
   studyTab,
 }: {
   chatSessions: Array<Doc<"chatSessions">> | undefined;
+  isCreatingChat: boolean;
   isSending: boolean;
   messageText: string;
   messages: Array<Doc<"messages">> | undefined;
+  onCreateChat: () => void;
   onSendMessage: (event: React.FormEvent<HTMLFormElement>) => void;
   selectedChat: Doc<"chatSessions"> | null;
   selectedStudy: Doc<"studies">;
@@ -472,15 +508,17 @@ function StudyDetail({
   studyTab: StudyTab;
 }) {
   return (
-    <div className="mx-auto max-w-7xl">
-      <div>
+    <div className={cx(studyTab === "chat" ? "h-full min-h-0" : "mx-auto w-full max-w-7xl")}>
+      <div className={cx(studyTab === "chat" && "h-full min-h-0")}>
         {studyTab === "overview" ? <StudyOverview selectedStudy={selectedStudy} /> : null}
         {studyTab === "chat" ? (
           <StudyChat
             chatSessions={chatSessions}
+            isCreatingChat={isCreatingChat}
             isSending={isSending}
             messageText={messageText}
             messages={messages}
+            onCreateChat={onCreateChat}
             onSendMessage={onSendMessage}
             selectedChat={selectedChat}
             setMessageText={setMessageText}
@@ -526,36 +564,99 @@ function StudyOverview({ selectedStudy }: { selectedStudy: Doc<"studies"> }) {
 
 function StudyChat({
   chatSessions,
+  isCreatingChat,
   isSending,
   messageText,
   messages,
+  onCreateChat,
   onSendMessage,
   selectedChat,
   setMessageText,
   setSelectedChatId,
 }: {
   chatSessions: Array<Doc<"chatSessions">> | undefined;
+  isCreatingChat: boolean;
   isSending: boolean;
   messageText: string;
   messages: Array<Doc<"messages">> | undefined;
+  onCreateChat: () => void;
   onSendMessage: (event: React.FormEvent<HTMLFormElement>) => void;
   selectedChat: Doc<"chatSessions"> | null;
   setMessageText: (value: string) => void;
   setSelectedChatId: (id: Id<"chatSessions">) => void;
 }) {
   return (
-    <div>
-      <Card className="flex min-h-[640px] flex-col overflow-hidden">
-        <div className="flex min-h-0 flex-1 bg-[var(--ivory-100)]">
-          <Conversation className="min-h-0 w-full">
-            <ConversationContent className="mx-auto w-full max-w-3xl">
+    <div className="grid h-full min-h-0 grid-cols-[220px_minmax(0,1fr)] bg-[var(--bg-page)]">
+      <aside className="flex min-h-0 flex-col border-r border-[var(--border-default)] bg-[var(--surface-card)]">
+        <div className="flex items-center gap-2 border-b border-[var(--border-default)] px-4 py-3">
+          <HistoryIcon className="size-4 shrink-0 text-[var(--text-muted)]" />
+          <h2 className="min-w-0 flex-1 [font:var(--text-body-sm)] font-semibold text-[var(--text-heading)]">
+            Chats
+          </h2>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="size-8 shrink-0"
+            onClick={onCreateChat}
+            disabled={isCreatingChat}
+            aria-label="Start new chat"
+            title="Start new chat"
+          >
+            <PlusIcon className="size-4" />
+          </Button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-2">
+          {chatSessions === undefined ? (
+            <p className="px-2 py-3 [font:var(--text-body-sm)] text-[var(--text-muted)]">
+              Loading chats...
+            </p>
+          ) : chatSessions.length === 0 ? (
+            <p className="px-2 py-3 [font:var(--text-body-sm)] text-[var(--text-muted)]">
+              No previous chats
+            </p>
+          ) : (
+            <div className="space-y-1">
+              {chatSessions.map((chat) => {
+                const active = selectedChat?._id === chat._id;
+                return (
+                  <button
+                    key={chat._id}
+                    type="button"
+                    onClick={() => setSelectedChatId(chat._id)}
+                    className={cx(
+                      "w-full px-3 py-3 text-left transition-colors",
+                      active
+                        ? "bg-[var(--accent-softer)] text-[var(--text-heading)]"
+                        : "text-[var(--text-secondary)] hover:bg-[var(--bg-sunken)]",
+                    )}
+                  >
+                    <span className="block truncate [font:var(--text-body-sm)] font-semibold">
+                      {chat.title}
+                    </span>
+                    <span className="mt-1 block [font:var(--text-caption)] text-[var(--text-muted)]">
+                      {formatDate(chat.updatedAt)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </aside>
+
+      <div className="flex min-h-0 min-w-0 flex-col">
+        <div className="flex h-0 min-h-0 flex-1 bg-[var(--bg-page)]">
+          <Conversation className="h-full min-h-0 w-full">
+            <ConversationContent className="mx-auto w-full max-w-4xl gap-6 px-8 py-10">
               {messages === undefined ? (
                 <p className="[font:var(--text-body)] text-[var(--text-muted)]">Loading messages...</p>
               ) : messages.length === 0 ? (
                 <ConversationEmptyState
                   title="Brief Meridian"
                   description="Start with the business decision, what you already know, and what evidence would make the decision easier."
-                  className="min-h-[420px]"
+                  icon={<MessageSquareIcon className="size-5" />}
+                  className="min-h-[60vh]"
                 />
               ) : (
                 messages.map((message) => <ChatBubble key={message._id} message={message} />)
@@ -564,8 +665,8 @@ function StudyChat({
             <ConversationScrollButton />
           </Conversation>
         </div>
-        <div className="border-t border-[var(--border-default)] bg-[var(--surface-card)] p-4">
-          <PromptInput onSubmit={onSendMessage} className="mx-auto max-w-3xl">
+        <div className="border-t border-[var(--border-default)] bg-[color-mix(in_srgb,var(--surface-card)_94%,transparent)] px-8 py-4">
+          <PromptInput onSubmit={onSendMessage} className="mx-auto max-w-4xl shadow-none">
             <PromptInputTextarea
               value={messageText}
               onChange={(event) => setMessageText(event.target.value)}
@@ -595,22 +696,7 @@ function StudyChat({
             </PromptInputToolbar>
           </PromptInput>
         </div>
-      </Card>
-      {chatSessions && chatSessions.length > 1 ? (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {chatSessions.map((chat) => (
-            <Button
-              key={chat._id}
-              type="button"
-              size="sm"
-              variant={selectedChat?._id === chat._id ? "secondary" : "ghost"}
-              onClick={() => setSelectedChatId(chat._id)}
-            >
-              {chat.title}
-            </Button>
-          ))}
-        </div>
-      ) : null}
+      </div>
     </div>
   );
 }
@@ -630,7 +716,7 @@ function OrgSettings({
   memories: Array<Doc<"organizationMemories">> | undefined;
 }) {
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto w-full max-w-7xl">
       <SectionHeader
         eyebrow="Organization"
         title="Org settings"
@@ -724,7 +810,7 @@ function OrgSettings({
 
 function ActivitySkeleton({ studies }: { studies: Array<Doc<"studies">> | undefined }) {
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto w-full max-w-7xl">
       <SectionHeader
         eyebrow="Workspace"
         title="Activity"
@@ -915,7 +1001,7 @@ function ChatBubble({ message }: { message: Doc<"messages"> }) {
     <Message from={message.role}>
       <MessageContent>
         {!isUser ? (
-          <p className="mb-1 [font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--text-muted)]">
+          <p className="mb-2 [font:var(--text-body-sm)] font-semibold text-[var(--text-heading)]">
             Meridian
           </p>
         ) : null}

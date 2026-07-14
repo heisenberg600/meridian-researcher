@@ -1,6 +1,7 @@
 "use node";
 
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { aiSdkTelemetry, Laminar, observe } from "@lmnr-ai/lmnr";
 import { stepCountIs, streamText, tool, type ModelMessage } from "ai";
 import { z } from "zod";
 import { internal } from "./_generated/api";
@@ -12,6 +13,7 @@ const DEFAULT_MODEL = "google/gemini-3.1-flash-lite";
 const AI_GATEWAY_BASE_URL = "https://ai-gateway.vercel.sh/v1";
 const LINKUP_SEARCH_URL = "https://api.linkup.so/v1/search";
 const TEXT_FLUSH_INTERVAL_MS = 250;
+let laminarInitialized = false;
 
 const memoryCategorySchema = z.enum([
   "company",
@@ -28,8 +30,73 @@ export const processMessage = internalAction({
     agentRunId: v.id("agentRuns"),
     assistantMessageId: v.id("messages"),
   },
-  handler: async (ctx, args) => {
-    const context = await ctx.runQuery(internal.meridianData.getRunContext, {
+  handler: runProcessMessage,
+});
+
+type ProcessMessageArgs = {
+  agentRunId: Id<"agentRuns">;
+  assistantMessageId: Id<"messages">;
+};
+
+async function runProcessMessage(ctx: ActionCtx, args: ProcessMessageArgs): Promise<void> {
+  const projectApiKey = process.env.LMNR_PROJECT_API_KEY;
+  if (!projectApiKey) return executeMeridianRun(ctx, args, false);
+
+  if (!laminarInitialized) {
+    Laminar.initialize({
+      projectApiKey,
+      instrumentModules: {},
+      forceHttp: true,
+    });
+    laminarInitialized = true;
+  }
+
+  const context: MeridianRunContext = await ctx.runQuery(internal.meridianData.getRunContext, {
+    agentRunId: args.agentRunId,
+  });
+
+  try {
+    return await observe(
+      {
+        name: "meridian.agent.run",
+        input: {
+          agentRunId: args.agentRunId,
+          assistantMessageId: args.assistantMessageId,
+        },
+        sessionId: context.chatSession._id,
+        userId: context.run.startedBy,
+        metadata: {
+          organizationId: context.run.organizationId,
+          studyId: context.run.studyId,
+          chatSessionId: context.run.chatSessionId,
+          agentRunId: args.agentRunId,
+          studyStatus: context.study.status,
+          activeSkillNames: context.run.activeSkillNames,
+        },
+        tags: ["meridian", "agent-run", context.study.status],
+      },
+      async () => {
+        const traceId = Laminar.getTraceId();
+        if (traceId) {
+          await ctx.runMutation(internal.meridianData.setRunTrace, {
+            agentRunId: args.agentRunId,
+            laminarTraceId: traceId,
+          });
+        }
+        return executeMeridianRun(ctx, args, true);
+      },
+    );
+  } finally {
+    await Laminar.flush();
+  }
+}
+
+async function executeMeridianRun(
+  ctx: ActionCtx,
+  args: ProcessMessageArgs,
+  tracingEnabled: boolean,
+): Promise<void> {
+    const context: MeridianRunContext = await ctx.runQuery(internal.meridianData.getRunContext, {
       agentRunId: args.agentRunId,
     });
     const model =
@@ -40,6 +107,10 @@ export const processMessage = internalAction({
       process.env.AI_GATEWAY_API_KEY ??
       process.env.VERCEL_AI_GATEWAY_API_KEY ??
       process.env.VERCEL_AI_GATEWAY_KEY;
+
+    if (tracingEnabled) {
+      Laminar.setTraceMetadata({ model });
+    }
 
     await ctx.runMutation(internal.meridianData.setRunRunning, {
       agentRunId: args.agentRunId,
@@ -89,6 +160,13 @@ export const processMessage = internalAction({
         tools,
         stopWhen: stepCountIs(5),
         temperature: 0.35,
+        experimental_telemetry: tracingEnabled
+          ? {
+              isEnabled: true,
+              functionId: "meridian.chat",
+              integrations: aiSdkTelemetry(),
+            }
+          : undefined,
       });
 
       let pendingText = "";
@@ -138,6 +216,13 @@ export const processMessage = internalAction({
         agentRunId: args.agentRunId,
         chatSessionId: context.chatSession._id,
       });
+      if (tracingEnabled) {
+        Laminar.setSpanOutput({
+          status: "completed",
+          assistantMessageId: args.assistantMessageId,
+          usage: { inputTokens, outputTokens, totalTokens },
+        });
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Meridian failed to respond.";
       await ctx.runMutation(internal.messages.finalizeAssistantMessage, {
@@ -150,9 +235,11 @@ export const processMessage = internalAction({
         chatSessionId: context.chatSession._id,
         error: message,
       });
+      if (tracingEnabled) {
+        Laminar.setSpanOutput({ status: "failed", error: message });
+      }
     }
-  },
-});
+}
 
 function buildModelMessages(
   messages: Doc<"messages">[],

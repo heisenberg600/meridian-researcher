@@ -163,13 +163,6 @@ export const voiceToken = action({
   args: {
     invite: inviteValidator,
     answers: v.array(answerValidator),
-    currentStep: v.optional(
-      v.object({
-        id: v.string(),
-        prompt: v.string(),
-        type: v.string(),
-      }),
-    ),
   },
   handler: async (_ctx, args) => {
     const apiKey = process.env.ELEVENLABS_API_KEY;
@@ -210,8 +203,7 @@ export const voiceToken = action({
         research_goal: args.invite.researchGoal,
         learning_objectives: args.invite.learningObjectives.join("; "),
         respondent_label: args.invite.respondentLabel,
-        current_question: args.currentStep?.prompt ?? "Start the interview with a brief greeting.",
-        current_step_id: args.currentStep?.id ?? "initial",
+        estimated_minutes: args.invite.estimatedMinutes,
         answer_count: args.answers.length,
         answers_json: JSON.stringify(args.answers),
       },

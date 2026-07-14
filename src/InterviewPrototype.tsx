@@ -112,6 +112,17 @@ export function InterviewClient({ invite }: InterviewClientProps) {
     setIsThinking(false);
   }
 
+  function recordVoiceAnswer(question: string, value: string) {
+    setAnswers((current) => [
+      ...current,
+      {
+        stepId: `voice-${current.length + 1}`,
+        label: question,
+        value,
+      },
+    ]);
+  }
+
   return (
     <main className="min-h-screen bg-[var(--bg-page)] text-[var(--ink-700)]">
       <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-5 py-5 md:px-8">
@@ -147,12 +158,9 @@ export function InterviewClient({ invite }: InterviewClientProps) {
             ) : mode === "voice" ? (
               <VoiceExperiment
                 answers={answers}
-                gateway={gateway}
                 invite={invite}
-                isThinking={isThinking}
                 onUseChat={() => setMode("chat")}
-                step={step}
-                submitAnswer={submitAnswer}
+                recordAnswer={recordVoiceAnswer}
               />
             ) : (
               <div className="mx-auto w-full max-w-3xl">
@@ -496,20 +504,14 @@ function ContinueButton({ disabled, onClick }: { disabled: boolean; onClick?: ()
 
 function VoiceExperiment({
   answers,
-  gateway,
   invite,
-  isThinking,
   onUseChat,
-  step,
-  submitAnswer,
+  recordAnswer,
 }: {
   answers: InterviewAnswer[];
-  gateway: GatewayState;
   invite: InterviewInvite;
-  isThinking: boolean;
   onUseChat: () => void;
-  step: InterviewStep | null;
-  submitAnswer: (value: string | string[]) => void;
+  recordAnswer: (question: string, value: string) => void;
 }) {
   const createVoiceToken = useAction(api.interviews.voiceToken);
   const conversationRef = useRef<Conversation | null>(null);
@@ -535,18 +537,9 @@ function VoiceExperiment({
 
     try {
       const { Conversation } = await import("@elevenlabs/client");
-      const currentStep =
-        step && step.type !== "complete"
-          ? {
-              id: step.id,
-              prompt: step.prompt,
-              type: step.type,
-            }
-          : undefined;
       const session = await createVoiceToken({
         invite,
         answers,
-        currentStep,
       });
 
       const conversation = await Conversation.startSession({
@@ -556,25 +549,23 @@ function VoiceExperiment({
         clientTools: {
           record_interview_answer: async (parameters: unknown) => {
             const answer = normalizeVoiceToolAnswer(parameters);
-            if (!answer) return "No answer was provided.";
+            if (!answer) return "The question or answer was missing. Please try recording it again.";
 
-            await submitAnswer(answer);
-            return "Answer captured. Continue with the next interview question.";
-          },
-        },
-        overrides: {
-          agent: {
-            firstMessage: step?.type === "complete" ? step.prompt : step?.prompt,
+            recordAnswer(answer.question, answer.value);
+            return "Answer recorded. Decide whether a useful follow-up is needed, then continue naturally.";
           },
         },
         onConnect: ({ conversationId }) => {
           setConversationId(conversationId);
           setVoiceStatus("connected");
         },
-        onDisconnect: () => {
+        onDisconnect: (details) => {
           conversationRef.current = null;
           setVoiceStatus("disconnected");
           setIsMuted(false);
+          if (details.reason === "error") {
+            setVoiceError(getVoiceErrorMessage(details.message));
+          }
         },
         onError: (message) => {
           setVoiceError(message);
@@ -617,7 +608,6 @@ function VoiceExperiment({
   return (
     <div className="mx-auto w-full max-w-3xl">
       <div className="flex flex-wrap items-center gap-3">
-        <GatewayBadge gateway={gateway} isThinking={isThinking} />
         <span className="rounded-full border border-[var(--border-default)] bg-white px-3 py-1 text-xs font-medium text-[var(--text-secondary)]">
           ElevenLabs {voiceStatus}
         </span>
@@ -631,17 +621,9 @@ function VoiceExperiment({
         Voice interview
       </h2>
       <p className="mt-5 text-base leading-7 text-[var(--text-secondary)]">
-        Start the ElevenLabs agent when you want to answer aloud. The agent receives this study
-        context and can call the browser-side capture tool to move the interview forward.
+        The interviewer chooses its questions and follow-ups from the research goals and what you
+        say. Speak naturally; there are no predetermined voice questions.
       </p>
-      <div className="mt-8 rounded-lg border border-[var(--border-default)] bg-[var(--surface-card)] p-5">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
-          Current voice prompt
-        </p>
-        <p className="mt-2 text-lg leading-8">
-          {step?.prompt ?? "Preparing your first AI-generated voice prompt..."}
-        </p>
-      </div>
 
       {voiceError ? (
         <p className="mt-5 rounded-lg bg-[var(--status-warning-bg)] p-3 text-sm leading-6 text-[var(--status-warning)]">
@@ -688,7 +670,7 @@ function VoiceExperiment({
         ) : (
           <button
             type="button"
-            disabled={isStarting || !step}
+            disabled={isStarting}
             onClick={() => void startVoiceInterview()}
             className="rounded-lg bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white hover:bg-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-45"
           >
@@ -713,15 +695,19 @@ function normalizeVoiceToolAnswer(parameters: unknown) {
   }
 
   const record = parameters as Record<string, unknown>;
+  const question = record.question;
   const value = record.value ?? record.answer ?? record.response;
 
-  if (Array.isArray(value)) {
-    const values = value.filter((item): item is string => typeof item === "string" && item.length > 0);
-    return values.length > 0 ? values : null;
-  }
-
-  if (typeof value === "string" && value.trim().length > 0) {
-    return value.trim();
+  if (
+    typeof question === "string" &&
+    question.trim().length > 0 &&
+    typeof value === "string" &&
+    value.trim().length > 0
+  ) {
+    return {
+      question: question.trim(),
+      value: value.trim(),
+    };
   }
 
   return null;

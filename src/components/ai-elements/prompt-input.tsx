@@ -22,13 +22,14 @@ export function PromptInput({ className, ...props }: PromptInputProps) {
 
 export type PromptInputTextareaProps = ComponentProps<typeof Textarea>;
 
-export function PromptInputTextarea({ className, ...props }: PromptInputTextareaProps) {
+export function PromptInputTextarea({ className, style, ...props }: PromptInputTextareaProps) {
   return (
     <Textarea
       className={cn(
         "min-h-10 resize-none border-0 bg-transparent p-0 shadow-none focus-visible:ring-0 focus-visible:shadow-none",
         className,
       )}
+      style={{ minHeight: "2.5rem", ...style }}
       rows={1}
       {...props}
     />
@@ -38,7 +39,7 @@ export function PromptInputTextarea({ className, ...props }: PromptInputTextarea
 export type PromptInputToolbarProps = ComponentProps<"div">;
 
 export function PromptInputToolbar({ className, ...props }: PromptInputToolbarProps) {
-  return <div className={cn("mt-2 flex items-center gap-2", className)} {...props} />;
+  return <div className={cn("mt-2 flex min-h-9 items-center gap-2", className)} {...props} />;
 }
 
 export type PromptInputToolsProps = ComponentProps<"div">;
@@ -61,7 +62,7 @@ export function PromptInputSubmit({
   return (
     <Button
       aria-label="Send message"
-      className={cn("ml-auto rounded-[var(--radius-full)]", className)}
+      className={cn("ml-auto size-9 rounded-[var(--radius-full)]", className)}
       disabled={disabled || status === "submitted" || status === "streaming"}
       size="icon"
       type="submit"

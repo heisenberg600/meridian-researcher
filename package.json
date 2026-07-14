@@ -11,12 +11,14 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "deploy:cloudflare": "pnpm run build && wrangler pages deploy dist --project-name meridian --force",
-    "lint": "eslint"
+    "lint": "eslint",
+    "elevenlabs:provision": "node scripts/provision-elevenlabs-agent.mjs --set-convex-env"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^3.0.7",
     "@clerk/react": "^6.12.2",
     "@elevenlabs/client": "^1.15.0",
+    "@lmnr-ai/lmnr": "^0.8.38",
     "@radix-ui/react-slot": "^1.3.0",
     "@radix-ui/react-tabs": "^1.1.17",
     "@radix-ui/react-use-controllable-state": "^1.2.3",

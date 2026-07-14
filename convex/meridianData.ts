@@ -46,6 +46,18 @@ export const setRunRunning = internalMutation({
   },
 });
 
+export const setRunTrace = internalMutation({
+  args: {
+    agentRunId: v.id("agentRuns"),
+    laminarTraceId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.agentRunId, {
+      laminarTraceId: args.laminarTraceId,
+    });
+  },
+});
+
 export const completeRun = internalMutation({
   args: {
     agentRunId: v.id("agentRuns"),
