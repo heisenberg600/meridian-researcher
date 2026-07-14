@@ -737,10 +737,15 @@ export default defineSchema({
     balanceAfter: v.number(),
     idempotencyKey: v.string(),
     rateCardVersion: v.optional(v.string()),
+    reservationId: v.optional(v.id("creditReservations")),
+    reason: v.optional(v.string()),
+    providerPaymentId: v.optional(v.string()),
     createdAt: v.number(),
   })
     .index("by_organization", ["organizationId"])
-    .index("by_idempotency_key", ["idempotencyKey"]),
+    .index("by_idempotency_key", ["idempotencyKey"])
+    .index("by_reservation", ["reservationId"])
+    .index("by_provider_payment", ["providerPaymentId"]),
 
   creditReservations: defineTable({
     organizationId: v.id("organizations"),
@@ -749,6 +754,8 @@ export default defineSchema({
     operation: v.string(),
     maximumCredits: v.number(),
     finalDebit: v.optional(v.number()),
+    measuredCredits: v.optional(v.number()),
+    shortfallCredits: v.optional(v.number()),
     status: v.union(
       v.literal("reserved"),
       v.literal("finalized"),
@@ -756,6 +763,8 @@ export default defineSchema({
       v.literal("expired"),
     ),
     idempotencyKey: v.string(),
+    finalizationIdempotencyKey: v.optional(v.string()),
+    releaseIdempotencyKey: v.optional(v.string()),
     rateCardVersion: v.string(),
     expiresAt: v.number(),
     createdAt: v.number(),
@@ -767,11 +776,17 @@ export default defineSchema({
 
   checkoutSessions: defineTable({
     organizationId: v.id("organizations"),
-    dodoSessionId: v.string(),
+    checkoutIntentId: v.string(),
+    idempotencyKey: v.string(),
+    dodoSessionId: v.optional(v.string()),
     dodoPaymentId: v.optional(v.string()),
+    checkoutUrl: v.optional(v.string()),
+    productId: v.string(),
+    mode: v.union(v.literal("test"), v.literal("live")),
     packKey: v.string(),
     expectedGrant: v.number(),
     status: v.union(
+      v.literal("creating"),
       v.literal("created"),
       v.literal("paid"),
       v.literal("expired"),
@@ -781,23 +796,33 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_organization", ["organizationId"])
-    .index("by_dodo_session", ["dodoSessionId"]),
+    .index("by_organization_idempotency", ["organizationId", "idempotencyKey"])
+    .index("by_checkout_intent", ["checkoutIntentId"])
+    .index("by_dodo_session", ["dodoSessionId"])
+    .index("by_dodo_payment", ["dodoPaymentId"]),
 
   paymentWebhookEvents: defineTable({
     dodoEventId: v.string(),
     eventType: v.string(),
     payloadHash: v.string(),
+    organizationId: v.optional(v.id("organizations")),
+    paymentId: v.optional(v.string()),
+    checkoutSessionId: v.optional(v.string()),
     status: v.union(v.literal("received"), v.literal("processed"), v.literal("failed")),
     error: v.optional(v.string()),
     createdAt: v.number(),
     processedAt: v.optional(v.number()),
-  }).index("by_dodo_event", ["dodoEventId"]),
+  })
+    .index("by_dodo_event", ["dodoEventId"])
+    .index("by_payment", ["paymentId"]),
 
   rateCards: defineTable({
     version: v.string(),
     operation: v.string(),
     nativeUnit: v.string(),
-    creditsPerUnit: v.number(),
+    creditsPerUnit: v.optional(v.number()),
+    nativeUnitsPerBlock: v.number(),
+    creditsPerBlock: v.number(),
     activeAt: v.number(),
     retiredAt: v.optional(v.number()),
   })
