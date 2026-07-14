@@ -65,6 +65,68 @@ const studyTabs: Array<{ id: StudyTab; label: string }> = [
   { id: "artifacts", label: "Artifacts" },
 ];
 
+const studyTabIds = new Set<StudyTab>(studyTabs.map((tab) => tab.id));
+
+type PortalRoute = {
+  mainView: MainView;
+  selectedChatId: Id<"chatSessions"> | null;
+  selectedStudyId: Id<"studies"> | null;
+  studyTab: StudyTab;
+};
+
+function readPortalRoute(): PortalRoute {
+  const segments = window.location.pathname.split("/").filter(Boolean).map(decodeURIComponent);
+  const [, section, studyId, tabId, chatId] = segments;
+
+  if (section === "activity") {
+    return {
+      mainView: "activity",
+      selectedChatId: null,
+      selectedStudyId: null,
+      studyTab: "overview",
+    };
+  }
+
+  if (section === "settings") {
+    return {
+      mainView: "settings",
+      selectedChatId: null,
+      selectedStudyId: null,
+      studyTab: "overview",
+    };
+  }
+
+  if (section === "studies" && studyId) {
+    const studyTab = studyTabIds.has(tabId as StudyTab) ? (tabId as StudyTab) : "overview";
+    return {
+      mainView: "studies",
+      selectedChatId: studyTab === "chat" && chatId ? (chatId as Id<"chatSessions">) : null,
+      selectedStudyId: studyId as Id<"studies">,
+      studyTab,
+    };
+  }
+
+  return {
+    mainView: "studies",
+    selectedChatId: null,
+    selectedStudyId: null,
+    studyTab: "overview",
+  };
+}
+
+function portalPath(route: PortalRoute) {
+  if (route.mainView === "activity") return "/portal/activity";
+  if (route.mainView === "settings") return "/portal/settings";
+  if (!route.selectedStudyId) return "/portal";
+
+  const studyId = encodeURIComponent(route.selectedStudyId);
+  const tab = encodeURIComponent(route.studyTab);
+  if (route.studyTab === "chat" && route.selectedChatId) {
+    return `/portal/studies/${studyId}/chat/${encodeURIComponent(route.selectedChatId)}`;
+  }
+  return `/portal/studies/${studyId}/${tab}`;
+}
+
 export function Portal() {
   const { user } = useUser();
   const ensureCurrent = useMutation(api.users.ensureCurrent);
@@ -75,11 +137,16 @@ export function Portal() {
   const studies = useQuery(api.studies.listMine);
   const current = useQuery(api.users.current);
   const memories = useQuery(api.organizationMemories.listMine, { includeArchived: false });
+  const initialRoute = useMemo(readPortalRoute, []);
 
-  const [mainView, setMainView] = useState<MainView>("studies");
-  const [studyTab, setStudyTab] = useState<StudyTab>("overview");
-  const [selectedStudyId, setSelectedStudyId] = useState<Id<"studies"> | null>(null);
-  const [selectedChatId, setSelectedChatId] = useState<Id<"chatSessions"> | null>(null);
+  const [mainView, setMainView] = useState<MainView>(initialRoute.mainView);
+  const [studyTab, setStudyTab] = useState<StudyTab>(initialRoute.studyTab);
+  const [selectedStudyId, setSelectedStudyId] = useState<Id<"studies"> | null>(
+    initialRoute.selectedStudyId,
+  );
+  const [selectedChatId, setSelectedChatId] = useState<Id<"chatSessions"> | null>(
+    initialRoute.selectedChatId,
+  );
   const [title, setTitle] = useState("");
   const [businessDecision, setBusinessDecision] = useState("");
   const [messageText, setMessageText] = useState("");
@@ -109,6 +176,32 @@ export function Portal() {
     void ensureCurrent();
   }, [ensureCurrent]);
 
+  function applyRoute(route: PortalRoute) {
+    setMainView(route.mainView);
+    setSelectedStudyId(route.selectedStudyId);
+    setStudyTab(route.studyTab);
+    setSelectedChatId(route.selectedChatId);
+  }
+
+  function navigatePortal(route: PortalRoute, options?: { replace?: boolean }) {
+    const path = portalPath(route);
+    if (window.location.pathname !== path) {
+      if (options?.replace) {
+        window.history.replaceState({}, "", path);
+      } else {
+        window.history.pushState({}, "", path);
+      }
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    }
+    applyRoute(route);
+  }
+
+  useEffect(() => {
+    const onPopState = () => applyRoute(readPortalRoute());
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
   async function handleCreateStudy(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
@@ -117,10 +210,12 @@ export function Portal() {
       const result = await createStudy({ title, businessDecision });
       setTitle("");
       setBusinessDecision("");
-      setSelectedStudyId(result.studyId);
-      setSelectedChatId(result.chatSessionId);
-      setMainView("studies");
-      setStudyTab("chat");
+      navigatePortal({
+        mainView: "studies",
+        selectedChatId: result.chatSessionId,
+        selectedStudyId: result.studyId,
+        studyTab: "chat",
+      });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not create study");
     } finally {
@@ -155,7 +250,12 @@ export function Portal() {
         title: `Discussion ${(chatSessions?.length ?? 0) + 1}`,
         purpose: "general",
       });
-      setSelectedChatId(chatSessionId);
+      navigatePortal({
+        mainView: "studies",
+        selectedChatId: chatSessionId,
+        selectedStudyId: selectedStudy._id,
+        studyTab: "chat",
+      });
       setMessageText("");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not create chat");
@@ -165,9 +265,50 @@ export function Portal() {
   }
 
   function openStudy(studyId: Id<"studies">, tab: StudyTab = "overview") {
-    setSelectedStudyId(studyId);
-    setMainView("studies");
-    setStudyTab(tab);
+    navigatePortal({
+      mainView: "studies",
+      selectedChatId: null,
+      selectedStudyId: studyId,
+      studyTab: tab,
+    });
+  }
+
+  function openPortalHome() {
+    navigatePortal({
+      mainView: "studies",
+      selectedChatId: null,
+      selectedStudyId: null,
+      studyTab: "overview",
+    });
+  }
+
+  function openMainView(view: MainView) {
+    navigatePortal({
+      mainView: view,
+      selectedChatId: null,
+      selectedStudyId: null,
+      studyTab: "overview",
+    });
+  }
+
+  function openStudyTab(tab: StudyTab) {
+    if (!selectedStudy) return;
+    navigatePortal({
+      mainView: "studies",
+      selectedChatId: tab === "chat" ? selectedChat?._id ?? selectedChatId : null,
+      selectedStudyId: selectedStudy._id,
+      studyTab: tab,
+    });
+  }
+
+  function openChat(chatSessionId: Id<"chatSessions">) {
+    if (!selectedStudy) return;
+    navigatePortal({
+      mainView: "studies",
+      selectedChatId: chatSessionId,
+      selectedStudyId: selectedStudy._id,
+      studyTab: "chat",
+    });
   }
 
   return (
@@ -177,8 +318,8 @@ export function Portal() {
           <StudySidebar
             current={current}
             selectedStudy={selectedStudy}
-            setSelectedStudyId={setSelectedStudyId}
-            setStudyTab={setStudyTab}
+            openPortalHome={openPortalHome}
+            openStudyTab={openStudyTab}
             studyTab={studyTab}
             user={user}
           />
@@ -186,11 +327,10 @@ export function Portal() {
           <WorkspaceSidebar
             current={current}
             mainView={mainView}
+            openMainView={openMainView}
+            openPortalHome={openPortalHome}
             openStudy={openStudy}
             selectedStudy={selectedStudy}
-            setMainView={setMainView}
-            setSelectedStudyId={setSelectedStudyId}
-            setStudyTab={setStudyTab}
             studies={studies}
             user={user}
           />
@@ -215,8 +355,8 @@ export function Portal() {
                 selectedChat={selectedChat}
                 selectedStudy={selectedStudy}
                 setMessageText={setMessageText}
-                setSelectedChatId={setSelectedChatId}
-                setStudyTab={setStudyTab}
+                openChat={openChat}
+                openStudyTab={openStudyTab}
                 studyTab={studyTab}
                 messageText={messageText}
                 isSending={isSending}
@@ -339,21 +479,19 @@ function StudiesHome({
 function WorkspaceSidebar({
   current,
   mainView,
+  openMainView,
+  openPortalHome,
   openStudy,
   selectedStudy,
-  setMainView,
-  setSelectedStudyId,
-  setStudyTab,
   studies,
   user,
 }: {
   current: CurrentUserQuery;
   mainView: MainView;
+  openMainView: (view: MainView) => void;
+  openPortalHome: () => void;
   openStudy: (studyId: Id<"studies">, tab?: StudyTab) => void;
   selectedStudy: Doc<"studies"> | null;
-  setMainView: (view: MainView) => void;
-  setSelectedStudyId: (studyId: Id<"studies"> | null) => void;
-  setStudyTab: (tab: StudyTab) => void;
   studies: Array<Doc<"studies">> | undefined;
   user: ReturnType<typeof useUser>["user"];
 }) {
@@ -362,11 +500,7 @@ function WorkspaceSidebar({
       <div className="px-5 pb-4 pt-6">
         <button
           type="button"
-          onClick={() => {
-            setMainView("studies");
-            setSelectedStudyId(null);
-            setStudyTab("overview");
-          }}
+          onClick={openPortalHome}
           className="[font:var(--text-display-md)] tracking-[var(--tracking-display)] text-[var(--text-heading)]"
         >
           Meridian
@@ -378,22 +512,19 @@ function WorkspaceSidebar({
 
       <nav className="space-y-1 px-3">
         <SidebarButton
-          active={mainView === "studies"}
+          active={mainView === "studies" && !selectedStudy}
           label="Studies"
-          onClick={() => {
-            setMainView("studies");
-            setSelectedStudyId(null);
-          }}
+          onClick={openPortalHome}
         />
         <SidebarButton
           active={mainView === "activity"}
           label="Activity"
-          onClick={() => setMainView("activity")}
+          onClick={() => openMainView("activity")}
         />
         <SidebarButton
           active={mainView === "settings"}
           label="Org settings"
-          onClick={() => setMainView("settings")}
+          onClick={() => openMainView("settings")}
         />
       </nav>
 
@@ -443,16 +574,16 @@ function WorkspaceSidebar({
 
 function StudySidebar({
   current,
+  openPortalHome,
+  openStudyTab,
   selectedStudy,
-  setSelectedStudyId,
-  setStudyTab,
   studyTab,
   user,
 }: {
   current: CurrentUserQuery;
+  openPortalHome: () => void;
+  openStudyTab: (tab: StudyTab) => void;
   selectedStudy: Doc<"studies">;
-  setSelectedStudyId: (studyId: Id<"studies"> | null) => void;
-  setStudyTab: (tab: StudyTab) => void;
   studyTab: StudyTab;
   user: ReturnType<typeof useUser>["user"];
 }) {
@@ -461,10 +592,7 @@ function StudySidebar({
       <div className="border-b border-[var(--border-default)] px-5 py-5">
         <button
           type="button"
-          onClick={() => {
-            setSelectedStudyId(null);
-            setStudyTab("overview");
-          }}
+          onClick={openPortalHome}
           className="[font:var(--text-body-sm)] text-[var(--text-muted)] hover:text-[var(--text-heading)]"
         >
           Back to studies
@@ -486,7 +614,7 @@ function StudySidebar({
             key={tab.id}
             active={studyTab === tab.id}
             label={tab.label}
-            onClick={() => setStudyTab(tab.id)}
+            onClick={() => openStudyTab(tab.id)}
           />
         ))}
       </nav>
@@ -515,8 +643,8 @@ function StudyDetail({
   selectedChat,
   selectedStudy,
   setMessageText,
-  setSelectedChatId,
-  setStudyTab,
+  openChat,
+  openStudyTab,
   studyTab,
 }: {
   chatSessions: Array<Doc<"chatSessions">> | undefined;
@@ -529,8 +657,8 @@ function StudyDetail({
   selectedChat: Doc<"chatSessions"> | null;
   selectedStudy: Doc<"studies">;
   setMessageText: (value: string) => void;
-  setSelectedChatId: (id: Id<"chatSessions">) => void;
-  setStudyTab: (tab: StudyTab) => void;
+  openChat: (id: Id<"chatSessions">) => void;
+  openStudyTab: (tab: StudyTab) => void;
   studyTab: StudyTab;
 }) {
   return (
@@ -548,11 +676,11 @@ function StudyDetail({
             onSendMessage={onSendMessage}
             selectedChat={selectedChat}
             setMessageText={setMessageText}
-            setSelectedChatId={setSelectedChatId}
+            openChat={openChat}
           />
         ) : null}
         {studyTab === "plan" ? (
-          <StudyPlan selectedStudy={selectedStudy} onOpenChat={() => setStudyTab("chat")} />
+          <StudyPlan selectedStudy={selectedStudy} onOpenChat={() => openStudyTab("chat")} />
         ) : null}
         {studyTab === "participants" ? <StudyParticipants selectedStudy={selectedStudy} /> : null}
         {studyTab === "calls" ? <CallsSkeleton /> : null}
@@ -601,7 +729,7 @@ function StudyChat({
   onSendMessage,
   selectedChat,
   setMessageText,
-  setSelectedChatId,
+  openChat,
 }: {
   chatSessions: Array<Doc<"chatSessions">> | undefined;
   isCreatingChat: boolean;
@@ -612,7 +740,7 @@ function StudyChat({
   onSendMessage: (event: React.FormEvent<HTMLFormElement>) => void;
   selectedChat: Doc<"chatSessions"> | null;
   setMessageText: (value: string) => void;
-  setSelectedChatId: (id: Id<"chatSessions">) => void;
+  openChat: (id: Id<"chatSessions">) => void;
 }) {
   const toolEvents = useQuery(
     api.agentToolEvents.listForChat,
@@ -657,7 +785,7 @@ function StudyChat({
                   <button
                     key={chat._id}
                     type="button"
-                    onClick={() => setSelectedChatId(chat._id)}
+                    onClick={() => openChat(chat._id)}
                     className={cx(
                       "w-full px-3 py-3 text-left transition-colors",
                       active
