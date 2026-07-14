@@ -1,5 +1,5 @@
 import { httpRouter } from "convex/server";
-import { dodoWebhook } from "./paymentWebhookActions";
+import { dodoWebhook } from "./paymentWebhookHttp";
 
 const http = httpRouter();
 

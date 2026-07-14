@@ -22,7 +22,7 @@ export const listForStudy = query({
 export const createDraft = mutation({
   args: {
     studyId: v.id("studies"),
-    participantBatchId: v.optional(v.id("participantImportBatches")),
+    participantBatchId: v.id("participantImportBatches"),
     participantIds: v.array(v.id("studyParticipants")),
     channels: v.array(channel),
   },
@@ -35,13 +35,11 @@ export const createDraft = mutation({
       throw new Error("An approved questionnaire is required before creating outreach");
     }
 
-    const participantBatch = args.participantBatchId
-      ? await ctx.db.get(args.participantBatchId)
-      : null;
+    const participantBatch = await ctx.db.get(args.participantBatchId);
     if (
-      participantBatch &&
-      (participantBatch.studyId !== study._id ||
-        study.currentApprovedParticipantBatchId !== participantBatch._id)
+      !participantBatch ||
+      participantBatch.studyId !== study._id ||
+      study.currentApprovedParticipantBatchId !== participantBatch._id
     ) {
       throw new Error("Select the current approved participant batch");
     }
@@ -54,7 +52,7 @@ export const createDraft = mutation({
           !participant ||
           participant.studyId !== study._id ||
           participant.status === "archived" ||
-          (participantBatch && participant.importBatchId !== participantBatch._id),
+          participant.importBatchId !== participantBatch._id,
       )
     ) {
       throw new Error("Every participant must belong to the selected study and batch");
@@ -64,7 +62,7 @@ export const createDraft = mutation({
     assertOutreachDraft({
       studyStatus: study.status,
       questionnaireStatus: questionnaire.status,
-      participantBatchStatus: participantBatch?.status,
+      participantBatchStatus: participantBatch.status,
       participantCount: participants.length,
       channels,
     });
@@ -83,7 +81,7 @@ export const createDraft = mutation({
       organizationId: study.organizationId,
       studyId: study._id,
       questionnaireVersionId: questionnaire._id,
-      participantBatchId: participantBatch?._id,
+      participantBatchId: participantBatch._id,
       participantIds,
       channels,
       status: "draft",

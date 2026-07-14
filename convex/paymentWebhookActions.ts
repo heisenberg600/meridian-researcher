@@ -3,8 +3,9 @@
 import { createHash } from "node:crypto";
 import DodoPayments from "dodopayments";
 import { makeFunctionReference } from "convex/server";
+import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
-import { httpAction } from "./_generated/server";
+import { action } from "./_generated/server";
 
 type ReceivedEvent = { created: boolean; status: "received" | "processed" | "failed" };
 
@@ -45,13 +46,17 @@ export function unwrapDodoWebhook(
   return client.webhooks.unwrap(rawBody, { headers, key });
 }
 
-export const dodoWebhook = httpAction(async (ctx, request) => {
-  const rawBody = await request.text();
-  const eventId = request.headers.get("webhook-id")?.trim();
-  const signature = request.headers.get("webhook-signature")?.trim();
-  const timestamp = request.headers.get("webhook-timestamp")?.trim();
+export const verifyAndProcess = action({
+  args: {
+    rawBody: v.string(),
+    eventId: v.string(),
+    signature: v.string(),
+    timestamp: v.string(),
+  },
+  handler: async (ctx, args) => {
+  const { rawBody, eventId, signature, timestamp } = args;
   if (!eventId || !signature || !timestamp) {
-    return response(400, "Missing required webhook signature headers");
+    return webhookResult(400, "Missing required webhook signature headers");
   }
 
   let persisted = false;
@@ -73,11 +78,11 @@ export const dodoWebhook = httpAction(async (ctx, request) => {
     });
     persisted = true;
     if (!received.created && received.status === "processed") {
-      return response(200, "duplicate");
+      return webhookResult(200, "duplicate");
     }
     if (eventType !== "payment.succeeded") {
       await ctx.runMutation(markEventProcessedRef, { eventId });
-      return response(200, "ignored");
+      return webhookResult(200, "ignored");
     }
 
     const payment = verified.data;
@@ -97,15 +102,16 @@ export const dodoWebhook = httpAction(async (ctx, request) => {
       checkoutSessionId: payment.checkout_session_id,
       productCart,
     });
-    return response(200, result.status);
+    return { status: 200, message: result.status };
   } catch (cause) {
     const message = cause instanceof Error ? cause.message : "Webhook processing failed";
     if (persisted) {
       await ctx.runMutation(markEventFailedRef, { eventId, error: message });
-      return response(500, "Webhook processing failed");
+      return webhookResult(500, "Webhook processing failed");
     }
-    return response(400, "Invalid webhook signature or payload");
+    return webhookResult(400, "Invalid webhook signature or payload");
   }
+  },
 });
 
 function requireEnvironment(name: string) {
@@ -114,9 +120,6 @@ function requireEnvironment(name: string) {
   return value;
 }
 
-function response(status: number, message: string) {
-  return new Response(JSON.stringify({ status: message }), {
-    status,
-    headers: { "content-type": "application/json" },
-  });
+function webhookResult(status: number, message: string) {
+  return { status, message };
 }

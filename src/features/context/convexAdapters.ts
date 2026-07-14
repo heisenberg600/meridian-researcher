@@ -1,6 +1,7 @@
 import {
   DEFAULT_BRAND_PROFILE,
   type BrandAdapter,
+  type BrandFontPreference,
   type BrandProfile,
   type BrandTone,
   type KnowledgeAdapter,
@@ -180,16 +181,20 @@ export interface BackendBrandProfile {
   primaryColor: string;
   accentColor: string;
   tone?: string;
+  reportTitle?: string;
   reportFooter?: string;
+  headingFont?: BrandFontPreference;
+  bodyFont?: BrandFontPreference;
   logoUrl?: string;
+  logoName?: string;
 }
 
 export interface BrandTransport {
   getProfile(): Promise<BackendBrandProfile>;
-  updateProfile(profile: { displayName: string; primaryColor: string; accentColor: string; tone: BrandTone; reportFooter: string }): Promise<void>;
+  updateProfile(profile: { displayName: string; primaryColor: string; accentColor: string; tone: BrandTone; reportTitle: string; reportFooter: string; headingFont: BrandFontPreference; bodyFont: BrandFontPreference }): Promise<void>;
   generateLogoUploadUrl(): Promise<string>;
   uploadFile(uploadUrl: string, file: File): Promise<{ storageId: string }>;
-  setLogo(args: { storageId: string }): Promise<void>;
+  setLogo(args: { storageId: string; logoName: string }): Promise<void>;
   removeLogo(): Promise<void>;
 }
 
@@ -200,7 +205,11 @@ export function mapBrandProfile(profile: BackendBrandProfile): BrandProfile {
     primaryColor: profile.primaryColor,
     accentColor: profile.accentColor,
     tone: isBrandTone(profile.tone) ? profile.tone : DEFAULT_BRAND_PROFILE.tone,
+    reportTitle: profile.reportTitle?.trim() || DEFAULT_BRAND_PROFILE.reportTitle,
     reportFooter: profile.reportFooter?.trim() || DEFAULT_BRAND_PROFILE.reportFooter,
+    headingFont: profile.headingFont ?? DEFAULT_BRAND_PROFILE.headingFont,
+    bodyFont: profile.bodyFont ?? DEFAULT_BRAND_PROFILE.bodyFont,
+    ...(profile.logoName ? { logoName: profile.logoName } : {}),
     ...(profile.logoUrl ? { logoUrl: profile.logoUrl } : {}),
   };
 }
@@ -213,18 +222,12 @@ export function createBrandAdapter(transport: BrandTransport): BrandAdapter {
     async updateBrandProfile(profile) {
       await transport.updateProfile(schemaBackedBrandFields(profile));
       const persisted = mapBrandProfile(await transport.getProfile());
-      return {
-        ...persisted,
-        reportTitle: profile.reportTitle,
-        headingFont: profile.headingFont,
-        bodyFont: profile.bodyFont,
-        logoName: profile.logoName,
-      };
+      return persisted;
     },
     async uploadLogo(file) {
       const uploadUrl = await transport.generateLogoUploadUrl();
       const { storageId } = await transport.uploadFile(uploadUrl, file);
-      await transport.setLogo({ storageId });
+      await transport.setLogo({ storageId, logoName: file.name });
       const profile = await transport.getProfile();
       if (!profile.logoUrl) throw new Error("The uploaded logo could not be loaded");
       return { logoUrl: profile.logoUrl, logoName: file.name };
@@ -326,7 +329,10 @@ function schemaBackedBrandFields(profile: BrandProfile) {
     primaryColor: profile.primaryColor,
     accentColor: profile.accentColor,
     tone: profile.tone,
+    reportTitle: profile.reportTitle,
     reportFooter: profile.reportFooter,
+    headingFont: profile.headingFont,
+    bodyFont: profile.bodyFont,
   };
 }
 

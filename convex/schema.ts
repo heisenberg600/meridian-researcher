@@ -433,7 +433,7 @@ export default defineSchema({
     organizationId: v.id("organizations"),
     studyId: v.id("studies"),
     questionnaireVersionId: v.id("interviewBriefVersions"),
-    participantBatchId: v.optional(v.id("participantImportBatches")),
+    participantBatchId: v.id("participantImportBatches"),
     participantIds: v.array(v.id("studyParticipants")),
     channels: v.array(v.union(v.literal("email"), v.literal("voice"))),
     status: v.union(

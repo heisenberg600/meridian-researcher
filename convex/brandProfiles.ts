@@ -10,7 +10,10 @@ export const DEFAULT_BRAND_PROFILE = {
   primaryColor: "#171612",
   accentColor: "#C2593B",
   tone: "precise",
+  reportTitle: "Customer evidence report",
   reportFooter: "Confidential research",
+  headingFont: "serif",
+  bodyFont: "sans",
 } as const;
 
 const toneValidator = v.union(v.literal("precise"), v.literal("warm"), v.literal("direct"));
@@ -29,7 +32,11 @@ export const getProfile = query({
       primaryColor: profile.primaryColor,
       accentColor: profile.accentColor,
       tone: normalizeTone(profile.tone),
+      reportTitle: profile.reportTitle?.trim() || DEFAULT_BRAND_PROFILE.reportTitle,
       reportFooter: profile.reportFooter?.trim() || DEFAULT_BRAND_PROFILE.reportFooter,
+      headingFont: profile.headingFont ?? DEFAULT_BRAND_PROFILE.headingFont,
+      bodyFont: profile.bodyFont ?? DEFAULT_BRAND_PROFILE.bodyFont,
+      logoName: profile.logoName,
       logoUrl,
     };
   },
@@ -41,7 +48,10 @@ export const updateProfile = mutation({
     primaryColor: v.string(),
     accentColor: v.string(),
     tone: toneValidator,
+    reportTitle: v.string(),
     reportFooter: v.string(),
+    headingFont: v.union(v.literal("serif"), v.literal("sans")),
+    bodyFont: v.union(v.literal("serif"), v.literal("sans")),
   },
   handler: async (ctx, args) => {
     const access = await requireDefaultOrganizationAccess(ctx);
@@ -69,13 +79,13 @@ export const generateLogoUploadUrl = mutation({
 });
 
 export const setLogo = mutation({
-  args: { storageId: v.id("_storage") },
+  args: { storageId: v.id("_storage"), logoName: v.string() },
   handler: async (ctx, args) => {
     const access = await requireDefaultOrganizationAccess(ctx);
     const profile = await findProfileForOrganization(ctx, access.organizationId);
     const now = Date.now();
     if (profile) {
-      await ctx.db.patch(profile._id, { logoStorageId: args.storageId, updatedAt: now });
+      await ctx.db.patch(profile._id, { logoStorageId: args.storageId, logoName: args.logoName.trim(), updatedAt: now });
       if (profile.logoStorageId && profile.logoStorageId !== args.storageId) {
         await ctx.storage.delete(profile.logoStorageId);
       }
@@ -85,6 +95,7 @@ export const setLogo = mutation({
       organizationId: access.organizationId,
       ...DEFAULT_BRAND_PROFILE,
       logoStorageId: args.storageId,
+      logoName: args.logoName.trim(),
       updatedAt: now,
     });
   },
@@ -97,7 +108,7 @@ export const removeLogo = mutation({
     const profile = await findProfileForOrganization(ctx, access.organizationId);
     if (!profile?.logoStorageId) return;
     const storageId = profile.logoStorageId;
-    await ctx.db.patch(profile._id, { logoStorageId: undefined, updatedAt: Date.now() });
+    await ctx.db.patch(profile._id, { logoStorageId: undefined, logoName: undefined, updatedAt: Date.now() });
     await ctx.storage.delete(storageId);
   },
 });
@@ -128,7 +139,10 @@ function normalizeProfile(profile: {
   primaryColor: string;
   accentColor: string;
   tone: BrandTone;
+  reportTitle: string;
   reportFooter: string;
+  headingFont: "serif" | "sans";
+  bodyFont: "serif" | "sans";
 }) {
   const displayName = profile.displayName.trim();
   if (!displayName) throw new Error("Enter a display name");
@@ -137,7 +151,10 @@ function normalizeProfile(profile: {
     primaryColor: normalizeColor(profile.primaryColor),
     accentColor: normalizeColor(profile.accentColor),
     tone: profile.tone,
+    reportTitle: profile.reportTitle.trim() || DEFAULT_BRAND_PROFILE.reportTitle,
     reportFooter: profile.reportFooter.trim() || DEFAULT_BRAND_PROFILE.reportFooter,
+    headingFont: profile.headingFont,
+    bodyFont: profile.bodyFont,
   };
 }
 

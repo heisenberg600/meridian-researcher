@@ -6,8 +6,9 @@ import { Landing } from "./Landing";
 import { Portal } from "./Portal";
 import { getInterviewInvite } from "./lib/interview-prototype";
 import { navigate, usePathname } from "./lib/navigation";
+import { FeaturePortal } from "./app/FeaturePortal";
 
-function PortalGate() {
+function PortalGate({ pathname }: { pathname: string }) {
   const { isLoaded, isSignedIn } = useUser();
 
   if (!isLoaded) {
@@ -28,6 +29,8 @@ function PortalGate() {
   }
 
   if (isSignedIn) {
+    const feature = pathname.match(/^\/portal\/(knowledge|memory|brand)\/?$/)?.[1] as "knowledge" | "memory" | "brand" | undefined;
+    if (feature) return <FeaturePortal page={feature} pathname={pathname} />;
     return <Portal />;
   }
 
@@ -91,7 +94,7 @@ export function App() {
     return invite ? <InterviewClient invite={invite} /> : <ParticipantInterviewRoute token={inviteId} />;
   }
 
-  return pathname.startsWith("/portal") ? <PortalGate /> : <Landing />;
+  return pathname.startsWith("/portal") ? <PortalGate pathname={pathname} /> : <Landing />;
 }
 
 function InvalidInvite() {
