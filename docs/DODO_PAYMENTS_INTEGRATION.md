@@ -58,23 +58,20 @@ overlay instead of redirecting. Nice-to-have polish later; Options 1–2 are eno
 
 ## Step-by-step: adding it to Hermes (Vite + Convex)
 
-1. **Keys** — a **Test Mode** key is already created and shared here so anyone on the team can
-   integrate straight away. This is a sandbox key — it only works against
-   `https://test.dodopayments.com` and **cannot move real money**, so it is safe to keep in this
-   private repo.
+1. **Keys** — create a **Test Mode** key in Dashboard → Developer → API Keys. Do **not** paste it
+   into this repo. Keep it locally in `.env.local` (git-ignored) and set it on Convex:
 
    ```
-   # TEST MODE ONLY — sandbox, no real money. Rotate anytime in Dashboard → Developer → API Keys.
-- **Shared test API key**: removed; configure DODO_PAYMENTS_API_KEY via environment variables.
+   # Local only — .env.local (git-ignored). Never commit a key.
+   DODO_PAYMENTS_TEST_API_KEY=<your-test-key>
    ```
 
    For the actual code, load it from an env var rather than pasting it inline. In Convex:
-   `npx convex env set DODO_PAYMENTS_API_KEY <the key above>`
+   `npx convex env set DODO_PAYMENTS_API_KEY <your-test-key>`
 
-   > ⚠️ **The future LIVE key is different — never commit that one.** When the account clears
-   > verification and we create a live key (real money), it goes only into environment variables /
-   > Convex env, never into this repo. If this test key is ever misused, just rotate it in the
-   > dashboard (takes 10 seconds) and paste the new one here.
+   > ⚠️ **No API keys live in this repo — test or live.** Every key (sandbox or real-money) goes only
+   > into `.env.local` and Convex env. If a key is ever exposed, rotate it in the dashboard (takes
+   > 10 seconds) and update `.env.local` / Convex env.
 
 2. **Product** — created in the dashboard or via `POST /products`. Test product already exists:
    `Demo Product - Live Checkout Test` / `pdt_0Nj0hV4yzMvwsAkxDHEwZ` ($10 one-time).
