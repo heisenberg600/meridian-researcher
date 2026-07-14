@@ -56,6 +56,8 @@ pnpm run deploy:cloudflare
 
 This uses classic Cloudflare Pages deployment via Wrangler because the app is a static Vite SPA.
 
+CI/CD setup is documented in [docs/CLOUDFLARE_CICD.md](docs/CLOUDFLARE_CICD.md). The GitHub Actions workflow builds pull requests and deploys pushes to `main` to Cloudflare Pages.
+
 ## Guiding principles
 
 - Start with the business decision, not a blank survey.
