@@ -58,10 +58,23 @@ overlay instead of redirecting. Nice-to-have polish later; Options 1–2 are eno
 
 ## Step-by-step: adding it to Hermes (Vite + Convex)
 
-1. **Keys** — already created. The test key is stored locally on Sanyam's Mac in
-   `~/projects/company-config/.env` as `DODO_PAYMENTS_TEST_API_KEY`.
-   **Never commit the key to this repo.** In Convex, set it with:
-   `npx convex env set DODO_PAYMENTS_API_KEY <the key>`
+1. **Keys** — a **Test Mode** key is already created and shared here so anyone on the team can
+   integrate straight away. This is a sandbox key — it only works against
+   `https://test.dodopayments.com` and **cannot move real money**, so it is safe to keep in this
+   private repo.
+
+   ```
+   # TEST MODE ONLY — sandbox, no real money. Rotate anytime in Dashboard → Developer → API Keys.
+- **Shared test API key**: removed; configure DODO_PAYMENTS_API_KEY via environment variables.
+   ```
+
+   For the actual code, load it from an env var rather than pasting it inline. In Convex:
+   `npx convex env set DODO_PAYMENTS_API_KEY <the key above>`
+
+   > ⚠️ **The future LIVE key is different — never commit that one.** When the account clears
+   > verification and we create a live key (real money), it goes only into environment variables /
+   > Convex env, never into this repo. If this test key is ever misused, just rotate it in the
+   > dashboard (takes 10 seconds) and paste the new one here.
 
 2. **Product** — created in the dashboard or via `POST /products`. Test product already exists:
    `Demo Product - Live Checkout Test` / `pdt_0Nj0hV4yzMvwsAkxDHEwZ` ($10 one-time).
