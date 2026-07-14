@@ -22,6 +22,35 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_clerk_organization_id", ["clerkOrganizationId"]),
 
+  waitlistSignups: defineTable({
+    name: v.string(),
+    email: v.string(),
+    company: v.string(),
+    role: v.string(),
+    researchDecision: v.string(),
+    targetAudience: v.optional(v.string()),
+    timeline: v.union(
+      v.literal("now"),
+      v.literal("quarter"),
+      v.literal("exploring"),
+    ),
+    source: v.string(),
+    referrer: v.optional(v.string()),
+    utmSource: v.optional(v.string()),
+    utmCampaign: v.optional(v.string()),
+    status: v.union(
+      v.literal("new"),
+      v.literal("contacted"),
+      v.literal("pilot_qualified"),
+      v.literal("pilot_started"),
+      v.literal("closed"),
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_email", ["email"])
+    .index("by_status", ["status"]),
+
   memberships: defineTable({
     organizationId: v.id("organizations"),
     userId: v.id("users"),

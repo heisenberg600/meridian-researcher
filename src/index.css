@@ -42,6 +42,13 @@ body {
   background: var(--bg-page);
 }
 
+.landing-paper {
+  background-color: #faf9f6;
+  background-image: url("/landing/paper-texture.webp");
+  background-repeat: repeat;
+  background-size: 512px 512px;
+}
+
 button,
 input,
 textarea {

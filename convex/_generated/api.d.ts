@@ -26,6 +26,7 @@ import type * as studies from "../studies.js";
 import type * as studyParticipants from "../studyParticipants.js";
 import type * as studyPlans from "../studyPlans.js";
 import type * as users from "../users.js";
+import type * as waitlist from "../waitlist.js";
 
 import type {
   ApiFromModules,
@@ -52,6 +53,7 @@ declare const fullApi: ApiFromModules<{
   studyParticipants: typeof studyParticipants;
   studyPlans: typeof studyPlans;
   users: typeof users;
+  waitlist: typeof waitlist;
 }>;
 
 /**
