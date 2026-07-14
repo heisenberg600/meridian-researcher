@@ -101,8 +101,8 @@ export const approve = mutation({
     if (study.currentStudyPlanVersionId !== plan._id) {
       throw new Error("Only the current Study Plan can be approved");
     }
-    if (plan.status !== "awaiting_approval") {
-      throw new Error("Only a Study Plan awaiting approval can be approved");
+    if (plan.status !== "draft" && plan.status !== "awaiting_approval") {
+      throw new Error("Only a current draft Study Plan can be approved");
     }
 
     const now = Date.now();

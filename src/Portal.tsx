@@ -45,6 +45,7 @@ import { getUserFacingConvexError } from "./lib/utils";
 import { ParticipantImportWizard } from "./features/participants/import/ParticipantImportWizard";
 import { createImportReviewState, importReviewReducer } from "./features/participants/import/reviewState";
 import { parseParticipantWorkbook } from "./features/participants/import/workbook";
+import { getParticipantReviewUi, getPlanApprovalUi, getQuestionnaireGenerationUi } from "./features/studies/planApproval";
 
 type MainView = "studies" | "activity" | "settings";
 type StudyTab =
@@ -724,10 +725,12 @@ function StudyDetail({
         ) : null}
         {studyTab === "interview-guide" ? (
           <InterviewGuideErrorBoundary>
-            <InterviewGuide selectedStudy={selectedStudy} />
+            <InterviewGuide selectedStudy={selectedStudy} onOpenPlan={() => openStudyTab("plan")} />
           </InterviewGuideErrorBoundary>
         ) : null}
-        {studyTab === "participants" ? <StudyParticipants selectedStudy={selectedStudy} /> : null}
+        {studyTab === "participants" ? (
+          <StudyParticipants selectedStudy={selectedStudy} onOpenQuestionnaire={() => openStudyTab("interview-guide")} />
+        ) : null}
         {studyTab === "calls" ? <StudyCalls selectedStudy={selectedStudy} /> : null}
         {studyTab === "feedback" ? <FeedbackSkeleton /> : null}
         {studyTab === "artifacts" ? <ArtifactsSkeleton /> : null}
@@ -1091,7 +1094,10 @@ function StudyPlan({
 }) {
   const currentPlan = useQuery(api.studyPlans.currentForStudy, { studyId: selectedStudy._id });
   const versions = useQuery(api.studyPlans.listVersions, { studyId: selectedStudy._id });
+  const approvePlan = useMutation(api.studyPlans.approve);
   const [selectedVersionId, setSelectedVersionId] = useState<Id<"studyPlanVersions"> | null>(null);
+  const [isApproving, setIsApproving] = useState(false);
+  const [approvalError, setApprovalError] = useState<string | null>(null);
   const displayedPlan = useMemo(
     () =>
       (selectedVersionId
@@ -1125,6 +1131,22 @@ function StudyPlan({
     );
   }
 
+  const approvalUi = getPlanApprovalUi(currentPlan.status);
+  const currentPlanId = currentPlan._id;
+
+  async function handleApprovePlan() {
+    setIsApproving(true);
+    setApprovalError(null);
+    try {
+      await approvePlan({ planVersionId: currentPlanId });
+      setSelectedVersionId(null);
+    } catch (cause) {
+      setApprovalError(getUserFacingConvexError(cause, "Could not approve the Study Plan. Refresh and try again."));
+    } finally {
+      setIsApproving(false);
+    }
+  }
+
   return (
     <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_260px]">
       <article className="min-w-0 border border-[var(--border-default)] bg-[var(--surface-card)]">
@@ -1143,11 +1165,24 @@ function StudyPlan({
                 : "Select a version to inspect it."}
             </p>
           </div>
-          <Button type="button" variant="outline" onClick={onOpenChat}>
-            <MessageSquareIcon className="size-4" />
-            Update in chat
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" onClick={onOpenChat}>
+              <MessageSquareIcon className="size-4" />
+              Update in chat
+            </Button>
+            {approvalUi.canApprove && displayedPlan?._id === currentPlan._id ? (
+              <Button type="button" onClick={() => void handleApprovePlan()} disabled={isApproving}>
+                {isApproving ? <LoaderCircleIcon className="size-4 animate-spin" /> : <CheckCircle2Icon className="size-4" />}
+                {isApproving ? "Approving…" : approvalUi.label}
+              </Button>
+            ) : null}
+          </div>
         </div>
+        {approvalError ? (
+          <p role="alert" className="border-b border-[var(--border-default)] px-7 py-3 [font:var(--text-body-sm)] text-[var(--status-danger)]">
+            {approvalError}
+          </p>
+        ) : null}
         <div className="px-7 py-7">
           {displayedPlan ? (
             <MessageResponse className="mx-auto max-w-3xl">{displayedPlan.markdown}</MessageResponse>
@@ -1232,9 +1267,10 @@ class InterviewGuideErrorBoundary extends Component<
   }
 }
 
-function InterviewGuide({ selectedStudy }: { selectedStudy: Doc<"studies"> }) {
+function InterviewGuide({ selectedStudy, onOpenPlan }: { selectedStudy: Doc<"studies">; onOpenPlan: () => void }) {
   const currentGuide = useQuery(api.interviewBriefs.currentForStudy, { studyId: selectedStudy._id });
   const versions = useQuery(api.interviewBriefs.listVersions, { studyId: selectedStudy._id });
+  const currentPlan = useQuery(api.studyPlans.currentForStudy, { studyId: selectedStudy._id });
   const generateGuide = useAction(api.interviewBriefs.generateFromPlan);
   const approveGuide = useMutation(api.interviewBriefs.approve);
   const [selectedVersionId, setSelectedVersionId] = useState<Id<"interviewBriefVersions"> | null>(null);
@@ -1250,13 +1286,17 @@ function InterviewGuide({ selectedStudy }: { selectedStudy: Doc<"studies"> }) {
   );
 
   async function handleGenerate() {
+    if (currentPlan?.status !== "approved") {
+      setGuideError("Approve the current Study Plan before generating the interview guide.");
+      return;
+    }
     setIsGenerating(true);
     setGuideError(null);
     try {
       await generateGuide({ studyId: selectedStudy._id });
       setSelectedVersionId(null);
     } catch (cause) {
-      setGuideError(cause instanceof Error ? cause.message : "Could not generate interview guide");
+      setGuideError(getUserFacingConvexError(cause, "Could not generate the interview guide. Check the AI configuration and try again."));
     } finally {
       setIsGenerating(false);
     }
@@ -1275,11 +1315,12 @@ function InterviewGuide({ selectedStudy }: { selectedStudy: Doc<"studies"> }) {
     }
   }
 
-  if (currentGuide === undefined || versions === undefined) {
+  if (currentGuide === undefined || versions === undefined || currentPlan === undefined) {
     return <p className="[font:var(--text-body)] text-[var(--text-muted)]">Loading interview guide...</p>;
   }
 
   if (!currentGuide) {
+    const generationUi = getQuestionnaireGenerationUi(currentPlan?.status);
     return (
       <div className="flex min-h-[520px] items-center justify-center border border-dashed border-[var(--border-strong)] bg-[var(--surface-card)] px-8 text-center">
         <div className="max-w-md">
@@ -1290,12 +1331,20 @@ function InterviewGuide({ selectedStudy }: { selectedStudy: Doc<"studies"> }) {
           <p className="mt-2 [font:var(--text-body)] text-[var(--text-secondary)]">
             Meridian will turn the current Study Plan into one adaptive guide for form and voice interviews.
           </p>
-          {guideError ? (
-            <p className="mt-3 [font:var(--text-body-sm)] text-[var(--status-danger)]">{guideError}</p>
+          {!generationUi.canGenerate ? (
+            <p className="mt-3 [font:var(--text-body-sm)] text-[var(--text-secondary)]">{generationUi.message}</p>
           ) : null}
-          <Button type="button" onClick={() => void handleGenerate()} disabled={isGenerating} className="mt-5">
-            {isGenerating ? <LoaderCircleIcon className="size-4 animate-spin" /> : <ListChecksIcon className="size-4" />}
-            {isGenerating ? "Generating..." : "Generate from Study Plan"}
+          {guideError ? (
+            <p role="alert" className="mt-3 [font:var(--text-body-sm)] text-[var(--status-danger)]">{guideError}</p>
+          ) : null}
+          <Button
+            type="button"
+            onClick={generationUi.canGenerate ? () => void handleGenerate() : onOpenPlan}
+            disabled={isGenerating}
+            className="mt-5"
+          >
+            {isGenerating ? <LoaderCircleIcon className="size-4 animate-spin" /> : generationUi.canGenerate ? <ListChecksIcon className="size-4" /> : <CheckCircle2Icon className="size-4" />}
+            {isGenerating ? "Generating…" : generationUi.actionLabel}
           </Button>
         </div>
       </div>
@@ -1432,7 +1481,13 @@ const emptyParticipantForm: ParticipantFormState = {
   notes: "",
 };
 
-function StudyParticipants({ selectedStudy }: { selectedStudy: Doc<"studies"> }) {
+function StudyParticipants({
+  selectedStudy,
+  onOpenQuestionnaire,
+}: {
+  selectedStudy: Doc<"studies">;
+  onOpenQuestionnaire: () => void;
+}) {
   const convex = useConvex();
   const participants = useQuery(api.studyParticipants.listForStudy, {
     studyId: selectedStudy._id,
@@ -1502,6 +1557,8 @@ function StudyParticipants({ selectedStudy }: { selectedStudy: Doc<"studies"> })
     finally { setImportBusy(false); }
   }
 
+  const participantReviewUi = getParticipantReviewUi(selectedStudy.status);
+
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -1514,7 +1571,7 @@ function StudyParticipants({ selectedStudy }: { selectedStudy: Doc<"studies"> })
         <Badge tone="info">{participants?.length ?? 0} active</Badge>
       </div>
 
-      <div className="mt-6">
+      {participantReviewUi.canReview ? <div className="mt-6">
         <ParticipantImportWizard
           state={importState}
           busy={importBusy}
@@ -1541,7 +1598,24 @@ function StudyParticipants({ selectedStudy }: { selectedStudy: Doc<"studies"> })
           })}
           onManualAdd={() => document.getElementById("manual-participant-form")?.scrollIntoView({ behavior: "smooth" })}
         />
-      </div>
+      </div> : (
+        <Card className="mt-6 border-[var(--border-strong)] p-6">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 className="[font:var(--text-body)] font-semibold text-[var(--text-heading)]">
+                Interview guide approval required
+              </h2>
+              <p className="mt-1 [font:var(--text-body-sm)] text-[var(--text-secondary)]">
+                {participantReviewUi.message}
+              </p>
+            </div>
+            <Button type="button" onClick={onOpenQuestionnaire}>
+              <ListChecksIcon className="size-4" />
+              {participantReviewUi.actionLabel}
+            </Button>
+          </div>
+        </Card>
+      )}
 
       <div className="mt-6 grid items-start gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
         <Card className="p-5">
