@@ -1,8 +1,12 @@
 "use client";
 
 import type { ComponentProps, HTMLAttributes } from "react";
-import { Streamdown } from "streamdown";
+import { lazy, Suspense } from "react";
 import { cn } from "@/lib/utils";
+
+const Streamdown = lazy(() =>
+  import("streamdown").then((module) => ({ default: module.Streamdown })),
+);
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
   from: "user" | "assistant" | "system" | "data";
@@ -38,10 +42,18 @@ export function MessageContent({ className, ...props }: MessageContentProps) {
   );
 }
 
-export type MessageResponseProps = ComponentProps<typeof Streamdown>;
+export type MessageResponseProps = HTMLAttributes<HTMLDivElement> & {
+  children: string;
+};
 
-export function MessageResponse({ className, ...props }: MessageResponseProps) {
-  return <Streamdown className={cn("meridian-markdown", className)} {...props} />;
+export function MessageResponse({ children, className, ...props }: MessageResponseProps) {
+  return (
+    <div className={cn("meridian-markdown", className)} {...props}>
+      <Suspense fallback={<span className="whitespace-pre-wrap">{children}</span>}>
+        <Streamdown>{children}</Streamdown>
+      </Suspense>
+    </div>
+  );
 }
 
 export type MessageActionsProps = ComponentProps<"div">;

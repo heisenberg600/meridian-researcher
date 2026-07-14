@@ -2,10 +2,24 @@
 
 import { UserButton, useUser } from "@clerk/react";
 import { useMutation, useQuery } from "convex/react";
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "streamdown/styles.css";
 import { api } from "../convex/_generated/api";
 import type { Doc, Id } from "../convex/_generated/dataModel";
+import {
+  Conversation,
+  ConversationContent,
+  ConversationEmptyState,
+  ConversationScrollButton,
+} from "./components/ai-elements/conversation";
+import { Message, MessageContent, MessageResponse } from "./components/ai-elements/message";
+import {
+  PromptInput,
+  PromptInputSubmit,
+  PromptInputTextarea,
+  PromptInputToolbar,
+  PromptInputTools,
+} from "./components/ai-elements/prompt-input";
 import { Badge, Button, Card, SectionHeader, TextInput, Textarea, cx } from "./components/meridian";
 
 type MainView = "studies" | "activity" | "settings";
@@ -26,10 +40,6 @@ const studyTabs: Array<{ id: StudyTab; label: string }> = [
   { id: "feedback", label: "Feedback" },
   { id: "artifacts", label: "Artifacts" },
 ];
-
-const Streamdown = lazy(() =>
-  import("streamdown").then((module) => ({ default: module.Streamdown })),
-);
 
 export function Portal() {
   const { user } = useUser();
@@ -463,14 +473,7 @@ function StudyDetail({
 }) {
   return (
     <div className="mx-auto max-w-7xl">
-      <SectionHeader
-        eyebrow="Study workspace"
-        title={selectedStudy.title}
-        description={selectedStudy.businessDecision}
-        action={<Badge tone="info">{formatStatus(selectedStudy.status)}</Badge>}
-      />
-
-      <div className="mt-6">
+      <div>
         {studyTab === "overview" ? <StudyOverview selectedStudy={selectedStudy} /> : null}
         {studyTab === "chat" ? (
           <StudyChat
@@ -543,42 +546,55 @@ function StudyChat({
   return (
     <div>
       <Card className="flex min-h-[640px] flex-col overflow-hidden">
-        <div className="flex items-center justify-between border-b border-[var(--border-default)] px-5 py-4">
-          <div>
-            <h2 className="[font:var(--text-heading-sm)] text-[var(--text-heading)]">
-              {selectedChat?.title ?? "Chat"}
-            </h2>
-            <p className="[font:var(--text-body-sm)] text-[var(--text-muted)]">
-              Meridian strategy discussion · {messages?.length ?? 0} messages ·{" "}
-              {chatSessions?.length ?? 0} chats
-            </p>
-          </div>
-          <AgentRunPill active={Boolean(selectedChat?.activeAgentRunId)} />
+        <div className="flex min-h-0 flex-1 bg-[var(--ivory-100)]">
+          <Conversation className="min-h-0 w-full">
+            <ConversationContent className="mx-auto w-full max-w-3xl">
+              {messages === undefined ? (
+                <p className="[font:var(--text-body)] text-[var(--text-muted)]">Loading messages...</p>
+              ) : messages.length === 0 ? (
+                <ConversationEmptyState
+                  title="Brief Meridian"
+                  description="Start with the business decision, what you already know, and what evidence would make the decision easier."
+                  className="min-h-[420px]"
+                />
+              ) : (
+                messages.map((message) => <ChatBubble key={message._id} message={message} />)
+              )}
+            </ConversationContent>
+            <ConversationScrollButton />
+          </Conversation>
         </div>
-        <div className="flex-1 overflow-y-auto bg-[var(--ivory-100)] px-5 py-5">
-          <div className="mx-auto flex max-w-3xl flex-col gap-4">
-            {messages === undefined ? (
-              <p className="[font:var(--text-body)] text-[var(--text-muted)]">Loading messages...</p>
-            ) : messages.length === 0 ? (
-              <EmptyChat />
-            ) : (
-              messages.map((message) => <ChatBubble key={message._id} message={message} />)
-            )}
-          </div>
-        </div>
-        <form onSubmit={onSendMessage} className="border-t border-[var(--border-default)] bg-[var(--surface-card)] p-4">
-          <div className="mx-auto flex max-w-3xl gap-2">
-            <TextInput
+        <div className="border-t border-[var(--border-default)] bg-[var(--surface-card)] p-4">
+          <PromptInput onSubmit={onSendMessage} className="mx-auto max-w-3xl">
+            <PromptInputTextarea
               value={messageText}
               onChange={(event) => setMessageText(event.target.value)}
               placeholder="Message Meridian..."
               disabled={!selectedChat || isSending}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
+                  event.currentTarget.form?.requestSubmit();
+                }
+              }}
             />
-            <Button type="submit" disabled={!selectedChat || isSending || !messageText.trim()}>
-              Send
-            </Button>
-          </div>
-        </form>
+            <PromptInputToolbar>
+              <PromptInputTools>
+                {selectedChat?.activeAgentRunId ? (
+                  <AgentRunPill active />
+                ) : (
+                  <span className="[font:var(--text-caption)] text-[var(--text-muted)]">
+                    Shift + Enter for a new line
+                  </span>
+                )}
+              </PromptInputTools>
+              <PromptInputSubmit
+                disabled={!selectedChat || isSending || !messageText.trim()}
+                status={selectedChat?.activeAgentRunId ? "streaming" : "ready"}
+              />
+            </PromptInputToolbar>
+          </PromptInput>
+        </div>
       </Card>
       {chatSessions && chatSessions.length > 1 ? (
         <div className="mt-3 flex flex-wrap gap-2">
@@ -892,31 +908,12 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
-function EmptyChat() {
-  return (
-    <div className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border-strong)] bg-[var(--surface-card)] p-6 text-center">
-      <h2 className="[font:var(--text-heading-sm)] text-[var(--text-heading)]">Brief Meridian</h2>
-      <p className="mx-auto mt-2 max-w-lg [font:var(--text-body-sm)] text-[var(--text-secondary)]">
-        Start with the business decision, what you already know, and what evidence would make the
-        decision easier.
-      </p>
-    </div>
-  );
-}
-
 function ChatBubble({ message }: { message: Doc<"messages"> }) {
   const text = renderMessageText(message);
   const isUser = message.role === "user";
   return (
-    <div className={cx("flex", isUser ? "justify-end" : "justify-start")}>
-      <div
-        className={cx(
-          "max-w-[76%] rounded-[var(--radius-lg)] px-4 py-3 [font:var(--text-body)]",
-          isUser
-            ? "bg-[var(--ink-900)] text-[var(--text-inverse)]"
-            : "border border-[var(--border-default)] bg-[var(--surface-card)] text-[var(--ink-700)]",
-        )}
-      >
+    <Message from={message.role}>
+      <MessageContent>
         {!isUser ? (
           <p className="mb-1 [font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--text-muted)]">
             Meridian
@@ -925,14 +922,10 @@ function ChatBubble({ message }: { message: Doc<"messages"> }) {
         {isUser ? (
           <span className="whitespace-pre-wrap">{text}</span>
         ) : (
-          <div className="meridian-markdown">
-            <Suspense fallback={<span className="whitespace-pre-wrap">{text}</span>}>
-              <Streamdown>{text}</Streamdown>
-            </Suspense>
-          </div>
+          <MessageResponse>{text}</MessageResponse>
         )}
-      </div>
-    </div>
+      </MessageContent>
+    </Message>
   );
 }
 
