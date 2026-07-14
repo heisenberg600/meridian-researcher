@@ -13,6 +13,7 @@ The project is in product definition and architecture planning. No implementatio
 ## Documentation
 
 - [High-level product components](docs/PRODUCT_COMPONENTS.md)
+- [Research workflow and agent contracts](docs/RESEARCH_WORKFLOW.md)
 
 ## Guiding principles
 
