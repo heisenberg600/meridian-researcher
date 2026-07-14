@@ -1742,11 +1742,34 @@ function StudyCalls({ selectedStudy }: { selectedStudy: Doc<"studies"> }) {
             <CallMetric label="Response depth" value={`${analytics.averageScores.responseDepth}`} suffix="/100" />
             <CallMetric label="Avg. participant words" value={`${analytics.averageParticipantWords}`} />
           </div>
-          <div className="grid gap-5 border-t border-[var(--border-default)] px-5 py-4 md:grid-cols-2 xl:grid-cols-4">
-            <InsightFrequency label="Top themes" items={analytics.themes} />
-            <InsightFrequency label="Pain points" items={analytics.painPoints} />
-            <InsightFrequency label="Needs" items={analytics.needs} />
-            <InsightFrequency label="Opportunities" items={analytics.opportunities} />
+          <div className="grid border-t border-[var(--border-default)] xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+            <div className="border-b border-[var(--border-default)] px-5 py-5 xl:border-b-0 xl:border-r">
+              <p className="[font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--accent-active)]">Directional insight summary</p>
+              <h2 className="mt-2 [font:var(--text-heading-sm)] text-[var(--text-heading)]">
+                {buildCallInsightHeadline(analytics)}
+              </h2>
+              <p className="mt-2 max-w-3xl [font:var(--text-body-sm)] text-[var(--text-secondary)]">
+                {buildCallInsightSummary(analytics)}
+              </p>
+              <p className="mt-3 [font:var(--text-caption)] text-[var(--text-muted)]">
+                Based on {analytics.analyzedCalls} analyzed {analytics.analyzedCalls === 1 ? "call" : "calls"}; treat patterns as directional until the sample grows.
+              </p>
+            </div>
+            <div className="px-5 py-5">
+              <p className="[font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--text-muted)]">Sentiment mix</p>
+              <SentimentBar items={analytics.sentiment} total={analytics.analyzedCalls} />
+            </div>
+          </div>
+          <div className="grid gap-0 border-t border-[var(--border-default)] xl:grid-cols-3">
+            <div className="border-b border-[var(--border-default)] px-5 py-5 xl:border-b-0 xl:border-r">
+              <ScoreProfile scores={analytics.averageScores} />
+            </div>
+            <div className="border-b border-[var(--border-default)] px-5 py-5 xl:border-b-0 xl:border-r">
+              <CallScoreChart calls={calls ?? []} />
+            </div>
+            <div className="px-5 py-5">
+              <SignalBars items={[...analytics.painPoints, ...analytics.needs, ...analytics.opportunities]} />
+            </div>
           </div>
         </section>
       ) : null}
@@ -1876,18 +1899,137 @@ function CallMetric({ label, value, suffix }: { label: string; value: string; su
   );
 }
 
-function InsightFrequency({ label, items }: { label: string; items: Array<{ label: string; count: number }> }) {
+type CallAnalyticsSummary = {
+  analyzedCalls: number;
+  averageScores: {
+    overall: number;
+    goalCoverage: number;
+    responseDepth: number;
+    specificity: number;
+    engagement: number;
+    interviewerQuality: number;
+  };
+  sentiment: Array<{ label: string; count: number }>;
+  themes: Array<{ label: string; count: number }>;
+  painPoints: Array<{ label: string; count: number }>;
+  needs: Array<{ label: string; count: number }>;
+  opportunities: Array<{ label: string; count: number }>;
+};
+
+function buildCallInsightHeadline(analytics: CallAnalyticsSummary) {
+  const pain = analytics.painPoints[0]?.label;
+  const need = analytics.needs[0]?.label;
+  if (pain && need) return `${pain} is the clearest friction, while ${need} is the strongest expressed need.`;
+  if (pain) return `${pain} is the most repeated friction across current interviews.`;
+  if (need) return `${need} is the strongest need emerging from current interviews.`;
+  return "Early interviews are producing usable signal, with more calls needed for stable patterns.";
+}
+
+function buildCallInsightSummary(analytics: CallAnalyticsSummary) {
+  const theme = analytics.themes[0]?.label;
+  const opportunity = analytics.opportunities[0]?.label;
+  const parts = [
+    theme ? `The leading theme is ${theme}.` : null,
+    opportunity ? `The clearest opportunity is ${opportunity}.` : null,
+    `Average research value is ${analytics.averageScores.overall}/100, with ${analytics.averageScores.goalCoverage}/100 goal coverage.`,
+  ];
+  return parts.filter(Boolean).join(" ");
+}
+
+function ScoreProfile({ scores }: { scores: CallAnalyticsSummary["averageScores"] }) {
+  const rows = [
+    ["Goal coverage", scores.goalCoverage],
+    ["Response depth", scores.responseDepth],
+    ["Specificity", scores.specificity],
+    ["Engagement", scores.engagement],
+    ["Interviewer", scores.interviewerQuality],
+  ] as const;
   return (
     <div>
-      <p className="[font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--text-muted)]">{label}</p>
-      <div className="mt-2 space-y-1.5">
-        {items.slice(0, 4).map((item) => (
-          <div key={item.label} className="flex items-center justify-between gap-3 [font:var(--text-body-sm)] text-[var(--text-secondary)]">
-            <span className="truncate">{item.label}</span>
-            <span className="text-[var(--text-muted)]">{item.count}</span>
+      <p className="[font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--text-muted)]">Score profile</p>
+      <div className="mt-4 space-y-3">
+        {rows.map(([label, value]) => (
+          <div key={label}>
+            <div className="mb-1 flex justify-between gap-3 [font:var(--text-caption)] text-[var(--text-secondary)]">
+              <span>{label}</span><span>{value}</span>
+            </div>
+            <div className="h-2 bg-[var(--ivory-300)]">
+              <div className="h-full bg-[var(--accent)]" style={{ width: `${value}%` }} />
+            </div>
           </div>
         ))}
-        {items.length === 0 ? <p className="[font:var(--text-body-sm)] text-[var(--text-muted)]">No signal yet</p> : null}
+      </div>
+    </div>
+  );
+}
+
+function SentimentBar({ items, total }: { items: Array<{ label: string; count: number }>; total: number }) {
+  const colors: Record<string, string> = {
+    positive: "#4f7d61",
+    neutral: "#a9a397",
+    negative: "#b94f45",
+    mixed: "#c28a3b",
+  };
+  return (
+    <div className="mt-4">
+      <div className="flex h-3 overflow-hidden bg-[var(--ivory-300)]">
+        {items.map((item) => (
+          <span key={item.label} style={{ width: `${(item.count / total) * 100}%`, background: colors[item.label] ?? "#777" }} />
+        ))}
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-x-5 gap-y-2">
+        {items.map((item) => (
+          <div key={item.label} className="flex items-center justify-between gap-3 [font:var(--text-body-sm)] text-[var(--text-secondary)]">
+            <span className="flex items-center gap-2 capitalize"><span className="size-2" style={{ background: colors[item.label] ?? "#777" }} />{item.label}</span>
+            <span>{Math.round((item.count / total) * 100)}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CallScoreChart({ calls }: { calls: Array<{ _id: string; participant?: { name: string } | null; qualityScores?: { overall: number } }> }) {
+  const scored = calls.filter((call) => call.qualityScores).slice(0, 8).reverse();
+  return (
+    <div>
+      <p className="[font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--text-muted)]">Call quality</p>
+      <div className="mt-4 flex h-36 items-end gap-3 border-b border-[var(--border-default)] pb-1">
+        {scored.map((call, index) => (
+          <div key={call._id} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-2">
+            <span className="[font:var(--text-caption)] text-[var(--text-secondary)]">{call.qualityScores?.overall}</span>
+            <span className="w-full max-w-8 bg-[var(--accent)]" style={{ height: `${call.qualityScores?.overall ?? 0}%` }} />
+            <span className="w-full truncate text-center [font:var(--text-caption)] text-[var(--text-muted)]" title={call.participant?.name}>
+              {call.participant?.name?.split(" ")[0] ?? `C${index + 1}`}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SignalBars({ items }: { items: Array<{ label: string; count: number }> }) {
+  const ranked = [...items.reduce((counts, item) => {
+    counts.set(item.label, (counts.get(item.label) ?? 0) + item.count);
+    return counts;
+  }, new Map<string, number>()).entries()]
+    .map(([label, count]) => ({ label, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+  const max = Math.max(...ranked.map((item) => item.count), 1);
+  return (
+    <div>
+      <p className="[font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--text-muted)]">Recurring signals</p>
+      <div className="mt-4 space-y-3">
+        {ranked.map((item) => (
+          <div key={item.label}>
+            <div className="mb-1 flex justify-between gap-3 [font:var(--text-caption)] text-[var(--text-secondary)]">
+              <span className="truncate">{item.label}</span><span>{item.count}</span>
+            </div>
+            <div className="h-2 bg-[var(--ivory-300)]"><div className="h-full bg-[#4f756b]" style={{ width: `${(item.count / max) * 100}%` }} /></div>
+          </div>
+        ))}
       </div>
     </div>
   );
