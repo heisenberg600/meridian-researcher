@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { action, mutation, query } from "./_generated/server";
+import { action, internalMutation, mutation, query } from "./_generated/server";
 
 type InterviewAnswer = {
   stepId: string;
@@ -84,6 +84,16 @@ export const sessionForInvite = query({
         q.eq("inviteId", args.inviteId).eq("sessionKey", args.sessionKey),
       )
       .unique();
+  },
+});
+
+export const resetInviteSessions = internalMutation({
+  args: { inviteId: v.string() },
+  handler: async (ctx, args) => {
+    const sessions = await ctx.db.query("interviewSessions").collect();
+    const matching = sessions.filter((session) => session.inviteId === args.inviteId);
+    await Promise.all(matching.map((session) => ctx.db.delete(session._id)));
+    return { deleted: matching.length };
   },
 });
 
