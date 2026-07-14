@@ -615,7 +615,9 @@ export const approveManualSelection = mutation({
   },
   handler: async (ctx, args) => {
     const { study, user } = await requireStudyAccess(ctx, args.studyId);
-    assertStudyCan(study.status, "review_participants");
+    if (!["questionnaire_approved", "participants_under_review", "fieldwork_ready", "fieldwork_running"].includes(study.status)) {
+      assertStudyCan(study.status, "review_participants");
+    }
     if (args.participantIds.length === 0) {
       throw new Error("Select at least one manual participant for approval");
     }
@@ -669,33 +671,48 @@ export const approveManualSelection = mutation({
     }
 
     const now = Date.now();
-    const batchId = await ctx.db.insert("participantImportBatches", {
-      organizationId: study.organizationId,
-      studyId: study._id,
-      filename: "Manual selection",
-      mapping: { source: "manual_selection" },
-      totalRows: participants.length,
-      validRows: participants.length,
-      invalidRows: 0,
-      duplicateRows: 0,
-      suppressedRows: 0,
-      status: "approved",
-      approvedBy: user._id,
-      approvedAt: now,
-      createdAt: now,
-      updatedAt: now,
-    });
+    const currentBatch = study.currentApprovedParticipantBatchId
+      ? await ctx.db.get(study.currentApprovedParticipantBatchId)
+      : null;
+    if (currentBatch && (currentBatch.studyId !== study._id || currentBatch.status !== "approved")) {
+      throw new Error("The current participant batch is no longer available for outreach");
+    }
+    const batchId = currentBatch?._id ?? await ctx.db.insert("participantImportBatches", {
+        organizationId: study.organizationId,
+        studyId: study._id,
+        filename: "Manual selection",
+        mapping: { source: "manual_selection" },
+        totalRows: participants.length,
+        validRows: participants.length,
+        invalidRows: 0,
+        duplicateRows: 0,
+        suppressedRows: 0,
+        status: "approved",
+        approvedBy: user._id,
+        approvedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      });
+    if (currentBatch) {
+      await ctx.db.patch(currentBatch._id, {
+        totalRows: currentBatch.totalRows + participants.length,
+        validRows: currentBatch.validRows + participants.length,
+        updatedAt: now,
+      });
+    }
     for (const participant of participants) {
       if (participant) await ctx.db.patch(participant._id, { importBatchId: batchId, updatedAt: now });
     }
-    await ctx.db.patch(study._id, {
-      currentApprovedParticipantBatchId: batchId,
-      updatedAt: now,
-    });
-    if (study.status === "questionnaire_approved") {
-      await transitionStudy(ctx, study._id, "participants_under_review");
+    if (!currentBatch) {
+      await ctx.db.patch(study._id, {
+        currentApprovedParticipantBatchId: batchId,
+        updatedAt: now,
+      });
+      if (study.status === "questionnaire_approved") {
+        await transitionStudy(ctx, study._id, "participants_under_review");
+      }
+      await transitionStudy(ctx, study._id, "fieldwork_ready");
     }
-    await transitionStudy(ctx, study._id, "fieldwork_ready");
     await ctx.db.insert("auditEvents", {
       organizationId: study.organizationId,
       studyId: study._id,
@@ -706,7 +723,7 @@ export const approveManualSelection = mutation({
       metadata: { batchId, participantIds: args.participantIds },
       createdAt: now,
     });
-    return { created: true, batchId, participantIds: args.participantIds };
+    return { created: !currentBatch, batchId, participantIds: args.participantIds };
   },
 });
 

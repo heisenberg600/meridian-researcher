@@ -1,6 +1,7 @@
 import { ClerkProvider } from "@clerk/react";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { Toaster } from "sonner";
 import { App } from "./App";
 import { ConfigurationError, ConvexClientProvider } from "./components/convex-client-provider";
 import "./index.css";
@@ -15,6 +16,17 @@ function Root() {
     <ClerkProvider publishableKey={clerkPublishableKey}>
       <ConvexClientProvider>
         <App />
+        <Toaster
+          closeButton
+          position="top-right"
+          toastOptions={{
+            style: {
+              background: "var(--surface-card)",
+              border: "1px solid var(--border-default)",
+              color: "var(--text-heading)",
+            },
+          }}
+        />
       </ConvexClientProvider>
     </ClerkProvider>
   );

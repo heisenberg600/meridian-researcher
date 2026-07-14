@@ -205,8 +205,12 @@ export const launch = action({
     const deliveries = await ctx.runQuery(api.outreachBatches.deliveriesForBatch, args);
     for (const delivery of deliveries) {
       if (planDeliveryRetry(delivery) === "dispatch") {
-        if (delivery.channel === "email") await ctx.runAction(api.participantInvites.sendEmail, { participantId: delivery.participantId, outreachBatchId: args.outreachBatchId });
-        else await ctx.runAction(api.participantInvites.sendCall, { participantId: delivery.participantId, outreachBatchId: args.outreachBatchId });
+        if (delivery.channel === "email") {
+          await ctx.runAction(api.participantInvites.sendEmail, { participantId: delivery.participantId, outreachBatchId: args.outreachBatchId });
+        } else {
+          const result = await ctx.runAction(api.participantInvites.sendCall, { participantId: delivery.participantId, outreachBatchId: args.outreachBatchId });
+          if (result.status === "failed") throw new Error(result.error);
+        }
         const accepted = await ctx.runMutation(internal.outreachBatches.markAccepted, { deliveryId: delivery._id });
         if (accepted?.channel === "email" && accepted.creditReservationId) await ctx.runMutation(internal.credits.reconcileUsage, { organizationId: accepted.organizationId, reservationId: accepted.creditReservationId, provider: "resend", providerOperationId: accepted.deliveryKey, nativeQuantity: 1, internalCostMicros: 0, model: "resend-email" });
       }

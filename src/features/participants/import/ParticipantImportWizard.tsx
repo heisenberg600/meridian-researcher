@@ -96,9 +96,9 @@ export function ParticipantImportWizard(props: ParticipantImportWizardProps) {
       </ol>
 
       {props.state.step === "upload" ? (
-        <Card className="border-dashed p-8">
-          <label className="block cursor-pointer rounded-md bg-[var(--bg-sunken)] px-6 py-10 text-center focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--border-focus)]">
-            <span className="font-display block text-xl text-[var(--text-heading)]">
+        <Card className="border-dashed p-4 sm:p-8">
+          <label className="block cursor-pointer rounded-md bg-[var(--bg-sunken)] px-4 py-8 text-center focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--border-focus)] sm:px-6 sm:py-10">
+            <span className="font-display block text-lg text-[var(--text-heading)] sm:text-xl">
               Choose a participant spreadsheet
             </span>
             <span className="mt-2 block text-sm text-[var(--text-secondary)]">

@@ -431,6 +431,48 @@ test("wraps manually added participants in an approved synthetic batch", async (
   assert.ok(patches.some(({ id, value }) => id === "study-1" && value.status === "fieldwork_ready"));
 });
 
+test("adds a manual participant to the approved batch while fieldwork is running", async (context) => {
+  context.mock.method(Date, "now", () => 5_000);
+  const participant = {
+    _id: "participant-2",
+    organizationId: "org-1",
+    studyId: "study-1",
+    name: "Late Manual Person",
+    phone: "+919876543210",
+    preferredMode: "voice",
+    status: "draft",
+  };
+  const currentBatch = {
+    _id: "batch-current",
+    organizationId: "org-1",
+    studyId: "study-1",
+    status: "approved",
+    totalRows: 2,
+    validRows: 2,
+  };
+  const { ctx, inserts, patches } = manualSelectionContext([participant], {
+    _id: "study-1",
+    organizationId: "org-1",
+    status: "fieldwork_running",
+    currentApprovedParticipantBatchId: "batch-current",
+  }, currentBatch);
+
+  const result = await invoke(approveManualSelection, ctx, {
+    studyId: "study-1",
+    participantIds: ["participant-2"],
+  });
+
+  assert.equal(result.created, false);
+  assert.equal(result.batchId, "batch-current");
+  assert.equal(inserts.some(({ table }) => table === "participantImportBatches"), false);
+  assert.ok(patches.some(({ id, value }) =>
+    id === "batch-current" && value.totalRows === 3 && value.validRows === 3
+  ));
+  assert.ok(patches.some(({ id, value }) =>
+    id === "participant-2" && value.importBatchId === "batch-current"
+  ));
+});
+
 const emptyContactPolicy = {
   async findExisting() {
     return { emails: [], phones: [] };
@@ -523,11 +565,16 @@ function storedImportContext(rows: TestRecord[]) {
   };
 }
 
-function manualSelectionContext(participants: TestRecord[]) {
+function manualSelectionContext(
+  participants: TestRecord[],
+  study: TestRecord = { _id: "study-1", organizationId: "org-1", status: "questionnaire_approved" },
+  currentBatch?: TestRecord,
+) {
   const inserts: Array<{ table: string; value: TestRecord }> = [];
   const patches: Array<{ id: string; value: TestRecord }> = [];
   const documents = new Map<string, TestRecord>([
-    ["study-1", { _id: "study-1", organizationId: "org-1", status: "questionnaire_approved" }],
+    ["study-1", study],
+    ...(currentBatch ? [[String(currentBatch._id), currentBatch] as const] : []),
     ...participants.map((participant) => [String(participant._id), participant] as const),
   ]);
   return {
