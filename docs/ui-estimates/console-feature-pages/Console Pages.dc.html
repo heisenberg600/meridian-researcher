@@ -1,0 +1,1736 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <meta name="design_doc_mode" content="canvas">
+  <link rel="stylesheet" href="_ds/meridian-design-system-c43e081f-cf01-4e0e-8a12-54537493f16b/tokens/fonts.css">
+  <link rel="stylesheet" href="_ds/meridian-design-system-c43e081f-cf01-4e0e-8a12-54537493f16b/tokens/colors.css">
+  <link rel="stylesheet" href="_ds/meridian-design-system-c43e081f-cf01-4e0e-8a12-54537493f16b/tokens/typography.css">
+  <link rel="stylesheet" href="_ds/meridian-design-system-c43e081f-cf01-4e0e-8a12-54537493f16b/tokens/spacing.css">
+  <link rel="stylesheet" href="_ds/meridian-design-system-c43e081f-cf01-4e0e-8a12-54537493f16b/tokens/effects.css">
+  <link rel="stylesheet" href="_ds/meridian-design-system-c43e081f-cf01-4e0e-8a12-54537493f16b/styles.css">
+  <script src="_ds/meridian-design-system-c43e081f-cf01-4e0e-8a12-54537493f16b/_ds_bundle.js"></script>
+</helmet>
+
+<section style="padding:64px 72px 96px;background:var(--bg-page);min-width:3080px;border-bottom:1px solid var(--border-default)">
+
+  <div style="max-width:1200px;margin-bottom:40px">
+    <div style="font:var(--text-caption);text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:8px">Turn 2 · Management — voice ops</div>
+    <h1 style="font:var(--text-display-lg);letter-spacing:-0.015em;color:var(--text-heading);margin:0 0 12px">Management, wired to ElevenLabs + Twilio</h1>
+    <p style="font:var(--text-body-lg);color:var(--text-secondary);margin:0;max-width:760px">Per-call transcripts and recordings pulled from both providers, with cost and latency attributed per agent and per product. Two options: <a href="#2a">2a</a> call-level ops, <a href="#2b">2b</a> cross-product cost &amp; latency monitoring.</p>
+  </div>
+
+  <div style="display:flex;gap:48px;align-items:flex-start">
+
+    <div id="2a" style="flex:none">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <a href="#2a" style="display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:26px;padding:0 8px;border-radius:999px;background:var(--ink-900);color:var(--ivory-100);font:600 12px var(--font-mono);text-decoration:none">2a</a>
+        <span style="font:600 15px var(--font-sans);color:var(--text-heading)">Voice ops — call ledger</span>
+        <span style="display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:999px;background:var(--accent-soft);color:var(--clay-800);font:600 11px var(--font-sans)">Recommended</span>
+        <span style="font:var(--text-body-sm);color:var(--text-muted)">Every call with Twilio + ElevenLabs cost split; transcript &amp; recording inline</span>
+      </div>
+      <div style="width:1440px;height:920px;background:var(--bg-page);border:1px solid var(--border-default);border-radius:12px;box-shadow:0 1px 2px rgba(23,22,18,0.05);display:flex;overflow:hidden">
+        <div style="width:240px;flex:none;border-right:1px solid var(--border-default);display:flex;flex-direction:column">
+          <div style="padding:22px 22px 18px;font:500 20px var(--font-serif-display);letter-spacing:-0.015em;color:var(--text-heading)">Meridian</div>
+          <div style="display:flex;flex-direction:column;gap:2px;padding:0 12px">
+            <sc-for list="{{ navMgmt }}" as="n" hint-placeholder-count="9">
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:{{ n.bg }};color:{{ n.color }};font:{{ n.font }}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="{{ n.d }}"></path></svg>
+                <span>{{ n.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0;overflow:hidden;padding:32px 36px 0;display:flex;flex-direction:column">
+          <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:18px">
+            <div>
+              <div style="font:var(--text-body-sm);color:var(--text-muted);margin-bottom:4px"><span style="color:var(--text-secondary)">Management</span><span style="padding:0 6px">/</span><span style="color:var(--text-heading);font-weight:500">Voice ops</span></div>
+              <h3 style="font:var(--text-display-md);letter-spacing:-0.015em;color:var(--text-heading);margin:0">Voice ops</h3>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span style="display:inline-flex;align-items:center;gap:8px;height:30px;padding:0 12px;border:1px solid var(--border-default);border-radius:999px;background:var(--surface-card);font:var(--text-body-sm);color:var(--text-body)"><span style="width:7px;height:7px;border-radius:50%;background:var(--green-600)"></span><span style="font:500 12px var(--font-mono)">ElevenLabs</span> connected</span>
+              <span style="display:inline-flex;align-items:center;gap:8px;height:30px;padding:0 12px;border:1px solid var(--border-default);border-radius:999px;background:var(--surface-card);font:var(--text-body-sm);color:var(--text-body)"><span style="width:7px;height:7px;border-radius:50%;background:var(--green-600)"></span><span style="font:500 12px var(--font-mono)">Twilio</span> connected</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:24px;flex:1;min-height:0">
+            <div style="flex:7;min-width:0;display:flex;flex-direction:column;gap:16px">
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px">
+                <div style="background:var(--surface-card);border:1px solid var(--border-default);border-radius:12px;padding:14px 16px"><div style="font:var(--text-body-sm);color:var(--text-muted)">Calls today</div><div style="font:500 24px var(--font-serif-display);color:var(--text-heading)">14</div></div>
+                <div style="background:var(--surface-card);border:1px solid var(--border-default);border-radius:12px;padding:14px 16px"><div style="font:var(--text-body-sm);color:var(--text-muted)">Twilio spend</div><div style="font:500 24px var(--font-serif-display);color:var(--text-heading)">$4.12</div></div>
+                <div style="background:var(--surface-card);border:1px solid var(--border-default);border-radius:12px;padding:14px 16px"><div style="font:var(--text-body-sm);color:var(--text-muted)">ElevenLabs spend</div><div style="font:500 24px var(--font-serif-display);color:var(--text-heading)">$6.90</div></div>
+                <div style="background:var(--surface-card);border:1px solid var(--border-default);border-radius:12px;padding:14px 16px"><div style="font:var(--text-body-sm);color:var(--text-muted)">Median first-word latency</div><div style="font:500 24px var(--font-serif-display);color:var(--text-heading)">640 ms</div></div>
+              </div>
+              <div style="background:var(--surface-card);border:1px solid var(--border-default);border-radius:12px;overflow:hidden">
+                <div style="display:grid;grid-template-columns:1.4fr 130px 110px 90px 90px 90px 90px;gap:12px;padding:10px 18px;border-bottom:1px solid var(--border-default);font:600 11px var(--font-mono);letter-spacing:0.08em;color:var(--text-muted)">
+                  <span>CALL</span><span>AGENT</span><span>PRODUCT</span><span>DUR</span><span>TWILIO</span><span>11LABS</span><span>TTFW</span>
+                </div>
+                <div style="display:grid;grid-template-columns:1.4fr 130px 110px 90px 90px 90px 90px;gap:12px;padding:13px 18px;border-bottom:1px solid var(--border-default);align-items:center;background:var(--clay-50)">
+                  <div><div style="font:500 14px var(--font-sans);color:var(--text-heading)">Priya Nair · discovery interview</div><div style="font:var(--text-body-sm);color:var(--clay-700)">Live · 10:02 AM</div></div>
+                  <span style="font:var(--text-body-sm);color:var(--text-secondary)">Voice agent</span>
+                  <span style="font:var(--text-body-sm);color:var(--text-secondary)">Churn study</span>
+                  <span style="font:500 13px var(--font-mono);color:var(--text-heading)">02:14</span>
+                  <span style="font:500 13px var(--font-mono);color:var(--text-heading)">$0.03</span>
+                  <span style="font:500 13px var(--font-mono);color:var(--text-heading)">$0.11</span>
+                  <span style="font:500 13px var(--font-mono);color:var(--green-600)">590 ms</span>
+                </div>
+                <div style="display:grid;grid-template-columns:1.4fr 130px 110px 90px 90px 90px 90px;gap:12px;padding:13px 18px;border-bottom:1px solid var(--border-default);align-items:center">
+                  <div><div style="font:500 14px var(--font-sans);color:var(--text-heading)">Marcus Webb · exit interview</div><div style="font:var(--text-body-sm);color:var(--text-muted)">Completed · 9:20 AM</div></div>
+                  <span style="font:var(--text-body-sm);color:var(--text-secondary)">Voice agent</span>
+                  <span style="font:var(--text-body-sm);color:var(--text-secondary)">Churn study</span>
+                  <span style="font:500 13px var(--font-mono);color:var(--text-heading)">24:08</span>
+                  <span style="font:500 13px var(--font-mono);color:var(--text-heading)">$0.34</span>
+                  <span style="font:500 13px var(--font-mono);color:var(--text-heading)">$1.18</span>
+                  <span style="font:500 13px var(--font-mono);color:var(--green-600)">610 ms</span>
+                </div>
+                <div style="display:grid;grid-template-columns:1.4fr 130px 110px 90px 90px 90px 90px;gap:12px;padding:13px 18px;border-bottom:1px solid var(--border-default);align-items:center">
+                  <div><div style="font:500 14px var(--font-sans);color:var(--text-heading)">Dana Ortiz · pricing feedback</div><div style="font:var(--text-body-sm);color:var(--text-muted)">Completed · Jun 11</div></div>
+                  <span style="font:var(--text-body-sm);color:var(--text-secondary)">Voice agent</span>
+                  <span style="font:var(--text-body-sm);color:var(--text-secondary)">Pricing survey</span>
+                  <span style="font:500 13px var(--font-mono);color:var(--text-heading)">19:44</span>
+                  <span style="font:500 13px var(--font-mono);color:var(--text-heading)">$0.28</span>
+                  <span style="font:500 13px var(--font-mono);color:var(--text-heading)">$0.96</span>
+                  <span style="font:500 13px var(--font-mono);color:var(--amber-600)">1.4 s</span>
+                </div>
+                <div style="display:grid;grid-template-columns:1.4fr 130px 110px 90px 90px 90px 90px;gap:12px;padding:13px 18px;align-items:center">
+                  <div><div style="font:500 14px var(--font-sans);color:var(--text-heading)">Alex Kim · onboarding drop-off</div><div style="font:var(--text-body-sm);color:var(--red-600)">No answer · retried ×2</div></div>
+                  <span style="font:var(--text-body-sm);color:var(--text-secondary)">Voice agent</span>
+                  <span style="font:var(--text-body-sm);color:var(--text-secondary)">Churn study</span>
+                  <span style="font:500 13px var(--font-mono);color:var(--text-heading)">—</span>
+                  <span style="font:500 13px var(--font-mono);color:var(--text-heading)">$0.02</span>
+                  <span style="font:500 13px var(--font-mono);color:var(--text-heading)">$0.00</span>
+                  <span style="font:500 13px var(--font-mono);color:var(--text-heading)">—</span>
+                </div>
+              </div>
+            </div>
+            <div style="flex:5;min-width:0;background:var(--surface-card);border:1px solid var(--border-default);border-radius:12px;padding:22px;display:flex;flex-direction:column;gap:14px;overflow:hidden">
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div><div style="font:500 17px var(--font-serif-display);color:var(--text-heading)">Marcus Webb · exit interview</div><div style="font:var(--text-body-sm);color:var(--text-muted)">Jun 12, 9:20 AM · 24:08 · Twilio SID CA7f…e2</div></div>
+                <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Badge" tone="success" dot="{{ true }}" hint-size="auto,22px">Completed</x-import>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;background:var(--ivory-100);border:1px solid var(--border-default);border-radius:8px;padding:10px 14px">
+                <span style="width:30px;height:30px;border-radius:50%;background:var(--ink-900);color:var(--ivory-100);display:flex;align-items:center;justify-content:center;flex:none"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7z"></path></svg></span>
+                <div style="flex:1;height:4px;border-radius:2px;background:var(--ivory-300);position:relative"><span style="position:absolute;left:0;top:0;height:100%;width:35%;background:var(--clay-600);border-radius:2px"></span></div>
+                <span style="font:500 12px var(--font-mono);color:var(--text-muted)">08:26 / 24:08</span>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+                <div style="border:1px solid var(--border-default);border-radius:8px;padding:10px 12px"><div style="font:var(--text-body-sm);color:var(--text-muted)">Twilio (PSTN)</div><div style="font:500 15px var(--font-mono);color:var(--text-heading)">$0.34</div></div>
+                <div style="border:1px solid var(--border-default);border-radius:8px;padding:10px 12px"><div style="font:var(--text-body-sm);color:var(--text-muted)">ElevenLabs (TTS+STT)</div><div style="font:500 15px var(--font-mono);color:var(--text-heading)">$1.18</div></div>
+                <div style="border:1px solid var(--border-default);border-radius:8px;padding:10px 12px"><div style="font:var(--text-body-sm);color:var(--text-muted)">Model tokens</div><div style="font:500 15px var(--font-mono);color:var(--text-heading)">$0.41</div></div>
+              </div>
+              <div style="border-top:1px solid var(--border-default);padding-top:12px;display:flex;flex-direction:column;gap:10px;font:var(--text-body-sm);overflow:hidden">
+                <div style="display:flex;align-items:center;justify-content:space-between"><span style="font:600 11px var(--font-mono);letter-spacing:0.08em;color:var(--text-muted)">TRANSCRIPT</span><a href="#2a" style="font:var(--text-body-sm)">Open full</a></div>
+                <div style="display:flex;gap:10px"><span style="flex:none;font:600 12px var(--font-mono);color:var(--text-muted);width:56px">AGENT</span><span style="color:var(--text-body)">Before you switched — what would have made you stay another quarter?</span></div>
+                <div style="display:flex;gap:10px"><span style="flex:none;font:600 12px var(--font-mono);color:var(--clay-700);width:56px">MARCUS</span><span style="color:var(--text-body)">Honestly, invoicing. Your billing never matched our PO cycle and finance flagged it every month.</span></div>
+                <div style="display:flex;gap:10px"><span style="flex:none;font:600 12px var(--font-mono);color:var(--text-muted);width:56px">AGENT</span><span style="color:var(--text-body)">Was that raised with your account manager at the time?</span></div>
+              </div>
+              <div style="margin-top:auto;display:flex;gap:8px">
+                <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="secondary" size="sm" hint-size="auto,28px">Download recording</x-import>
+                <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="ghost" size="sm" hint-size="auto,28px">Send to Knowledge</x-import>
+                <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="ghost" size="sm" hint-size="auto,28px">Add to eval set</x-import>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="2b" style="flex:none">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <a href="#2b" style="display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:26px;padding:0 8px;border-radius:999px;background:var(--ink-900);color:var(--ivory-100);font:600 12px var(--font-mono);text-decoration:none">2b</a>
+        <span style="font:600 15px var(--font-sans);color:var(--text-heading)">Cost &amp; latency monitor</span>
+        <span style="font:var(--text-body-sm);color:var(--text-muted)">Cross-product view: spend by provider per agent, latency bands, alerts</span>
+      </div>
+      <div style="width:1440px;height:920px;background:var(--bg-page);border:1px solid var(--border-default);border-radius:12px;box-shadow:0 1px 2px rgba(23,22,18,0.05);display:flex;overflow:hidden">
+        <div style="width:240px;flex:none;border-right:1px solid var(--border-default);display:flex;flex-direction:column">
+          <div style="padding:22px 22px 18px;font:500 20px var(--font-serif-display);letter-spacing:-0.015em;color:var(--text-heading)">Meridian</div>
+          <div style="display:flex;flex-direction:column;gap:2px;padding:0 12px">
+            <sc-for list="{{ navMgmt }}" as="n" hint-placeholder-count="9">
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:{{ n.bg }};color:{{ n.color }};font:{{ n.font }}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="{{ n.d }}"></path></svg>
+                <span>{{ n.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0;overflow:hidden;padding:32px 36px 0;display:flex;flex-direction:column">
+          <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:18px">
+            <div>
+              <div style="font:var(--text-body-sm);color:var(--text-muted);margin-bottom:4px"><span style="color:var(--text-secondary)">Management</span><span style="padding:0 6px">/</span><span style="color:var(--text-heading);font-weight:500">Monitoring</span></div>
+              <h3 style="font:var(--text-display-md);letter-spacing:-0.015em;color:var(--text-heading);margin:0">Cost &amp; latency</h3>
+            </div>
+            <div style="display:flex;gap:8px">
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Tag" hint-size="auto,24px">Last 7 days</x-import>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Tag" hint-size="auto,24px">All products</x-import>
+            </div>
+          </div>
+          <div style="display:flex;gap:24px;flex:1;min-height:0">
+            <div style="flex:7;min-width:0;display:flex;flex-direction:column;gap:20px">
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Card" title="Spend by agent, split by provider" hint-size="100%,320px">
+                <div style="display:flex;flex-direction:column;gap:14px">
+                  <div style="display:flex;align-items:center;gap:12px"><span style="width:110px;flex:none;font:var(--text-body-sm);color:var(--text-secondary)">Voice agent</span><div style="flex:1;display:flex;height:18px;border-radius:4px;overflow:hidden"><span style="width:34%;background:var(--ink-700)"></span><span style="width:44%;background:var(--clay-600)"></span><span style="width:12%;background:var(--sand-300)"></span></div><span style="width:64px;flex:none;text-align:right;font:500 13px var(--font-mono);color:var(--text-heading)">$38.20</span></div>
+                  <div style="display:flex;align-items:center;gap:12px"><span style="width:110px;flex:none;font:var(--text-body-sm);color:var(--text-secondary)">Research</span><div style="flex:1;display:flex;height:18px;border-radius:4px;overflow:hidden"><span style="width:0%"></span><span style="width:0%"></span><span style="width:52%;background:var(--sand-300)"></span></div><span style="width:64px;flex:none;text-align:right;font:500 13px var(--font-mono);color:var(--text-heading)">$21.10</span></div>
+                  <div style="display:flex;align-items:center;gap:12px"><span style="width:110px;flex:none;font:var(--text-body-sm);color:var(--text-secondary)">Synthesis</span><div style="flex:1;display:flex;height:18px;border-radius:4px;overflow:hidden"><span style="width:0%"></span><span style="width:6%;background:var(--clay-600)"></span><span style="width:34%;background:var(--sand-300)"></span></div><span style="width:64px;flex:none;text-align:right;font:500 13px var(--font-mono);color:var(--text-heading)">$16.40</span></div>
+                  <div style="display:flex;align-items:center;gap:12px"><span style="width:110px;flex:none;font:var(--text-body-sm);color:var(--text-secondary)">Outreach</span><div style="flex:1;display:flex;height:18px;border-radius:4px;overflow:hidden"><span style="width:4%;background:var(--ink-700)"></span><span style="width:0%"></span><span style="width:10%;background:var(--sand-300)"></span></div><span style="width:64px;flex:none;text-align:right;font:500 13px var(--font-mono);color:var(--text-heading)">$5.30</span></div>
+                  <div style="display:flex;gap:18px;border-top:1px solid var(--border-default);padding-top:12px;font:var(--text-body-sm);color:var(--text-secondary)">
+                    <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:var(--ink-700)"></span>Twilio</span>
+                    <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:var(--clay-600)"></span>ElevenLabs</span>
+                    <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:var(--sand-300)"></span>Model tokens</span>
+                  </div>
+                </div>
+              </x-import>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Card" title="Latency — time to first word (voice calls)" hint-size="100%,200px">
+                <div style="display:flex;gap:28px;align-items:center">
+                  <div><div style="font:500 26px var(--font-serif-display);color:var(--text-heading)">640 ms</div><div style="font:var(--text-body-sm);color:var(--text-muted)">p50</div></div>
+                  <div><div style="font:500 26px var(--font-serif-display);color:var(--text-heading)">1.1 s</div><div style="font:var(--text-body-sm);color:var(--text-muted)">p90</div></div>
+                  <div><div style="font:500 26px var(--font-serif-display);color:var(--amber-600)">2.3 s</div><div style="font:var(--text-body-sm);color:var(--text-muted)">p99</div></div>
+                  <div style="flex:1;display:flex;align-items:flex-end;gap:4px;height:70px">
+                    <span style="flex:1;height:30%;background:var(--sand-300);border-radius:2px 2px 0 0"></span><span style="flex:1;height:55%;background:var(--sand-300);border-radius:2px 2px 0 0"></span><span style="flex:1;height:80%;background:var(--sand-300);border-radius:2px 2px 0 0"></span><span style="flex:1;height:100%;background:var(--clay-600);border-radius:2px 2px 0 0"></span><span style="flex:1;height:62%;background:var(--sand-300);border-radius:2px 2px 0 0"></span><span style="flex:1;height:38%;background:var(--sand-300);border-radius:2px 2px 0 0"></span><span style="flex:1;height:20%;background:var(--sand-300);border-radius:2px 2px 0 0"></span><span style="flex:1;height:10%;background:var(--sand-300);border-radius:2px 2px 0 0"></span>
+                  </div>
+                </div>
+              </x-import>
+            </div>
+            <div style="flex:4;min-width:0;display:flex;flex-direction:column;gap:16px">
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Card" title="By product" hint-size="100%,170px">
+                <div style="display:flex;flex-direction:column;gap:10px;font:var(--text-body-sm)">
+                  <div style="display:flex;justify-content:space-between"><span style="color:var(--text-body)">Churn study</span><span style="font:500 13px var(--font-mono);color:var(--text-heading)">$46.80</span></div>
+                  <div style="display:flex;justify-content:space-between"><span style="color:var(--text-body)">Pricing survey</span><span style="font:500 13px var(--font-mono);color:var(--text-heading)">$22.40</span></div>
+                  <div style="display:flex;justify-content:space-between"><span style="color:var(--text-body)">Onboarding audit</span><span style="font:500 13px var(--font-mono);color:var(--text-heading)">$11.80</span></div>
+                  <div style="border-top:1px solid var(--border-default);padding-top:10px;display:flex;justify-content:space-between"><span style="color:var(--text-heading);font-weight:500">Total · 7 days</span><span style="font:500 13px var(--font-mono);color:var(--text-heading)">$81.00</span></div>
+                </div>
+              </x-import>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Card" title="Alerts" hint-size="100%,190px">
+                <div style="display:flex;flex-direction:column;gap:12px;font:var(--text-body-sm)">
+                  <div style="display:flex;gap:10px;align-items:flex-start"><x-import component-from-global-scope="MeridianDesignSystem_c43e08.Badge" tone="warning" dot="{{ true }}" hint-size="auto,22px">Cost</x-import><span style="color:var(--text-body)">Voice agent spend 2.4× above 7-day baseline — long calls on Jun 11.</span></div>
+                  <div style="display:flex;gap:10px;align-items:flex-start"><x-import component-from-global-scope="MeridianDesignSystem_c43e08.Badge" tone="danger" dot="{{ true }}" hint-size="auto,22px">Latency</x-import><span style="color:var(--text-body)">p99 first-word latency crossed 2 s — ElevenLabs streaming region us-east.</span></div>
+                  <div style="color:var(--text-muted)">Alerts fire to the Activity feed and Slack.</div>
+                </div>
+              </x-import>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Card" title="Provider health" hint-size="100%,150px">
+                <div style="display:flex;flex-direction:column;gap:10px;font:var(--text-body-sm)">
+                  <div style="display:flex;justify-content:space-between;align-items:center"><span style="font:500 12px var(--font-mono);color:var(--text-body)">Twilio</span><span style="color:var(--text-secondary)">API 99.98% · webhooks OK</span></div>
+                  <div style="display:flex;justify-content:space-between;align-items:center"><span style="font:500 12px var(--font-mono);color:var(--text-body)">ElevenLabs</span><span style="color:var(--text-secondary)">TTS 99.9% · STT OK</span></div>
+                  <div style="display:flex;justify-content:space-between;align-items:center"><span style="font:500 12px var(--font-mono);color:var(--text-body)">Usage sync</span><span style="color:var(--text-secondary)">Last pulled 2 min ago</span></div>
+                </div>
+              </x-import>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="padding:64px 72px 120px;background:var(--bg-page);min-width:3080px">
+
+  <div style="max-width:1200px;margin-bottom:56px">
+    <div style="font:var(--text-caption);text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:8px">Turn 1 · Recommended designs</div>
+    <h1 style="font:var(--text-display-lg);letter-spacing:-0.015em;color:var(--text-heading);margin:0 0 12px">Console pages — 9 pages, 2 options each</h1>
+    <p style="font:var(--text-body-lg);color:var(--text-secondary);margin:0;max-width:720px">The flow map below shows how the pages connect. Each page follows with two directions side by side; the recommended one is badged. Reference any option by its id (e.g. <a href="#1b">1b</a>) in chat.</p>
+  </div>
+
+  <!-- ═══════════ 1a · USER FLOW ═══════════ -->
+  <div id="1a" style="margin-bottom:96px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <a href="#1a" style="display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:26px;padding:0 8px;border-radius:999px;background:var(--ink-900);color:var(--ivory-100);font:600 12px var(--font-mono);text-decoration:none">1a</a>
+      <span style="font:600 16px var(--font-sans);color:var(--text-heading)">End-to-end user flow</span>
+    </div>
+    <div style="background:var(--surface-card);border:1px solid var(--border-default);border-radius:16px;padding:36px;box-shadow:0 1px 2px rgba(23,22,18,0.05);max-width:2960px">
+      <div style="display:flex;align-items:stretch;gap:0">
+        <div style="flex:1;background:var(--ivory-100);border:1px solid var(--border-default);border-radius:12px;padding:18px 20px">
+          <div style="font:600 12px var(--font-mono);color:var(--text-muted);margin-bottom:8px">01 · KNOWLEDGE</div>
+          <div style="font:600 15px var(--font-sans);color:var(--text-heading);margin-bottom:4px">Upload sources</div>
+          <div style="font:var(--text-body-sm);color:var(--text-secondary)">PDFs, sheets, audio — global or per project.</div>
+        </div>
+        <div style="flex:none;display:flex;align-items:center;padding:0 10px;color:var(--sand-400)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></div>
+        <div style="flex:1;background:var(--ivory-100);border:1px solid var(--border-default);border-radius:12px;padding:18px 20px">
+          <div style="font:600 12px var(--font-mono);color:var(--text-muted);margin-bottom:8px">02 · CHAT</div>
+          <div style="font:600 15px var(--font-sans);color:var(--text-heading);margin-bottom:4px">Brief the agent</div>
+          <div style="font:var(--text-body-sm);color:var(--text-secondary)">Attach docs, pick a model, describe the research.</div>
+        </div>
+        <div style="flex:none;display:flex;align-items:center;padding:0 10px;color:var(--sand-400)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></div>
+        <div style="flex:1;background:var(--ivory-100);border:1px solid var(--border-default);border-radius:12px;padding:18px 20px">
+          <div style="font:600 12px var(--font-mono);color:var(--text-muted);margin-bottom:8px">03 · AGENTS RUN</div>
+          <div style="font:600 15px var(--font-sans);color:var(--text-heading);margin-bottom:4px">Multi-agent work</div>
+          <div style="font:var(--text-body-sm);color:var(--text-secondary)">Timeline shows handoffs; each run draws credits.</div>
+        </div>
+        <div style="flex:none;display:flex;align-items:center;padding:0 10px;color:var(--sand-400)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></div>
+        <div style="flex:1;background:var(--clay-50);border:1px solid var(--clay-100);border-radius:12px;padding:18px 20px">
+          <div style="font:600 12px var(--font-mono);color:var(--clay-700);margin-bottom:8px">04 · NEEDS YOU</div>
+          <div style="font:600 15px var(--font-sans);color:var(--text-heading);margin-bottom:4px">Decide &amp; approve</div>
+          <div style="font:var(--text-body-sm);color:var(--text-secondary)">Decision prompts, approvals, canvas review. Activity pings you.</div>
+        </div>
+        <div style="flex:none;display:flex;align-items:center;padding:0 10px;color:var(--sand-400)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></div>
+        <div style="flex:1;background:var(--ivory-100);border:1px solid var(--border-default);border-radius:12px;padding:18px 20px">
+          <div style="font:600 12px var(--font-mono);color:var(--text-muted);margin-bottom:8px">05 · APPOINTMENTS</div>
+          <div style="font:600 15px var(--font-sans);color:var(--text-heading);margin-bottom:4px">Voice agent calls</div>
+          <div style="font:var(--text-body-sm);color:var(--text-secondary)">Agent books and runs interviews; transcripts feed back in.</div>
+        </div>
+        <div style="flex:none;display:flex;align-items:center;padding:0 10px;color:var(--sand-400)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></div>
+        <div style="flex:1;background:var(--ivory-100);border:1px solid var(--border-default);border-radius:12px;padding:18px 20px">
+          <div style="font:600 12px var(--font-mono);color:var(--text-muted);margin-bottom:8px">06 · FINALIZING</div>
+          <div style="font:600 15px var(--font-sans);color:var(--text-heading);margin-bottom:4px">Report compiles</div>
+          <div style="font:var(--text-body-sm);color:var(--text-secondary)">Synthesis across all findings; branding applied last.</div>
+        </div>
+        <div style="flex:none;display:flex;align-items:center;padding:0 10px;color:var(--sand-400)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></div>
+        <div style="flex:1;background:var(--surface-inverse);border:1px solid var(--ink-700);border-radius:12px;padding:18px 20px">
+          <div style="font:600 12px var(--font-mono);color:var(--ink-300);margin-bottom:8px">07 · REPORT</div>
+          <div style="font:600 15px var(--font-sans);color:var(--ivory-100);margin-bottom:4px">Branded deliverable</div>
+          <div style="font:var(--text-body-sm);color:var(--ink-300)">Your logo, fonts, colors. Export PDF, share link.</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:12px;margin-top:20px">
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border:1px dashed var(--border-strong);border-radius:8px;font:var(--text-body-sm);color:var(--text-secondary)"><span style="font:600 11px var(--font-mono);color:var(--text-muted)">BILLING</span> Credits gate every agent run — low balance pauses at step 03</div>
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border:1px dashed var(--border-strong);border-radius:8px;font:var(--text-body-sm);color:var(--text-secondary)"><span style="font:600 11px var(--font-mono);color:var(--text-muted)">BRANDING</span> Set once — themes the console live and every report at step 07</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ CHAT ═══════════ -->
+  <h2 style="font:var(--text-display-md);letter-spacing:-0.015em;color:var(--text-heading);margin:0 0 6px">1 · Chat</h2>
+  <p style="font:var(--text-body);color:var(--text-secondary);margin:0 0 24px;max-width:640px">Agent thread with orchestration timeline, decision + approval checkpoints, document canvas, voice.</p>
+  <div style="display:flex;gap:48px;align-items:flex-start;margin-bottom:96px">
+
+    <div id="1b" style="flex:none">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <a href="#1b" style="display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:26px;padding:0 8px;border-radius:999px;background:var(--ink-900);color:var(--ivory-100);font:600 12px var(--font-mono);text-decoration:none">1b</a>
+        <span style="font:600 15px var(--font-sans);color:var(--text-heading)">Canvas open</span>
+        <span style="display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:999px;background:var(--accent-soft);color:var(--clay-800);font:600 11px var(--font-sans)">Recommended</span>
+        <span style="font:var(--text-body-sm);color:var(--text-muted)">Read the doc while deciding — checkpoints stay in the thread</span>
+      </div>
+      <div style="width:1440px;height:920px;background:var(--bg-page);border:1px solid var(--border-default);border-radius:12px;box-shadow:0 1px 2px rgba(23,22,18,0.05);display:flex;overflow:hidden;position:relative">
+        <div style="width:240px;flex:none;border-right:1px solid var(--border-default);display:flex;flex-direction:column">
+          <div style="padding:22px 22px 18px;font:500 20px var(--font-serif-display);letter-spacing:-0.015em;color:var(--text-heading)">Meridian</div>
+          <div style="display:flex;flex-direction:column;gap:2px;padding:0 12px">
+            <sc-for list="{{ navChat }}" as="n" hint-placeholder-count="7">
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:{{ n.bg }};color:{{ n.color }};font:{{ n.font }}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="{{ n.d }}"></path></svg>
+                <span>{{ n.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="margin-top:auto;padding:16px 22px;border-top:1px solid var(--border-default);display:flex;align-items:center;justify-content:space-between">
+            <span style="font:var(--text-body-sm);color:var(--text-muted)">Credits</span>
+            <span style="font:500 13px var(--font-mono);color:var(--text-heading)">1,240</span>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+          <div style="height:56px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid var(--border-default);background:var(--surface-card)">
+            <div style="font:var(--text-body-sm);color:var(--text-muted)"><a href="#1b" style="color:var(--text-secondary)">Churn study</a><span style="padding:0 6px">/</span><span style="color:var(--text-heading);font-weight:500">Kickoff interview analysis</span></div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Badge" tone="accent" dot="{{ true }}" hint-size="auto,22px">3 agents active</x-import>
+            </div>
+          </div>
+          <div style="flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:20px;padding:24px 32px 0">
+            <x-import component-from-global-scope="MeridianDesignSystem_c43e08.ChatMessage" role="user" time="2:38 PM" hint-size="100%,60px">Analyze the questionnaire responses and flag anything that blocks the launch survey.</x-import>
+            <x-import component-from-global-scope="MeridianDesignSystem_c43e08.AgentTimeline" steps="{{ chatStepsA }}" compact="{{ true }}" hint-size="100%,150px"></x-import>
+            <x-import component-from-global-scope="MeridianDesignSystem_c43e08.ChatMessage" role="assistant" author="Research agent" time="2:41 PM" sources="{{ msgSources }}" hint-size="100%,120px">Read all 48 responses. Two blockers: question 4 assumes a pricing page that shipped only to the beta cohort, and 12 respondents skipped the integrations section entirely. The full questionnaire is open on the right — question 4 is on page 2.</x-import>
+            <x-import component-from-global-scope="MeridianDesignSystem_c43e08.DecisionPrompt" question="Which segment should the follow-up survey target?" options="{{ decisionOptions }}" value="{{ decisionVal }}" onChange="{{ onDecision }}" onSubmit="{{ onDecisionSubmit }}" submit-label="Confirm segment" resolved="{{ decisionResolved }}" hint-size="100%,130px"></x-import>
+            <x-import component-from-global-scope="MeridianDesignSystem_c43e08.ApprovalCard" title="Send follow-up survey to 214 contacts" description="Uses the revised questionnaire with question 4 reworded. Sends from research@atlaslabs.co." meta="Step 3 of 4 · Outreach agent" status="{{ apStatus }}" resolved-note="{{ apNote }}" onApprove="{{ onApprove }}" onDecline="{{ onDecline }}" hint-size="100%,150px">
+              <div style="display:flex;gap:16px;font:var(--text-body-sm);color:var(--text-secondary)">
+                <span>214 recipients</span><span style="color:var(--sand-400)">·</span><span>Est. 320 credits</span><span style="color:var(--sand-400)">·</span><span>Sends Jun 13, 9:00 AM</span>
+              </div>
+            </x-import>
+          </div>
+          <div style="flex:none;padding:16px 32px 20px">
+            <x-import component-from-global-scope="MeridianDesignSystem_c43e08.ChatComposer" placeholder="Reply, or give feedback on the questionnaire…" toolbar="{{ modelNode }}" onSend="{{ noop }}" hint-size="100%,96px"></x-import>
+          </div>
+        </div>
+        <x-import component-from-global-scope="MeridianDesignSystem_c43e08.CanvasPanel" title="Launch questionnaire" meta="PDF · 6 pages" kind="file" width="440" onCopy="{{ noop }}" onDownload="{{ noop }}" onClose="{{ noop }}" footer-hint="Select text and reply in chat to give feedback — the canvas is read-only." hint-size="440px,100%">
+          <x-import component-from-global-scope="MeridianDesignSystem_c43e08.PdfPage" number="{{ 2 }}" of="{{ 6 }}" hint-size="100%,480px">
+            <div style="font:600 11px var(--font-mono);letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px">SECTION 2 · PRICING</div>
+            <div style="font:500 17px var(--font-serif-display);color:var(--text-heading);margin-bottom:14px">Q4. How clear was the pricing page you saw during signup?</div>
+            <div style="display:flex;flex-direction:column;gap:8px;font:var(--text-body-sm);color:var(--text-secondary)">
+              <div style="display:flex;align-items:center;gap:8px"><span style="width:12px;height:12px;border:1.5px solid var(--border-strong);border-radius:3px;flex:none"></span>Very clear</div>
+              <div style="display:flex;align-items:center;gap:8px"><span style="width:12px;height:12px;border:1.5px solid var(--border-strong);border-radius:3px;flex:none"></span>Somewhat clear</div>
+              <div style="display:flex;align-items:center;gap:8px;background:var(--clay-50);border-radius:4px;padding:2px 4px;margin:-2px -4px"><span style="width:12px;height:12px;border:1.5px solid var(--clay-600);border-radius:3px;flex:none"></span>I didn't see a pricing page</div>
+              <div style="display:flex;align-items:center;gap:8px"><span style="width:12px;height:12px;border:1.5px solid var(--border-strong);border-radius:3px;flex:none"></span>Confusing</div>
+            </div>
+            <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border-default)">
+              <div style="font:500 15px var(--font-sans);color:var(--text-heading);margin-bottom:10px">Q5. Which integrations do you rely on today?</div>
+              <div style="display:flex;flex-direction:column;gap:6px;font:var(--text-body-sm);color:var(--text-secondary)">
+                <div>Salesforce · HubSpot · Snowflake · Other</div>
+                <div style="color:var(--text-muted)">12 of 48 respondents skipped this section</div>
+              </div>
+            </div>
+          </x-import>
+        </x-import>
+      </div>
+    </div>
+
+    <div id="1c" style="flex:none">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <a href="#1c" style="display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:26px;padding:0 8px;border-radius:999px;background:var(--ink-900);color:var(--ivory-100);font:600 12px var(--font-mono);text-decoration:none">1c</a>
+        <span style="font:600 15px var(--font-sans);color:var(--text-heading)">Agent rail + voice</span>
+        <span style="font:var(--text-body-sm);color:var(--text-muted)">Orchestration always visible in a right rail; docs open on demand</span>
+      </div>
+      <div style="width:1440px;height:920px;background:var(--bg-page);border:1px solid var(--border-default);border-radius:12px;box-shadow:0 1px 2px rgba(23,22,18,0.05);display:flex;overflow:hidden;position:relative">
+        <div style="width:240px;flex:none;border-right:1px solid var(--border-default);display:flex;flex-direction:column">
+          <div style="padding:22px 22px 18px;font:500 20px var(--font-serif-display);letter-spacing:-0.015em;color:var(--text-heading)">Meridian</div>
+          <div style="display:flex;flex-direction:column;gap:2px;padding:0 12px">
+            <sc-for list="{{ navChat }}" as="n" hint-placeholder-count="7">
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:{{ n.bg }};color:{{ n.color }};font:{{ n.font }}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="{{ n.d }}"></path></svg>
+                <span>{{ n.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="margin-top:auto;padding:16px 22px;border-top:1px solid var(--border-default);display:flex;align-items:center;justify-content:space-between">
+            <span style="font:var(--text-body-sm);color:var(--text-muted)">Credits</span>
+            <span style="font:500 13px var(--font-mono);color:var(--text-heading)">1,240</span>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+          <div style="height:56px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid var(--border-default);background:var(--surface-card)">
+            <div style="font:var(--text-body-sm);color:var(--text-muted)"><a href="#1c" style="color:var(--text-secondary)">Churn study</a><span style="padding:0 6px">/</span><span style="color:var(--text-heading);font-weight:500">Kickoff interview analysis</span></div>
+            <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="secondary" size="sm" hint-size="auto,28px">Open canvas</x-import>
+          </div>
+          <div style="flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:20px;padding:24px 0 0;align-items:center">
+            <div style="width:100%;max-width:760px;display:flex;flex-direction:column;gap:20px;padding:0 24px">
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.ChatMessage" role="user" time="2:38 PM" hint-size="100%,60px">Interview the three churned mid-market accounts before you draft anything.</x-import>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.ChatMessage" role="assistant" author="Voice agent" time="2:40 PM" hint-size="100%,90px">Booked all three. Priya Nair picked up early — we're on now. I'll ask about onboarding drop-off first, then pricing. Transcript lands in this thread when we hang up.</x-import>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.ApprovalCard" title="Share the churn summary with Priya after the call" meta="Voice agent · during call" status="approved" resolved-note="by you · 2:42 PM" hint-size="100%,90px"></x-import>
+            </div>
+            <div style="width:100%;max-width:760px;margin-top:auto;padding:16px 24px 88px">
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.ChatComposer" placeholder="Pass a question to the voice agent…" toolbar="{{ modelNode }}" onSend="{{ noop }}" hint-size="100%,96px"></x-import>
+            </div>
+          </div>
+        </div>
+        <div style="width:300px;flex:none;border-left:1px solid var(--border-default);background:var(--surface-card);display:flex;flex-direction:column;padding:20px;gap:16px;overflow:hidden">
+          <div style="font:600 11px var(--font-mono);letter-spacing:0.08em;color:var(--text-muted)">THIS RUN</div>
+          <x-import component-from-global-scope="MeridianDesignSystem_c43e08.AgentTimeline" steps="{{ chatStepsB }}" compact="{{ true }}" hint-size="100%,180px"></x-import>
+          <div style="border-top:1px solid var(--border-default);padding-top:14px;display:flex;flex-direction:column;gap:8px">
+            <div style="font:600 11px var(--font-mono);letter-spacing:0.08em;color:var(--text-muted)">DOCUMENTS</div>
+            <x-import component-from-global-scope="MeridianDesignSystem_c43e08.SourceChip" name="Launch questionnaire.pdf" meta="PDF · 6 pages" kind="file" hint-size="auto,28px"></x-import>
+            <x-import component-from-global-scope="MeridianDesignSystem_c43e08.SourceChip" name="Responses.csv" meta="48 rows" kind="file" hint-size="auto,28px"></x-import>
+            <x-import component-from-global-scope="MeridianDesignSystem_c43e08.SourceChip" name="Call — Priya Nair" meta="Recording · live" kind="audio" hint-size="auto,28px"></x-import>
+          </div>
+          <div style="border-top:1px solid var(--border-default);padding-top:14px;margin-top:auto;display:flex;justify-content:space-between;font:var(--text-body-sm);color:var(--text-secondary)">
+            <span>Credits this run</span><span style="font:500 13px var(--font-mono);color:var(--text-heading)">412</span>
+          </div>
+        </div>
+        <div style="position:absolute;left:50%;bottom:20px;transform:translateX(-50%)">
+          <x-import component-from-global-scope="MeridianDesignSystem_c43e08.VoiceAgentBar" status="{{ voiceStatus }}" duration="02:14" onMute="{{ noop }}" onEnd="{{ noop }}" hint-size="360px,52px"></x-import>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ ACTIVITY ═══════════ -->
+  <h2 style="font:var(--text-display-md);letter-spacing:-0.015em;color:var(--text-heading);margin:0 0 6px">2 · Activity</h2>
+  <p style="font:var(--text-body);color:var(--text-secondary);margin:0 0 24px;max-width:640px">Cross-project feed — everything the agents did, with "Needs you" front and center.</p>
+  <div style="display:flex;gap:48px;align-items:flex-start;margin-bottom:96px">
+
+    <div id="1d" style="flex:none">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <a href="#1d" style="display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:26px;padding:0 8px;border-radius:999px;background:var(--ink-900);color:var(--ivory-100);font:600 12px var(--font-mono);text-decoration:none">1d</a>
+        <span style="font:600 15px var(--font-sans);color:var(--text-heading)">Tabbed feed</span>
+        <span style="display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:999px;background:var(--accent-soft);color:var(--clay-800);font:600 11px var(--font-sans)">Recommended</span>
+        <span style="font:var(--text-body-sm);color:var(--text-muted)">One list, filtered — familiar and fast to scan</span>
+      </div>
+      <div style="width:1440px;height:920px;background:var(--bg-page);border:1px solid var(--border-default);border-radius:12px;box-shadow:0 1px 2px rgba(23,22,18,0.05);display:flex;overflow:hidden">
+        <div style="width:240px;flex:none;border-right:1px solid var(--border-default);display:flex;flex-direction:column">
+          <div style="padding:22px 22px 18px;font:500 20px var(--font-serif-display);letter-spacing:-0.015em;color:var(--text-heading)">Meridian</div>
+          <div style="display:flex;flex-direction:column;gap:2px;padding:0 12px">
+            <sc-for list="{{ navActivity }}" as="n" hint-placeholder-count="7">
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:{{ n.bg }};color:{{ n.color }};font:{{ n.font }}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="{{ n.d }}"></path></svg>
+                <span>{{ n.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="margin-top:auto;padding:16px 22px;border-top:1px solid var(--border-default);display:flex;align-items:center;justify-content:space-between">
+            <span style="font:var(--text-body-sm);color:var(--text-muted)">Credits</span>
+            <span style="font:500 13px var(--font-mono);color:var(--text-heading)">1,240</span>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden">
+          <div style="padding:36px 40px 0;max-width:880px;width:100%;margin:0 auto">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+              <h3 style="font:var(--text-display-md);letter-spacing:-0.015em;color:var(--text-heading);margin:0">Activity</h3>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="ghost" size="sm" hint-size="auto,28px">Mark all read</x-import>
+            </div>
+            <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Tabs" items="{{ actTabs }}" value="{{ actTab }}" onChange="{{ onActTab }}" hint-size="100%,40px"></x-import>
+          </div>
+          <div style="flex:1;min-height:0;overflow:hidden;max-width:880px;width:100%;margin:0 auto;padding:20px 40px 0">
+            <div style="font:600 11px var(--font-mono);letter-spacing:0.08em;color:var(--text-muted);margin-bottom:8px">TODAY</div>
+            <div style="background:var(--surface-card);border:1px solid var(--border-default);border-radius:12px;overflow:hidden;margin-bottom:24px">
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.ActivityItem" kind="input" title="Outreach agent needs sign-off to send the follow-up survey" detail="214 contacts · est. 320 credits" project="Churn study" time="2m ago" unread="{{ true }}" action="Review" onAction="{{ noop }}" hint-size="100%,64px"></x-import>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.ActivityItem" kind="input" title="Analysis agent asked which segment to target" detail="Decision waiting in Kickoff interview analysis" project="Churn study" time="14m ago" unread="{{ true }}" action="Answer" onAction="{{ noop }}" hint-size="100%,64px"></x-import>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.ActivityItem" kind="call" title="Voice agent completed a call with Priya Nair" detail="18 min · transcript ready" project="Churn study" time="1h ago" action="Read" onAction="{{ noop }}" hint-size="100%,64px"></x-import>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.ActivityItem" kind="form" title="6 new questionnaire responses received" detail="48 of 60 invited have responded" project="Pricing survey" time="3h ago" hint-size="100%,64px"></x-import>
+            </div>
+            <div style="font:600 11px var(--font-mono);letter-spacing:0.08em;color:var(--text-muted);margin-bottom:8px">YESTERDAY</div>
+            <div style="background:var(--surface-card);border:1px solid var(--border-default);border-radius:12px;overflow:hidden">
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.ActivityItem" kind="research" title="Interim findings ready for review" detail="Synthesis agent merged 42 responses and 4 calls" project="Churn study" time="Jun 11" action="Open" onAction="{{ noop }}" hint-size="100%,64px"></x-import>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.ActivityItem" kind="call" title="Voice agent booked 3 interviews for next week" detail="Calendar invites sent" project="Churn study" time="Jun 11" hint-size="100%,64px"></x-import>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.ActivityItem" kind="system" title="Credits ran low during a run — auto-refilled 500" detail="Dodo Payments · receipt available" project="Billing" time="Jun 11" hint-size="100%,64px"></x-import>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="1e" style="flex:none">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <a href="#1e" style="display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:26px;padding:0 8px;border-radius:999px;background:var(--ink-900);color:var(--ivory-100);font:600 12px var(--font-mono);text-decoration:none">1e</a>
+        <span style="font:600 15px var(--font-sans);color:var(--text-heading)">Action queue</span>
+        <span style="font:var(--text-body-sm);color:var(--text-muted)">"Needs you" items are resolvable inline, without opening the thread</span>
+      </div>
+      <div style="width:1440px;height:920px;background:var(--bg-page);border:1px solid var(--border-default);border-radius:12px;box-shadow:0 1px 2px rgba(23,22,18,0.05);display:flex;overflow:hidden">
+        <div style="width:240px;flex:none;border-right:1px solid var(--border-default);display:flex;flex-direction:column">
+          <div style="padding:22px 22px 18px;font:500 20px var(--font-serif-display);letter-spacing:-0.015em;color:var(--text-heading)">Meridian</div>
+          <div style="display:flex;flex-direction:column;gap:2px;padding:0 12px">
+            <sc-for list="{{ navActivity }}" as="n" hint-placeholder-count="7">
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:{{ n.bg }};color:{{ n.color }};font:{{ n.font }}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="{{ n.d }}"></path></svg>
+                <span>{{ n.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="margin-top:auto;padding:16px 22px;border-top:1px solid var(--border-default);display:flex;align-items:center;justify-content:space-between">
+            <span style="font:var(--text-body-sm);color:var(--text-muted)">Credits</span>
+            <span style="font:500 13px var(--font-mono);color:var(--text-heading)">1,240</span>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;padding:36px 40px 0">
+          <h3 style="font:var(--text-display-md);letter-spacing:-0.015em;color:var(--text-heading);margin:0 0 24px">Activity</h3>
+          <div style="display:flex;gap:32px;flex:1;min-height:0">
+            <div style="flex:5;min-width:0;display:flex;flex-direction:column;gap:14px;overflow:hidden">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font:600 16px var(--font-sans);color:var(--text-heading)">Needs you</span>
+                <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Badge" tone="accent" hint-size="auto,22px">4</x-import>
+              </div>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.ApprovalCard" title="Send follow-up survey to 214 contacts" description="Revised questionnaire, question 4 reworded." meta="Churn study · Outreach agent · 2m ago" status="pending" onApprove="{{ noop }}" onDecline="{{ noop }}" hint-size="100%,140px"></x-import>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.DecisionPrompt" question="Which segment should the follow-up survey target?" options="{{ decisionOptions }}" value="mid" submit-label="Confirm" hint-size="100%,120px"></x-import>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.ApprovalCard" title="Spend 180 credits to transcribe 3 call recordings" meta="Pricing survey · Research agent · 1h ago" status="pending" onApprove="{{ noop }}" onDecline="{{ noop }}" hint-size="100%,110px"></x-import>
+            </div>
+            <div style="flex:4;min-width:0;display:flex;flex-direction:column;gap:14px;overflow:hidden">
+              <span style="font:600 16px var(--font-sans);color:var(--text-secondary)">Everything else</span>
+              <div style="background:var(--surface-card);border:1px solid var(--border-default);border-radius:12px;overflow:hidden">
+                <x-import component-from-global-scope="MeridianDesignSystem_c43e08.ActivityItem" kind="call" title="Call with Priya Nair completed" detail="18 min · transcript ready" project="Churn study" time="1h ago" hint-size="100%,64px"></x-import>
+                <x-import component-from-global-scope="MeridianDesignSystem_c43e08.ActivityItem" kind="form" title="6 new questionnaire responses" project="Pricing survey" time="3h ago" hint-size="100%,64px"></x-import>
+                <x-import component-from-global-scope="MeridianDesignSystem_c43e08.ActivityItem" kind="research" title="Interim findings ready" project="Churn study" time="Jun 11" hint-size="100%,64px"></x-import>
+                <x-import component-from-global-scope="MeridianDesignSystem_c43e08.ActivityItem" kind="system" title="Auto-refilled 500 credits" detail="Dodo Payments" project="Billing" time="Jun 11" hint-size="100%,64px"></x-import>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ KNOWLEDGE ═══════════ -->
+  <h2 style="font:var(--text-display-md);letter-spacing:-0.015em;color:var(--text-heading);margin:0 0 6px">3 · Knowledge</h2>
+  <p style="font:var(--text-body);color:var(--text-secondary);margin:0 0 24px;max-width:640px">Global upload plus every source the agents can draw on, with scope and usage.</p>
+  <div style="display:flex;gap:48px;align-items:flex-start;margin-bottom:96px">
+
+    <div id="1f" style="flex:none">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <a href="#1f" style="display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:26px;padding:0 8px;border-radius:999px;background:var(--ink-900);color:var(--ivory-100);font:600 12px var(--font-mono);text-decoration:none">1f</a>
+        <span style="font:600 15px var(--font-sans);color:var(--text-heading)">Library table</span>
+        <span style="display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:999px;background:var(--accent-soft);color:var(--clay-800);font:600 11px var(--font-sans)">Recommended</span>
+        <span style="font:var(--text-body-sm);color:var(--text-muted)">Dropzone up top, one scannable table — scope and usage visible per source</span>
+      </div>
+      <div style="width:1440px;height:920px;background:var(--bg-page);border:1px solid var(--border-default);border-radius:12px;box-shadow:0 1px 2px rgba(23,22,18,0.05);display:flex;overflow:hidden">
+        <div style="width:240px;flex:none;border-right:1px solid var(--border-default);display:flex;flex-direction:column">
+          <div style="padding:22px 22px 18px;font:500 20px var(--font-serif-display);letter-spacing:-0.015em;color:var(--text-heading)">Meridian</div>
+          <div style="display:flex;flex-direction:column;gap:2px;padding:0 12px">
+            <sc-for list="{{ navKnowledge }}" as="n" hint-placeholder-count="7">
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:{{ n.bg }};color:{{ n.color }};font:{{ n.font }}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="{{ n.d }}"></path></svg>
+                <span>{{ n.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="margin-top:auto;padding:16px 22px;border-top:1px solid var(--border-default);display:flex;align-items:center;justify-content:space-between">
+            <span style="font:var(--text-body-sm);color:var(--text-muted)">Credits</span>
+            <span style="font:500 13px var(--font-mono);color:var(--text-heading)">1,240</span>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0;overflow:hidden;padding:36px 40px 0">
+          <div style="max-width:960px;margin:0 auto">
+            <h3 style="font:var(--text-display-md);letter-spacing:-0.015em;color:var(--text-heading);margin:0 0 6px">Knowledge</h3>
+            <p style="font:var(--text-body);color:var(--text-secondary);margin:0 0 24px">Sources here are available to every agent. Scope them globally or to a single project.</p>
+            <div style="border:1.5px dashed var(--border-strong);border-radius:12px;background:var(--surface-card);padding:32px;display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:28px">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M6 10l6-6 6 6M4 20h16"></path></svg>
+              <div style="font:500 15px var(--font-sans);color:var(--text-heading)">Drop files to add them to your knowledge base</div>
+              <div style="font:var(--text-body-sm);color:var(--text-muted)">PDF, CSV, audio, links · up to 100 MB each</div>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="secondary" size="sm" hint-size="auto,28px">Browse files</x-import>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+              <div style="font:600 16px var(--font-sans);color:var(--text-heading)">All sources <span style="font:400 13px var(--font-sans);color:var(--text-muted)">31</span></div>
+              <div style="display:flex;gap:8px">
+                <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Tag" hint-size="auto,24px">Global · 12</x-import>
+                <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Tag" hint-size="auto,24px">Churn study · 14</x-import>
+                <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Tag" hint-size="auto,24px">Pricing survey · 5</x-import>
+              </div>
+            </div>
+            <div style="background:var(--surface-card);border:1px solid var(--border-default);border-radius:12px;overflow:hidden">
+              <div style="display:grid;grid-template-columns:1fr 140px 120px 110px;gap:16px;padding:10px 20px;border-bottom:1px solid var(--border-default);font:600 11px var(--font-mono);letter-spacing:0.08em;color:var(--text-muted)">
+                <span>SOURCE</span><span>SCOPE</span><span>ADDED</span><span>USED BY</span>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 140px 120px 110px;gap:16px;padding:13px 20px;border-bottom:1px solid var(--border-default);align-items:center">
+                <x-import component-from-global-scope="MeridianDesignSystem_c43e08.SourceChip" name="Launch questionnaire.pdf" meta="PDF · 2.4 MB" kind="file" hint-size="auto,28px"></x-import>
+                <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Badge" tone="info" hint-size="auto,22px">Global</x-import>
+                <span style="font:var(--text-body-sm);color:var(--text-secondary)">Jun 10, 2026</span>
+                <span style="font:500 13px var(--font-mono);color:var(--text-heading)">3 agents</span>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 140px 120px 110px;gap:16px;padding:13px 20px;border-bottom:1px solid var(--border-default);align-items:center">
+                <x-import component-from-global-scope="MeridianDesignSystem_c43e08.SourceChip" name="Responses.csv" meta="48 rows" kind="file" hint-size="auto,28px"></x-import>
+                <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Badge" tone="neutral" hint-size="auto,22px">Churn study</x-import>
+                <span style="font:var(--text-body-sm);color:var(--text-secondary)">Jun 11, 2026</span>
+                <span style="font:500 13px var(--font-mono);color:var(--text-heading)">2 agents</span>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 140px 120px 110px;gap:16px;padding:13px 20px;border-bottom:1px solid var(--border-default);align-items:center">
+                <x-import component-from-global-scope="MeridianDesignSystem_c43e08.SourceChip" name="Call — Priya Nair" meta="Audio · 18 min" kind="audio" hint-size="auto,28px"></x-import>
+                <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Badge" tone="neutral" hint-size="auto,22px">Churn study</x-import>
+                <span style="font:var(--text-body-sm);color:var(--text-secondary)">Jun 12, 2026</span>
+                <span style="font:500 13px var(--font-mono);color:var(--text-heading)">1 agent</span>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 140px 120px 110px;gap:16px;padding:13px 20px;border-bottom:1px solid var(--border-default);align-items:center">
+                <x-import component-from-global-scope="MeridianDesignSystem_c43e08.SourceChip" name="Competitor pricing pages" meta="Link · 4 URLs" kind="link" hint-size="auto,28px"></x-import>
+                <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Badge" tone="info" hint-size="auto,22px">Global</x-import>
+                <span style="font:var(--text-body-sm);color:var(--text-secondary)">Jun 8, 2026</span>
+                <span style="font:500 13px var(--font-mono);color:var(--text-heading)">4 agents</span>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 140px 120px 110px;gap:16px;padding:13px 20px;align-items:center">
+                <x-import component-from-global-scope="MeridianDesignSystem_c43e08.SourceChip" name="2025 churn cohort.xlsx" meta="Sheet · 1,204 rows" kind="file" hint-size="auto,28px"></x-import>
+                <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Badge" tone="info" hint-size="auto,22px">Global</x-import>
+                <span style="font:var(--text-body-sm);color:var(--text-secondary)">Jun 2, 2026</span>
+                <span style="font:500 13px var(--font-mono);color:var(--text-heading)">5 agents</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="1g" style="flex:none">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <a href="#1g" style="display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:26px;padding:0 8px;border-radius:999px;background:var(--ink-900);color:var(--ivory-100);font:600 12px var(--font-mono);text-decoration:none">1g</a>
+        <span style="font:600 15px var(--font-sans);color:var(--text-heading)">Grouped by type</span>
+        <span style="font:var(--text-body-sm);color:var(--text-muted)">Card per source type — better once the library grows large</span>
+      </div>
+      <div style="width:1440px;height:920px;background:var(--bg-page);border:1px solid var(--border-default);border-radius:12px;box-shadow:0 1px 2px rgba(23,22,18,0.05);display:flex;overflow:hidden">
+        <div style="width:240px;flex:none;border-right:1px solid var(--border-default);display:flex;flex-direction:column">
+          <div style="padding:22px 22px 18px;font:500 20px var(--font-serif-display);letter-spacing:-0.015em;color:var(--text-heading)">Meridian</div>
+          <div style="display:flex;flex-direction:column;gap:2px;padding:0 12px">
+            <sc-for list="{{ navKnowledge }}" as="n" hint-placeholder-count="7">
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:{{ n.bg }};color:{{ n.color }};font:{{ n.font }}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="{{ n.d }}"></path></svg>
+                <span>{{ n.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="margin-top:auto;padding:16px 22px;border-top:1px solid var(--border-default);display:flex;align-items:center;justify-content:space-between">
+            <span style="font:var(--text-body-sm);color:var(--text-muted)">Credits</span>
+            <span style="font:500 13px var(--font-mono);color:var(--text-heading)">1,240</span>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0;overflow:hidden;padding:36px 40px 0">
+          <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:28px">
+            <div>
+              <h3 style="font:var(--text-display-md);letter-spacing:-0.015em;color:var(--text-heading);margin:0 0 6px">Knowledge</h3>
+              <p style="font:var(--text-body);color:var(--text-secondary);margin:0">31 sources across 3 scopes</p>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center">
+              <div style="width:260px"><x-import component-from-global-scope="MeridianDesignSystem_c43e08.Input" placeholder="Search sources…" hint-size="100%,36px"></x-import></div>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="primary" hint-size="auto,36px">Upload</x-import>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+            <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Card" title="Documents" hint-size="100%,220px">
+              <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-start">
+                <x-import component-from-global-scope="MeridianDesignSystem_c43e08.SourceChip" name="Launch questionnaire.pdf" meta="PDF · 2.4 MB" kind="file" hint-size="auto,28px"></x-import>
+                <x-import component-from-global-scope="MeridianDesignSystem_c43e08.SourceChip" name="Onboarding audit.pdf" meta="PDF · 1.1 MB" kind="file" hint-size="auto,28px"></x-import>
+                <x-import component-from-global-scope="MeridianDesignSystem_c43e08.SourceChip" name="Q2 board memo.pdf" meta="PDF · 640 KB" kind="file" hint-size="auto,28px"></x-import>
+                <a href="#1g" style="font:var(--text-body-sm)">View all 12</a>
+              </div>
+            </x-import>
+            <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Card" title="Sheets" hint-size="100%,220px">
+              <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-start">
+                <x-import component-from-global-scope="MeridianDesignSystem_c43e08.SourceChip" name="Responses.csv" meta="48 rows" kind="file" hint-size="auto,28px"></x-import>
+                <x-import component-from-global-scope="MeridianDesignSystem_c43e08.SourceChip" name="2025 churn cohort.xlsx" meta="1,204 rows" kind="file" hint-size="auto,28px"></x-import>
+                <a href="#1g" style="font:var(--text-body-sm)">View all 4</a>
+              </div>
+            </x-import>
+            <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Card" title="Audio" hint-size="100%,220px">
+              <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-start">
+                <x-import component-from-global-scope="MeridianDesignSystem_c43e08.SourceChip" name="Call — Priya Nair" meta="18 min · transcribed" kind="audio" hint-size="auto,28px"></x-import>
+                <x-import component-from-global-scope="MeridianDesignSystem_c43e08.SourceChip" name="Call — Marcus Webb" meta="24 min · transcribed" kind="audio" hint-size="auto,28px"></x-import>
+                <a href="#1g" style="font:var(--text-body-sm)">View all 6</a>
+              </div>
+            </x-import>
+            <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Card" title="Links" hint-size="100%,220px">
+              <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-start">
+                <x-import component-from-global-scope="MeridianDesignSystem_c43e08.SourceChip" name="Competitor pricing pages" meta="4 URLs" kind="link" hint-size="auto,28px"></x-import>
+                <x-import component-from-global-scope="MeridianDesignSystem_c43e08.SourceChip" name="Docs — integration guides" meta="9 URLs" kind="link" hint-size="auto,28px"></x-import>
+                <a href="#1g" style="font:var(--text-body-sm)">View all 9</a>
+              </div>
+            </x-import>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ APPOINTMENTS ═══════════ -->
+  <h2 style="font:var(--text-display-md);letter-spacing:-0.015em;color:var(--text-heading);margin:0 0 6px">4 · Appointments</h2>
+  <p style="font:var(--text-body);color:var(--text-secondary);margin:0 0 24px;max-width:640px">Calls the voice agent books and runs, plus the public booking page.</p>
+  <div style="display:flex;gap:48px;align-items:flex-start;margin-bottom:96px">
+
+    <div id="1h" style="flex:none">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <a href="#1h" style="display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:26px;padding:0 8px;border-radius:999px;background:var(--ink-900);color:var(--ivory-100);font:600 12px var(--font-mono);text-decoration:none">1h</a>
+        <span style="font:600 15px var(--font-sans);color:var(--text-heading)">Call list + booking page</span>
+        <span style="display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:999px;background:var(--accent-soft);color:var(--clay-800);font:600 11px var(--font-sans)">Recommended</span>
+        <span style="font:var(--text-body-sm);color:var(--text-muted)">Upcoming and past calls in one list; booking link managed alongside</span>
+      </div>
+      <div style="width:1440px;height:920px;background:var(--bg-page);border:1px solid var(--border-default);border-radius:12px;box-shadow:0 1px 2px rgba(23,22,18,0.05);display:flex;overflow:hidden">
+        <div style="width:240px;flex:none;border-right:1px solid var(--border-default);display:flex;flex-direction:column">
+          <div style="padding:22px 22px 18px;font:500 20px var(--font-serif-display);letter-spacing:-0.015em;color:var(--text-heading)">Meridian</div>
+          <div style="display:flex;flex-direction:column;gap:2px;padding:0 12px">
+            <sc-for list="{{ navAppts }}" as="n" hint-placeholder-count="7">
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:{{ n.bg }};color:{{ n.color }};font:{{ n.font }}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="{{ n.d }}"></path></svg>
+                <span>{{ n.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="margin-top:auto;padding:16px 22px;border-top:1px solid var(--border-default);display:flex;align-items:center;justify-content:space-between">
+            <span style="font:var(--text-body-sm);color:var(--text-muted)">Credits</span>
+            <span style="font:500 13px var(--font-mono);color:var(--text-heading)">1,240</span>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0;overflow:hidden;padding:36px 40px 0">
+          <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:24px">
+            <div>
+              <h3 style="font:var(--text-display-md);letter-spacing:-0.015em;color:var(--text-heading);margin:0 0 6px">Appointments</h3>
+              <p style="font:var(--text-body);color:var(--text-secondary);margin:0">Calls your voice agent books and runs on your behalf.</p>
+            </div>
+            <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="primary" hint-size="auto,36px">Book a call</x-import>
+          </div>
+          <div style="display:flex;gap:28px;align-items:flex-start">
+            <div style="flex:7;min-width:0">
+              <div style="font:600 11px var(--font-mono);letter-spacing:0.08em;color:var(--text-muted);margin-bottom:8px">UPCOMING</div>
+              <div style="background:var(--surface-card);border:1px solid var(--border-default);border-radius:12px;overflow:hidden;margin-bottom:20px">
+                <div style="display:flex;align-items:center;gap:16px;padding:14px 20px;border-bottom:1px solid var(--border-default)">
+                  <div style="width:44px;text-align:center"><div style="font:600 11px var(--font-mono);color:var(--text-muted)">JUN</div><div style="font:500 20px var(--font-serif-display);color:var(--text-heading)">15</div></div>
+                  <div style="flex:1;min-width:0"><div style="font:500 15px var(--font-sans);color:var(--text-heading)">Marcus Webb — churn exit interview</div><div style="font:var(--text-body-sm);color:var(--text-muted)">10:30 AM · 30 min · Run by voice agent</div></div>
+                  <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Badge" tone="info" dot="{{ true }}" hint-size="auto,22px">Scheduled</x-import>
+                </div>
+                <div style="display:flex;align-items:center;gap:16px;padding:14px 20px;border-bottom:1px solid var(--border-default)">
+                  <div style="width:44px;text-align:center"><div style="font:600 11px var(--font-mono);color:var(--text-muted)">JUN</div><div style="font:500 20px var(--font-serif-display);color:var(--text-heading)">16</div></div>
+                  <div style="flex:1;min-width:0"><div style="font:500 15px var(--font-sans);color:var(--text-heading)">Dana Ortiz — pricing feedback</div><div style="font:var(--text-body-sm);color:var(--text-muted)">2:00 PM · 20 min · Run by voice agent</div></div>
+                  <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Badge" tone="info" dot="{{ true }}" hint-size="auto,22px">Scheduled</x-import>
+                </div>
+                <div style="display:flex;align-items:center;gap:16px;padding:14px 20px">
+                  <div style="width:44px;text-align:center"><div style="font:600 11px var(--font-mono);color:var(--text-muted)">JUN</div><div style="font:500 20px var(--font-serif-display);color:var(--text-heading)">18</div></div>
+                  <div style="flex:1;min-width:0"><div style="font:500 15px var(--font-sans);color:var(--text-heading)">Sam Idris — integration walkthrough</div><div style="font:var(--text-body-sm);color:var(--text-muted)">11:00 AM · 45 min · You + voice agent</div></div>
+                  <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Badge" tone="warning" dot="{{ true }}" hint-size="auto,22px">Awaiting confirm</x-import>
+                </div>
+              </div>
+              <div style="font:600 11px var(--font-mono);letter-spacing:0.08em;color:var(--text-muted);margin-bottom:8px">PAST</div>
+              <div style="background:var(--surface-card);border:1px solid var(--border-default);border-radius:12px;overflow:hidden">
+                <div style="display:flex;align-items:center;gap:16px;padding:14px 20px;border-bottom:1px solid var(--border-default)">
+                  <div style="width:44px;text-align:center"><div style="font:600 11px var(--font-mono);color:var(--text-muted)">JUN</div><div style="font:500 20px var(--font-serif-display);color:var(--text-heading)">12</div></div>
+                  <div style="flex:1;min-width:0"><div style="font:500 15px var(--font-sans);color:var(--text-heading)">Priya Nair — discovery interview</div><div style="font:var(--text-body-sm);color:var(--text-muted)">18 min · Transcript in Churn study</div></div>
+                  <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Badge" tone="success" dot="{{ true }}" hint-size="auto,22px">Completed</x-import>
+                  <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="ghost" size="sm" hint-size="auto,28px">Transcript</x-import>
+                </div>
+                <div style="display:flex;align-items:center;gap:16px;padding:14px 20px">
+                  <div style="width:44px;text-align:center"><div style="font:600 11px var(--font-mono);color:var(--text-muted)">JUN</div><div style="font:500 20px var(--font-serif-display);color:var(--text-heading)">10</div></div>
+                  <div style="flex:1;min-width:0"><div style="font:500 15px var(--font-sans);color:var(--text-heading)">Alex Kim — onboarding drop-off</div><div style="font:var(--text-body-sm);color:var(--text-muted)">No answer · retried twice</div></div>
+                  <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Badge" tone="danger" dot="{{ true }}" hint-size="auto,22px">Missed</x-import>
+                  <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="ghost" size="sm" hint-size="auto,28px">Rebook</x-import>
+                </div>
+              </div>
+            </div>
+            <div style="flex:4;min-width:0;display:flex;flex-direction:column;gap:16px">
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Card" title="Booking page" hint-size="100%,300px">
+                <div style="display:flex;flex-direction:column;gap:14px">
+                  <div style="display:flex;align-items:center;gap:8px;background:var(--ivory-200);border-radius:6px;padding:8px 12px">
+                    <span style="flex:1;font:var(--text-code);color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">meridian.app/book/atlas-labs</span>
+                    <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="ghost" size="sm" hint-size="auto,28px">Copy</x-import>
+                  </div>
+                  <div style="border:1px solid var(--border-default);border-radius:8px;padding:16px;background:var(--ivory-50)">
+                    <div style="font:500 15px var(--font-serif-display);color:var(--text-heading);margin-bottom:2px">Talk to Atlas Labs research</div>
+                    <div style="font:var(--text-body-sm);color:var(--text-muted);margin-bottom:12px">20 min · with our research voice agent</div>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap">
+                      <span style="padding:5px 10px;border:1px solid var(--border-strong);border-radius:6px;font:var(--text-body-sm);color:var(--text-body)">Mon 10:00</span>
+                      <span style="padding:5px 10px;border:1px solid var(--clay-600);border-radius:6px;font:500 13px var(--font-sans);color:var(--clay-700);background:var(--clay-50)">Mon 10:30</span>
+                      <span style="padding:5px 10px;border:1px solid var(--border-strong);border-radius:6px;font:var(--text-body-sm);color:var(--text-body)">Tue 14:00</span>
+                    </div>
+                  </div>
+                  <div style="display:flex;align-items:center;justify-content:space-between">
+                    <span style="font:var(--text-body);color:var(--text-body)">Accept new bookings</span>
+                    <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Switch" checked="{{ true }}" hint-size="40px,22px"></x-import>
+                  </div>
+                </div>
+              </x-import>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Card" hint-size="100%,90px">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <div><div style="font:500 15px var(--font-sans);color:var(--text-heading)">Calls this month</div><div style="font:var(--text-body-sm);color:var(--text-muted)">≈ 40 credits per completed call</div></div>
+                  <div style="font:500 28px var(--font-serif-display);color:var(--text-heading)">11</div>
+                </div>
+              </x-import>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="1i" style="flex:none">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <a href="#1i" style="display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:26px;padding:0 8px;border-radius:999px;background:var(--ink-900);color:var(--ivory-100);font:600 12px var(--font-mono);text-decoration:none">1i</a>
+        <span style="font:600 15px var(--font-sans);color:var(--text-heading)">Agenda + live call detail</span>
+        <span style="font:var(--text-body-sm);color:var(--text-muted)">Day agenda left; a selected call opens with live transcript</span>
+      </div>
+      <div style="width:1440px;height:920px;background:var(--bg-page);border:1px solid var(--border-default);border-radius:12px;box-shadow:0 1px 2px rgba(23,22,18,0.05);display:flex;overflow:hidden">
+        <div style="width:240px;flex:none;border-right:1px solid var(--border-default);display:flex;flex-direction:column">
+          <div style="padding:22px 22px 18px;font:500 20px var(--font-serif-display);letter-spacing:-0.015em;color:var(--text-heading)">Meridian</div>
+          <div style="display:flex;flex-direction:column;gap:2px;padding:0 12px">
+            <sc-for list="{{ navAppts }}" as="n" hint-placeholder-count="7">
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:{{ n.bg }};color:{{ n.color }};font:{{ n.font }}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="{{ n.d }}"></path></svg>
+                <span>{{ n.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="margin-top:auto;padding:16px 22px;border-top:1px solid var(--border-default);display:flex;align-items:center;justify-content:space-between">
+            <span style="font:var(--text-body-sm);color:var(--text-muted)">Credits</span>
+            <span style="font:500 13px var(--font-mono);color:var(--text-heading)">1,240</span>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0;overflow:hidden;padding:36px 40px 0;display:flex;flex-direction:column">
+          <h3 style="font:var(--text-display-md);letter-spacing:-0.015em;color:var(--text-heading);margin:0 0 20px">Appointments · Thu Jun 12</h3>
+          <div style="display:flex;gap:28px;flex:1;min-height:0">
+            <div style="flex:4;min-width:0;background:var(--surface-card);border:1px solid var(--border-default);border-radius:12px;padding:8px 0;overflow:hidden">
+              <div style="display:flex;gap:14px;padding:10px 20px;color:var(--text-muted);font:var(--text-body-sm)"><span style="width:56px;font:var(--text-code)">9:00</span><span style="flex:1;border-top:1px solid var(--border-default);margin-top:9px"></span></div>
+              <div style="display:flex;gap:14px;padding:4px 20px"><span style="width:56px;font:var(--text-code);color:var(--text-muted)">10:00</span>
+                <div style="flex:1;background:var(--clay-50);border:1px solid var(--clay-100);border-left:3px solid var(--clay-600);border-radius:8px;padding:10px 14px">
+                  <div style="font:500 14px var(--font-sans);color:var(--text-heading)">Priya Nair — discovery interview</div>
+                  <div style="font:var(--text-body-sm);color:var(--clay-700)">Live now · voice agent · 02:14</div>
+                </div>
+              </div>
+              <div style="display:flex;gap:14px;padding:10px 20px;color:var(--text-muted);font:var(--text-body-sm)"><span style="width:56px;font:var(--text-code)">11:00</span><span style="flex:1;border-top:1px solid var(--border-default);margin-top:9px"></span></div>
+              <div style="display:flex;gap:14px;padding:4px 20px"><span style="width:56px;font:var(--text-code);color:var(--text-muted)">13:00</span>
+                <div style="flex:1;background:var(--ivory-100);border:1px solid var(--border-default);border-radius:8px;padding:10px 14px">
+                  <div style="font:500 14px var(--font-sans);color:var(--text-heading)">Dana Ortiz — pricing feedback</div>
+                  <div style="font:var(--text-body-sm);color:var(--text-muted)">Scheduled · voice agent</div>
+                </div>
+              </div>
+              <div style="display:flex;gap:14px;padding:10px 20px;color:var(--text-muted);font:var(--text-body-sm)"><span style="width:56px;font:var(--text-code)">14:00</span><span style="flex:1;border-top:1px solid var(--border-default);margin-top:9px"></span></div>
+              <div style="display:flex;gap:14px;padding:4px 20px"><span style="width:56px;font:var(--text-code);color:var(--text-muted)">16:00</span>
+                <div style="flex:1;background:var(--ivory-100);border:1px solid var(--border-default);border-radius:8px;padding:10px 14px">
+                  <div style="font:500 14px var(--font-sans);color:var(--text-heading)">Sam Idris — integration walkthrough</div>
+                  <div style="font:var(--text-body-sm);color:var(--text-muted)">Awaiting confirm</div>
+                </div>
+              </div>
+            </div>
+            <div style="flex:5;min-width:0;background:var(--surface-card);border:1px solid var(--border-default);border-radius:12px;padding:24px;display:flex;flex-direction:column;gap:16px;overflow:hidden">
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div>
+                  <div style="font:500 18px var(--font-serif-display);color:var(--text-heading)">Priya Nair — discovery interview</div>
+                  <div style="font:var(--text-body-sm);color:var(--text-muted)">Churn study · started 10:02 AM</div>
+                </div>
+                <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Badge" tone="success" dot="{{ true }}" hint-size="auto,22px">Live</x-import>
+              </div>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.VoiceAgentBar" status="{{ voiceStatus }}" duration="02:14" onMute="{{ noop }}" onEnd="{{ noop }}" hint-size="100%,52px"></x-import>
+              <div style="border-top:1px solid var(--border-default);padding-top:14px;display:flex;flex-direction:column;gap:12px;font:var(--text-body-sm);overflow:hidden">
+                <div style="font:600 11px var(--font-mono);letter-spacing:0.08em;color:var(--text-muted)">LIVE TRANSCRIPT</div>
+                <div style="display:flex;gap:10px"><span style="flex:none;font:600 12px var(--font-mono);color:var(--text-muted);width:52px">AGENT</span><span style="color:var(--text-body)">You mentioned onboarding felt slow — where did your team first get stuck?</span></div>
+                <div style="display:flex;gap:10px"><span style="flex:none;font:600 12px var(--font-mono);color:var(--clay-700);width:52px">PRIYA</span><span style="color:var(--text-body)">The workspace setup. We had 40 seats and no way to bulk-assign roles, so it took our admin almost two weeks.</span></div>
+                <div style="display:flex;gap:10px"><span style="flex:none;font:600 12px var(--font-mono);color:var(--text-muted);width:52px">AGENT</span><span style="color:var(--text-body)">Two weeks — was that the main reason the rollout stalled, or were there other blockers?</span></div>
+                <div style="display:flex;gap:10px;opacity:0.5"><span style="flex:none;font:600 12px var(--font-mono);color:var(--clay-700);width:52px">PRIYA</span><span style="color:var(--text-body)">Partly. The bigger issue was…</span></div>
+              </div>
+              <div style="margin-top:auto;display:flex;gap:8px">
+                <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="secondary" size="sm" hint-size="auto,28px">Pass a question</x-import>
+                <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="ghost" size="sm" hint-size="auto,28px">Open thread</x-import>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ BILLING ═══════════ -->
+  <h2 style="font:var(--text-display-md);letter-spacing:-0.015em;color:var(--text-heading);margin:0 0 6px">5 · Billing</h2>
+  <p style="font:var(--text-body);color:var(--text-secondary);margin:0 0 24px;max-width:640px">Credit balance, packs, and payment methods — processed by Dodo Payments.</p>
+  <div style="display:flex;gap:48px;align-items:flex-start;margin-bottom:96px">
+
+    <div id="1j" style="flex:none">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <a href="#1j" style="display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:26px;padding:0 8px;border-radius:999px;background:var(--ink-900);color:var(--ivory-100);font:600 12px var(--font-mono);text-decoration:none">1j</a>
+        <span style="font:600 15px var(--font-sans);color:var(--text-heading)">Balance + packs</span>
+        <span style="display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:999px;background:var(--accent-soft);color:var(--clay-800);font:600 11px var(--font-sans)">Recommended</span>
+        <span style="font:var(--text-body-sm);color:var(--text-muted)">Everything on one page — balance, packs, saved methods</span>
+      </div>
+      <div style="width:1440px;height:920px;background:var(--bg-page);border:1px solid var(--border-default);border-radius:12px;box-shadow:0 1px 2px rgba(23,22,18,0.05);display:flex;overflow:hidden">
+        <div style="width:240px;flex:none;border-right:1px solid var(--border-default);display:flex;flex-direction:column">
+
+          <div style="padding:22px 22px 18px;font:500 20px var(--font-serif-display);letter-spacing:-0.015em;color:var(--text-heading)">Meridian</div>
+          <div style="display:flex;flex-direction:column;gap:2px;padding:0 12px">
+            <sc-for list="{{ navBilling }}" as="n" hint-placeholder-count="7">
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:{{ n.bg }};color:{{ n.color }};font:{{ n.font }}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="{{ n.d }}"></path></svg>
+                <span>{{ n.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="margin-top:auto;padding:16px 22px;border-top:1px solid var(--border-default);display:flex;align-items:center;justify-content:space-between">
+            <span style="font:var(--text-body-sm);color:var(--text-muted)">Credits</span>
+            <span style="font:500 13px var(--font-mono);color:var(--text-heading)">1,240</span>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0;overflow:hidden;padding:36px 40px 0">
+          <h3 style="font:var(--text-display-md);letter-spacing:-0.015em;color:var(--text-heading);margin:0 0 24px">Billing</h3>
+          <div style="display:flex;gap:28px;align-items:flex-start">
+            <div style="flex:7;min-width:0;display:flex;flex-direction:column;gap:24px">
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.CreditBalance" balance="{{ 1240 }}" unit="credits" used-this-month="{{ 3180 }}" refresh-note="Auto-refills at 500 · Dodo Payments" onAdd="{{ noop }}" add-label="Add credits" hint-size="100%,140px"></x-import>
+              <div>
+                <div style="font:600 16px var(--font-sans);color:var(--text-heading);margin-bottom:12px">Credit packs</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
+                  <div style="background:var(--surface-card);border:1px solid var(--border-default);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:6px">
+                    <div style="font:500 15px var(--font-sans);color:var(--text-heading)">Starter</div>
+                    <div style="font:500 28px var(--font-serif-display);color:var(--text-heading)">1,000 <span style="font:var(--text-body-sm);color:var(--text-muted)">credits</span></div>
+                    <div style="font:var(--text-body-sm);color:var(--text-muted);margin-bottom:10px">$29 · one-time</div>
+                    <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="secondary" size="sm" hint-size="100%,28px">Buy pack</x-import>
+                  </div>
+                  <div style="background:var(--surface-card);border:1.5px solid var(--clay-600);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:6px;position:relative">
+                    <span style="position:absolute;top:-11px;left:16px;background:var(--clay-600);color:#fff;font:600 11px var(--font-sans);padding:3px 10px;border-radius:999px">Most popular</span>
+                    <div style="font:500 15px var(--font-sans);color:var(--text-heading)">Studio</div>
+                    <div style="font:500 28px var(--font-serif-display);color:var(--text-heading)">5,000 <span style="font:var(--text-body-sm);color:var(--text-muted)">credits</span></div>
+                    <div style="font:var(--text-body-sm);color:var(--text-muted);margin-bottom:10px">$119 · one-time · 18% off</div>
+                    <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="primary" size="sm" hint-size="100%,28px">Buy pack</x-import>
+                  </div>
+                  <div style="background:var(--surface-card);border:1px solid var(--border-default);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:6px">
+                    <div style="font:500 15px var(--font-sans);color:var(--text-heading)">Agency</div>
+                    <div style="font:500 28px var(--font-serif-display);color:var(--text-heading)">20,000 <span style="font:var(--text-body-sm);color:var(--text-muted)">credits</span></div>
+                    <div style="font:var(--text-body-sm);color:var(--text-muted);margin-bottom:10px">$399 · one-time · 31% off</div>
+                    <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="secondary" size="sm" hint-size="100%,28px">Buy pack</x-import>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <div style="font:600 16px var(--font-sans);color:var(--text-heading);margin-bottom:12px">Payment methods</div>
+                <div style="background:var(--surface-card);border:1px solid var(--border-default);border-radius:12px;overflow:hidden">
+                  <x-import component-from-global-scope="MeridianDesignSystem_c43e08.PaymentMethodRow" brand="visa" last4="4242" expiry="08/27" is-default="{{ true }}" hint-size="100%,56px"></x-import>
+                  <x-import component-from-global-scope="MeridianDesignSystem_c43e08.PaymentMethodRow" brand="upi" last4="9014" hint-size="100%,56px"></x-import>
+                </div>
+                <div style="font:var(--text-body-sm);color:var(--text-muted);margin-top:8px">Payments processed by Dodo Payments. <a href="#1j">View receipts</a></div>
+              </div>
+            </div>
+            <div style="flex:4;min-width:0;display:flex;flex-direction:column;gap:16px">
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Card" title="Usage this month" hint-size="100%,240px">
+                <div style="display:flex;flex-direction:column;gap:10px;font:var(--text-body-sm)">
+                  <div style="display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Agent runs</span><span style="font:500 13px var(--font-mono);color:var(--text-heading)">2,140</span></div>
+                  <div style="display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Voice calls</span><span style="font:500 13px var(--font-mono);color:var(--text-heading)">440</span></div>
+                  <div style="display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Report generation</span><span style="font:500 13px var(--font-mono);color:var(--text-heading)">380</span></div>
+                  <div style="display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Transcription</span><span style="font:500 13px var(--font-mono);color:var(--text-heading)">220</span></div>
+                  <div style="border-top:1px solid var(--border-default);padding-top:10px;display:flex;justify-content:space-between"><span style="color:var(--text-heading);font-weight:500">Total</span><span style="font:500 13px var(--font-mono);color:var(--text-heading)">3,180</span></div>
+                </div>
+              </x-import>
+              <div style="background:var(--surface-inverse);border-radius:12px;padding:20px">
+                <div style="font:500 15px var(--font-sans);color:var(--ivory-100);margin-bottom:4px">Auto-refill is on</div>
+                <div style="font:var(--text-body-sm);color:var(--ink-300)">When balance falls below 500, we buy the Starter pack with your default method.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="1k" style="flex:none">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <a href="#1k" style="display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:26px;padding:0 8px;border-radius:999px;background:var(--ink-900);color:var(--ivory-100);font:600 12px var(--font-mono);text-decoration:none">1k</a>
+        <span style="font:600 15px var(--font-sans);color:var(--text-heading)">Dodo checkout</span>
+        <span style="font:var(--text-body-sm);color:var(--text-muted)">The add-credits moment: pack selected, checkout dialog over the page</span>
+      </div>
+      <div style="width:1440px;height:920px;background:var(--bg-page);border:1px solid var(--border-default);border-radius:12px;box-shadow:0 1px 2px rgba(23,22,18,0.05);display:flex;overflow:hidden;position:relative">
+        <div style="width:240px;flex:none;border-right:1px solid var(--border-default);display:flex;flex-direction:column">
+          <div style="padding:22px 22px 18px;font:500 20px var(--font-serif-display);letter-spacing:-0.015em;color:var(--text-heading)">Meridian</div>
+          <div style="display:flex;flex-direction:column;gap:2px;padding:0 12px">
+            <sc-for list="{{ navBilling }}" as="n" hint-placeholder-count="7">
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:{{ n.bg }};color:{{ n.color }};font:{{ n.font }}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="{{ n.d }}"></path></svg>
+                <span>{{ n.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="margin-top:auto;padding:16px 22px;border-top:1px solid var(--border-default);display:flex;align-items:center;justify-content:space-between">
+            <span style="font:var(--text-body-sm);color:var(--text-muted)">Credits</span>
+            <span style="font:500 13px var(--font-mono);color:var(--text-heading)">180</span>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0;overflow:hidden;padding:36px 40px 0;filter:none">
+          <h3 style="font:var(--text-display-md);letter-spacing:-0.015em;color:var(--text-heading);margin:0 0 24px">Billing</h3>
+          <x-import component-from-global-scope="MeridianDesignSystem_c43e08.CreditBalance" balance="{{ 180 }}" unit="credits" used-this-month="{{ 3180 }}" refresh-note="Below refill threshold · Dodo Payments" low="{{ true }}" onAdd="{{ noop }}" add-label="Add credits" hint-size="100%,140px"></x-import>
+        </div>
+        <div style="position:absolute;inset:0;background:rgba(23,22,18,0.4);display:flex;align-items:center;justify-content:center">
+          <div style="width:440px;background:var(--surface-overlay);border-radius:16px;box-shadow:0 20px 50px rgba(23,22,18,0.25);padding:28px;display:flex;flex-direction:column;gap:18px">
+            <div>
+              <div style="font:500 22px var(--font-serif-display);letter-spacing:-0.015em;color:var(--text-heading);margin-bottom:4px">Add credits</div>
+              <div style="font:var(--text-body-sm);color:var(--text-muted)">Secure checkout by Dodo Payments</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:center;justify-content:space-between;border:1.5px solid var(--clay-600);background:var(--clay-50);border-radius:8px;padding:12px 16px">
+                <div><div style="font:500 15px var(--font-sans);color:var(--text-heading)">Studio · 5,000 credits</div><div style="font:var(--text-body-sm);color:var(--text-muted)">18% off list</div></div>
+                <div style="font:500 17px var(--font-mono);color:var(--text-heading)">$119</div>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;border:1px solid var(--border-default);border-radius:8px;padding:12px 16px">
+                <div style="font:500 15px var(--font-sans);color:var(--text-body)">Starter · 1,000 credits</div>
+                <div style="font:500 17px var(--font-mono);color:var(--text-secondary)">$29</div>
+              </div>
+            </div>
+            <div style="border-top:1px solid var(--border-default);padding-top:16px">
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.PaymentMethodRow" brand="visa" last4="4242" expiry="08/27" is-default="{{ true }}" hint-size="100%,56px"></x-import>
+            </div>
+            <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="primary" size="lg" hint-size="100%,44px">Pay $119 with Dodo</x-import>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font:var(--text-body-sm);color:var(--text-muted)">Receipt to billing@atlaslabs.co</span>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="ghost" size="sm" hint-size="auto,28px">Cancel</x-import>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ BRANDING ═══════════ -->
+  <h2 style="font:var(--text-display-md);letter-spacing:-0.015em;color:var(--text-heading);margin:0 0 6px">6 · Branding</h2>
+  <p style="font:var(--text-body);color:var(--text-secondary);margin:0 0 24px;max-width:640px">Brand name, logo, and accent — applied live to the console and to every generated report.</p>
+  <div style="display:flex;gap:48px;align-items:flex-start;margin-bottom:96px">
+
+    <div id="1l" style="flex:none">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <a href="#1l" style="display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:26px;padding:0 8px;border-radius:999px;background:var(--ink-900);color:var(--ivory-100);font:600 12px var(--font-mono);text-decoration:none">1l</a>
+        <span style="font:600 15px var(--font-sans);color:var(--text-heading)">Form + live preview</span>
+        <span style="display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:999px;background:var(--accent-soft);color:var(--clay-800);font:600 11px var(--font-sans)">Recommended</span>
+        <span style="font:var(--text-body-sm);color:var(--text-muted)">Edit left, watch the console and report cover restyle right</span>
+      </div>
+      <div style="width:1440px;height:920px;background:var(--bg-page);border:1px solid var(--border-default);border-radius:12px;box-shadow:0 1px 2px rgba(23,22,18,0.05);display:flex;overflow:hidden">
+        <div style="width:240px;flex:none;border-right:1px solid var(--border-default);display:flex;flex-direction:column">
+          <div style="padding:22px 22px 18px;font:500 20px var(--font-serif-display);letter-spacing:-0.015em;color:var(--text-heading)">Meridian</div>
+          <div style="display:flex;flex-direction:column;gap:2px;padding:0 12px">
+            <sc-for list="{{ navBranding }}" as="n" hint-placeholder-count="7">
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:{{ n.bg }};color:{{ n.color }};font:{{ n.font }}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="{{ n.d }}"></path></svg>
+                <span>{{ n.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="margin-top:auto;padding:16px 22px;border-top:1px solid var(--border-default);display:flex;align-items:center;justify-content:space-between">
+            <span style="font:var(--text-body-sm);color:var(--text-muted)">Credits</span>
+            <span style="font:500 13px var(--font-mono);color:var(--text-heading)">1,240</span>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0;overflow:hidden;padding:36px 40px 0;display:flex;gap:32px">
+          <div style="width:380px;flex:none;display:flex;flex-direction:column;gap:20px">
+            <div>
+              <h3 style="font:var(--text-display-md);letter-spacing:-0.015em;color:var(--text-heading);margin:0 0 6px">Branding</h3>
+              <p style="font:var(--text-body);color:var(--text-secondary);margin:0">Applies to your console and every report the agent produces.</p>
+            </div>
+            <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Input" label="Brand name" value="Atlas Labs" hint="Replaces the Meridian wordmark" hint-size="100%,84px"></x-import>
+            <div>
+              <div style="font:var(--text-label);color:var(--text-heading);margin-bottom:8px">Logo</div>
+              <div style="border:1.5px dashed var(--border-strong);border-radius:8px;padding:16px;display:flex;align-items:center;gap:12px;background:var(--surface-card)">
+                <div style="width:40px;height:40px;border-radius:8px;background:#35597E;color:#fff;display:flex;align-items:center;justify-content:center;font:500 18px var(--font-serif-display)">A</div>
+                <div style="flex:1"><div style="font:var(--text-body-sm);color:var(--text-heading)">atlas-mark.svg</div><div style="font:var(--text-body-sm);color:var(--text-muted)">SVG · 4 KB</div></div>
+                <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="ghost" size="sm" hint-size="auto,28px">Replace</x-import>
+              </div>
+            </div>
+            <div>
+              <div style="font:var(--text-label);color:var(--text-heading);margin-bottom:8px">Accent color</div>
+              <div style="display:flex;gap:10px">
+                <span style="width:36px;height:36px;border-radius:8px;background:#C2593B;border:1px solid var(--border-default)"></span>
+                <span style="width:36px;height:36px;border-radius:8px;background:#35597E;outline:2px solid var(--ink-900);outline-offset:2px"></span>
+                <span style="width:36px;height:36px;border-radius:8px;background:#3E7A54;border:1px solid var(--border-default)"></span>
+                <span style="width:36px;height:36px;border-radius:8px;background:#171612;border:1px solid var(--border-default)"></span>
+              </div>
+              <div style="font:var(--text-body-sm);color:var(--text-muted);margin-top:8px">Buttons, links, active states, and report highlights.</div>
+            </div>
+            <div>
+              <div style="font:var(--text-label);color:var(--text-heading);margin-bottom:8px">Report typeface</div>
+              <div style="display:flex;gap:8px">
+                <span style="padding:8px 14px;border:1.5px solid var(--ink-900);border-radius:8px;font:500 14px var(--font-serif-display);color:var(--text-heading);background:var(--surface-card)">Serif display</span>
+                <span style="padding:8px 14px;border:1px solid var(--border-default);border-radius:8px;font:500 14px var(--font-sans);color:var(--text-secondary);background:var(--surface-card)">Grotesque</span>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:auto;padding-bottom:28px">
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="primary" hint-size="auto,36px">Apply branding</x-import>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="ghost" hint-size="auto,36px">Reset to Meridian</x-import>
+            </div>
+          </div>
+          <div style="flex:1;min-width:0;background:var(--ivory-200);border:1px solid var(--border-default);border-radius:16px;padding:28px;display:flex;flex-direction:column;gap:20px;overflow:hidden">
+            <div style="font:600 11px var(--font-mono);letter-spacing:0.08em;color:var(--text-muted)">LIVE PREVIEW</div>
+            <div style="background:#FAF9F6;border:1px solid var(--border-default);border-radius:12px;overflow:hidden;flex:none">
+              <div style="display:flex">
+                <div style="width:150px;flex:none;border-right:1px solid var(--border-default);padding:14px;background:#fff">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><span style="width:20px;height:20px;border-radius:5px;background:#35597E;color:#fff;display:flex;align-items:center;justify-content:center;font:500 11px var(--font-serif-display)">A</span><span style="font:500 13px var(--font-serif-display);color:var(--text-heading)">Atlas Labs</span></div>
+                  <div style="display:flex;flex-direction:column;gap:4px;font:500 11px var(--font-sans)">
+                    <span style="padding:4px 8px;border-radius:6px;background:#E7EDF4;color:#35597E">Chat</span>
+                    <span style="padding:4px 8px;color:var(--text-secondary)">Activity</span>
+                    <span style="padding:4px 8px;color:var(--text-secondary)">Knowledge</span>
+                  </div>
+                </div>
+                <div style="flex:1;padding:14px;display:flex;flex-direction:column;gap:8px">
+                  <div style="font:500 15px var(--font-serif-display);color:var(--text-heading)">Kickoff interview analysis</div>
+                  <div style="height:8px;border-radius:4px;background:var(--ivory-300);width:70%"></div>
+                  <div style="height:8px;border-radius:4px;background:var(--ivory-300);width:50%"></div>
+                  <span style="align-self:flex-start;padding:6px 14px;border-radius:8px;background:#35597E;color:#fff;font:600 11px var(--font-sans)">Approve</span>
+                </div>
+              </div>
+            </div>
+            <div style="background:#fff;border:1px solid var(--border-default);border-radius:12px;padding:24px;flex:1;min-height:0;display:flex;flex-direction:column">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:18px"><span style="width:24px;height:24px;border-radius:6px;background:#35597E;color:#fff;display:flex;align-items:center;justify-content:center;font:500 13px var(--font-serif-display)">A</span><span style="font:500 14px var(--font-serif-display);color:var(--text-heading)">Atlas Labs</span><span style="margin-left:auto;font:600 10px var(--font-mono);letter-spacing:0.08em;color:var(--text-muted)">REPORT COVER</span></div>
+              <div style="font:600 11px var(--font-mono);letter-spacing:0.08em;color:#35597E;margin-bottom:8px">RESEARCH REPORT · JUN 2026</div>
+              <div style="font:500 26px var(--font-serif-display);letter-spacing:-0.015em;color:var(--text-heading);line-height:1.2;margin-bottom:10px">Churn drivers in mid-market accounts</div>
+              <div style="font:var(--text-body-sm);color:var(--text-secondary)">Compiled from 48 responses, 4 interviews, and 3 voice calls.</div>
+              <div style="margin-top:auto;height:4px;border-radius:2px;background:#35597E;width:120px"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="1m" style="flex:none">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <a href="#1m" style="display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:26px;padding:0 8px;border-radius:999px;background:var(--ink-900);color:var(--ivory-100);font:600 12px var(--font-mono);text-decoration:none">1m</a>
+        <span style="font:600 15px var(--font-sans);color:var(--text-heading)">Applied theme</span>
+        <span style="font:var(--text-body-sm);color:var(--text-muted)">The same console after "Apply" — whole shell re-skinned to Atlas Labs</span>
+      </div>
+      <div style="width:1440px;height:920px;background:#F7F8FA;border:1px solid var(--border-default);border-radius:12px;box-shadow:0 1px 2px rgba(23,22,18,0.05);display:flex;overflow:hidden;position:relative">
+        <div style="width:240px;flex:none;border-right:1px solid #E2E5EA;display:flex;flex-direction:column;background:#fff">
+          <div style="padding:22px;display:flex;align-items:center;gap:10px"><span style="width:26px;height:26px;border-radius:7px;background:#35597E;color:#fff;display:flex;align-items:center;justify-content:center;font:500 14px var(--font-serif-display)">A</span><span style="font:500 18px var(--font-serif-display);letter-spacing:-0.015em;color:var(--text-heading)">Atlas Labs</span></div>
+          <div style="display:flex;flex-direction:column;gap:2px;padding:0 12px">
+            <sc-for list="{{ navBrandedChat }}" as="n" hint-placeholder-count="7">
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:{{ n.bg }};color:{{ n.color }};font:{{ n.font }}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="{{ n.d }}"></path></svg>
+                <span>{{ n.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="margin-top:auto;padding:16px 22px;border-top:1px solid #E2E5EA;display:flex;align-items:center;justify-content:space-between">
+            <span style="font:var(--text-body-sm);color:var(--text-muted)">Credits</span>
+            <span style="font:500 13px var(--font-mono);color:var(--text-heading)">1,240</span>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+          <div style="height:56px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid #E2E5EA;background:#fff">
+            <div style="font:var(--text-body-sm);color:var(--text-muted)"><span style="color:var(--text-secondary)">Churn study</span><span style="padding:0 6px">/</span><span style="color:var(--text-heading);font-weight:500">Kickoff interview analysis</span></div>
+            <span style="display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;background:#E7EDF4;color:#35597E;font:600 12px var(--font-sans)"><span style="width:6px;height:6px;border-radius:50%;background:#35597E"></span>3 agents active</span>
+          </div>
+          <div style="flex:1;min-height:0;display:flex;flex-direction:column;gap:20px;padding:24px 0 0;align-items:center;overflow:hidden">
+            <div style="width:100%;max-width:760px;display:flex;flex-direction:column;gap:20px;padding:0 24px">
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.ChatMessage" role="user" time="2:38 PM" hint-size="100%,60px">Analyze the questionnaire responses and flag anything that blocks the launch survey.</x-import>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.ChatMessage" role="assistant" author="Atlas research" time="2:41 PM" hint-size="100%,90px">Read all 48 responses. Two blockers found — the full detail is in the interim findings. Ready to draft the follow-up survey when you approve the segment.</x-import>
+              <div style="background:#fff;border:1px solid #E2E5EA;border-radius:12px;padding:18px 20px;display:flex;align-items:center;gap:16px">
+                <div style="flex:1"><div style="font:500 15px var(--font-sans);color:var(--text-heading);margin-bottom:2px">Send follow-up survey to 214 contacts</div><div style="font:var(--text-body-sm);color:var(--text-muted)">Step 3 of 4 · Outreach agent</div></div>
+                <span style="padding:8px 16px;border-radius:8px;background:#35597E;color:#fff;font:600 13px var(--font-sans)">Approve</span>
+                <span style="padding:8px 16px;border-radius:8px;border:1px solid #CDD4DD;color:var(--text-secondary);font:500 13px var(--font-sans)">Decline</span>
+              </div>
+            </div>
+            <div style="width:100%;max-width:760px;margin-top:auto;padding:16px 24px 24px">
+              <div style="background:#fff;border:1px solid #E2E5EA;border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px">
+                <span style="flex:1;font:var(--text-body);color:var(--text-muted)">Reply to the agents…</span>
+                <span style="width:32px;height:32px;border-radius:8px;background:#35597E;color:#fff;display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="position:absolute;right:20px;top:72px;background:var(--surface-inverse);color:var(--ivory-100);border-radius:12px;padding:14px 18px;box-shadow:0 12px 30px rgba(23,22,18,0.3);display:flex;align-items:center;gap:12px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>
+          <span style="font:var(--text-body-sm)">Atlas Labs branding applied across the console</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ RESEARCH REPORT ═══════════ -->
+  <h2 style="font:var(--text-display-md);letter-spacing:-0.015em;color:var(--text-heading);margin:0 0 6px">7 · Research report</h2>
+  <p style="font:var(--text-body);color:var(--text-secondary);margin:0 0 24px;max-width:640px">The project-level deliverable: the synthesis agent compiles every finding into a complete report in your branding. Two states — finalizing, then ready.</p>
+  <div style="display:flex;gap:48px;align-items:flex-start;margin-bottom:96px">
+
+    <div id="1n" style="flex:none">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <a href="#1n" style="display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:26px;padding:0 8px;border-radius:999px;background:var(--ink-900);color:var(--ivory-100);font:600 12px var(--font-mono);text-decoration:none">1n</a>
+        <span style="font:600 15px var(--font-sans);color:var(--text-heading)">Finalizing state</span>
+        <span style="font:var(--text-body-sm);color:var(--text-muted)">Synthesis agent compiling — sections fill in as they finish</span>
+      </div>
+      <div style="width:1440px;height:920px;background:var(--bg-page);border:1px solid var(--border-default);border-radius:12px;box-shadow:0 1px 2px rgba(23,22,18,0.05);display:flex;overflow:hidden">
+        <div style="width:240px;flex:none;border-right:1px solid var(--border-default);display:flex;flex-direction:column">
+          <div style="padding:22px 22px 18px;font:500 20px var(--font-serif-display);letter-spacing:-0.015em;color:var(--text-heading)">Meridian</div>
+          <div style="display:flex;flex-direction:column;gap:2px;padding:0 12px">
+            <sc-for list="{{ navReport }}" as="n" hint-placeholder-count="7">
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:{{ n.bg }};color:{{ n.color }};font:{{ n.font }}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="{{ n.d }}"></path></svg>
+                <span>{{ n.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="margin-top:auto;padding:16px 22px;border-top:1px solid var(--border-default);display:flex;align-items:center;justify-content:space-between">
+            <span style="font:var(--text-body-sm);color:var(--text-muted)">Credits</span>
+            <span style="font:500 13px var(--font-mono);color:var(--text-heading)">1,240</span>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0;overflow:hidden;padding:36px 40px 0;display:flex;gap:32px">
+          <div style="width:360px;flex:none;display:flex;flex-direction:column;gap:18px">
+            <div>
+              <div style="font:var(--text-body-sm);color:var(--text-muted);margin-bottom:4px">Churn study</div>
+              <h3 style="font:var(--text-display-md);letter-spacing:-0.015em;color:var(--text-heading);margin:0 0 6px">Final report</h3>
+              <p style="font:var(--text-body);color:var(--text-secondary);margin:0">Synthesis agent is compiling everything this project produced.</p>
+            </div>
+            <div style="background:var(--surface-card);border:1px solid var(--border-default);border-radius:12px;padding:18px">
+              <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font:500 14px var(--font-sans);color:var(--text-heading)">Drafting section 4 of 6</span><span style="font:500 13px var(--font-mono);color:var(--text-heading)">62%</span></div>
+              <div style="height:6px;border-radius:3px;background:var(--ivory-200);overflow:hidden"><span style="display:block;height:100%;width:62%;background:var(--clay-600);border-radius:3px"></span></div>
+              <div style="font:var(--text-body-sm);color:var(--text-muted);margin-top:8px">≈ 4 minutes remaining · 380 credits reserved</div>
+            </div>
+            <x-import component-from-global-scope="MeridianDesignSystem_c43e08.AgentTimeline" steps="{{ reportSteps }}" compact="{{ true }}" hint-size="100%,200px"></x-import>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="font:600 11px var(--font-mono);letter-spacing:0.08em;color:var(--text-muted)">DRAWING FROM</div>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.SourceChip" name="48 questionnaire responses" meta="Responses.csv" kind="file" hint-size="auto,28px"></x-import>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.SourceChip" name="4 interview transcripts" meta="Voice agent calls" kind="audio" hint-size="auto,28px"></x-import>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.SourceChip" name="Interim findings" meta="Approved Jun 11" kind="file" hint-size="auto,28px"></x-import>
+            </div>
+            <div style="margin-top:auto;padding-bottom:28px">
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="ghost" hint-size="auto,36px">Pause compilation</x-import>
+            </div>
+          </div>
+          <div style="flex:1;min-width:0;background:var(--ivory-200);border:1px solid var(--border-default);border-radius:16px;padding:32px;display:flex;justify-content:center;overflow:hidden">
+            <div style="width:520px;background:#fff;border:1px solid var(--border-default);border-radius:4px;box-shadow:0 4px 16px rgba(23,22,18,0.08);padding:40px;display:flex;flex-direction:column;gap:14px">
+              <div style="display:flex;align-items:center;gap:8px"><span style="width:22px;height:22px;border-radius:6px;background:#35597E;color:#fff;display:flex;align-items:center;justify-content:center;font:500 12px var(--font-serif-display)">A</span><span style="font:500 13px var(--font-serif-display);color:var(--text-heading)">Atlas Labs</span></div>
+              <div style="font:600 10px var(--font-mono);letter-spacing:0.08em;color:#35597E">RESEARCH REPORT · DRAFT</div>
+              <div style="font:500 24px var(--font-serif-display);letter-spacing:-0.015em;color:var(--text-heading);line-height:1.2">Churn drivers in mid-market accounts</div>
+              <div style="height:1px;background:var(--border-default);margin:4px 0"></div>
+              <div style="font:600 12px var(--font-sans);color:var(--text-heading)">1 · Executive summary</div>
+              <div style="height:7px;border-radius:4px;background:var(--ivory-200);width:100%"></div>
+              <div style="height:7px;border-radius:4px;background:var(--ivory-200);width:92%"></div>
+              <div style="font:600 12px var(--font-sans);color:var(--text-heading);margin-top:6px">2 · What churned customers told us</div>
+              <div style="height:7px;border-radius:4px;background:var(--ivory-200);width:100%"></div>
+              <div style="height:7px;border-radius:4px;background:var(--ivory-200);width:84%"></div>
+              <div style="font:600 12px var(--font-sans);color:var(--text-heading);margin-top:6px">3 · Onboarding drop-off</div>
+              <div style="height:7px;border-radius:4px;background:var(--ivory-200);width:96%"></div>
+              <div style="font:600 12px var(--font-sans);color:var(--clay-700);margin-top:6px;display:flex;align-items:center;gap:8px">4 · Pricing clarity <span style="font:500 11px var(--font-sans);color:var(--clay-700);background:var(--clay-50);padding:2px 8px;border-radius:999px">writing now</span></div>
+              <div style="height:7px;border-radius:4px;background:var(--clay-100);width:60%"></div>
+              <div style="font:600 12px var(--font-sans);color:var(--text-muted);margin-top:6px">5 · Recommendations</div>
+              <div style="font:600 12px var(--font-sans);color:var(--text-muted)">6 · Methodology &amp; sources</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="1o" style="flex:none">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <a href="#1o" style="display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:26px;padding:0 8px;border-radius:999px;background:var(--ink-900);color:var(--ivory-100);font:600 12px var(--font-mono);text-decoration:none">1o</a>
+        <span style="font:600 15px var(--font-sans);color:var(--text-heading)">Report ready</span>
+        <span style="display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:999px;background:var(--accent-soft);color:var(--clay-800);font:600 11px var(--font-sans)">Recommended</span>
+        <span style="font:var(--text-body-sm);color:var(--text-muted)">Outline nav left, branded document center, export &amp; share up top</span>
+      </div>
+      <div style="width:1440px;height:920px;background:var(--bg-page);border:1px solid var(--border-default);border-radius:12px;box-shadow:0 1px 2px rgba(23,22,18,0.05);display:flex;overflow:hidden">
+        <div style="width:240px;flex:none;border-right:1px solid var(--border-default);display:flex;flex-direction:column">
+          <div style="padding:22px 22px 18px;font:500 20px var(--font-serif-display);letter-spacing:-0.015em;color:var(--text-heading)">Meridian</div>
+          <div style="display:flex;flex-direction:column;gap:2px;padding:0 12px">
+            <sc-for list="{{ navReport }}" as="n" hint-placeholder-count="7">
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:{{ n.bg }};color:{{ n.color }};font:{{ n.font }}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="{{ n.d }}"></path></svg>
+                <span>{{ n.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="margin-top:auto;padding:16px 22px;border-top:1px solid var(--border-default);display:flex;align-items:center;justify-content:space-between">
+            <span style="font:var(--text-body-sm);color:var(--text-muted)">Credits</span>
+            <span style="font:500 13px var(--font-mono);color:var(--text-heading)">1,240</span>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden">
+          <div style="height:56px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid var(--border-default);background:var(--surface-card)">
+            <div style="font:var(--text-body-sm);color:var(--text-muted)"><span style="color:var(--text-secondary)">Churn study</span><span style="padding:0 6px">/</span><span style="color:var(--text-heading);font-weight:500">Final report</span></div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Badge" tone="success" dot="{{ true }}" hint-size="auto,22px">Ready</x-import>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="secondary" size="sm" hint-size="auto,28px">Share link</x-import>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="primary" size="sm" hint-size="auto,28px">Export PDF</x-import>
+            </div>
+          </div>
+          <div style="flex:1;min-height:0;display:flex;overflow:hidden">
+            <div style="width:220px;flex:none;padding:24px 20px;display:flex;flex-direction:column;gap:2px;font:var(--text-body-sm)">
+              <div style="font:600 11px var(--font-mono);letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px">CONTENTS</div>
+              <span style="padding:6px 10px;border-radius:6px;background:var(--ivory-200);color:var(--text-heading);font-weight:500">1 · Executive summary</span>
+              <span style="padding:6px 10px;color:var(--text-secondary)">2 · What customers told us</span>
+              <span style="padding:6px 10px;color:var(--text-secondary)">3 · Onboarding drop-off</span>
+              <span style="padding:6px 10px;color:var(--text-secondary)">4 · Pricing clarity</span>
+              <span style="padding:6px 10px;color:var(--text-secondary)">5 · Recommendations</span>
+              <span style="padding:6px 10px;color:var(--text-secondary)">6 · Methodology</span>
+              <div style="border-top:1px solid var(--border-default);margin-top:14px;padding-top:14px;color:var(--text-muted)">Compiled Jun 12, 2026<br>380 credits · v1</div>
+            </div>
+            <div style="flex:1;min-width:0;background:var(--ivory-200);padding:28px;display:flex;justify-content:center;overflow:hidden">
+              <div style="width:640px;background:#fff;border:1px solid var(--border-default);border-radius:4px;box-shadow:0 4px 16px rgba(23,22,18,0.08);padding:48px 52px;display:flex;flex-direction:column;gap:16px;overflow:hidden">
+                <div style="display:flex;align-items:center;justify-content:space-between">
+                  <div style="display:flex;align-items:center;gap:8px"><span style="width:24px;height:24px;border-radius:6px;background:#35597E;color:#fff;display:flex;align-items:center;justify-content:center;font:500 13px var(--font-serif-display)">A</span><span style="font:500 14px var(--font-serif-display);color:var(--text-heading)">Atlas Labs</span></div>
+                  <span style="font:600 10px var(--font-mono);letter-spacing:0.08em;color:var(--text-muted)">CONFIDENTIAL</span>
+                </div>
+                <div style="font:600 11px var(--font-mono);letter-spacing:0.08em;color:#35597E;margin-top:12px">RESEARCH REPORT · JUN 2026</div>
+                <div style="font:500 30px var(--font-serif-display);letter-spacing:-0.015em;color:var(--text-heading);line-height:1.15">Churn drivers in mid-market accounts</div>
+                <div style="font:var(--text-body-sm);color:var(--text-secondary)">48 questionnaire responses · 4 interviews · 3 voice calls · compiled by the synthesis agent</div>
+                <div style="height:3px;background:#35597E;width:110px;border-radius:2px"></div>
+                <div style="font:600 14px var(--font-sans);color:var(--text-heading);margin-top:10px">1 · Executive summary</div>
+                <p style="font:var(--text-body-sm);color:var(--text-body);margin:0;line-height:1.65">Mid-market churn concentrates in the first 60 days and traces to two fixable causes: workspace setup that stalls without bulk role assignment, and a pricing page most customers never saw before renewal. Interviewed accounts were satisfied with the product itself — every churned admin cited operational friction, not capability gaps.</p>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:6px">
+                  <div style="border:1px solid var(--border-default);border-radius:8px;padding:14px"><div style="font:500 24px var(--font-serif-display);color:#35597E">71%</div><div style="font:var(--text-body-sm);color:var(--text-muted)">churned within 60 days of signup</div></div>
+                  <div style="border:1px solid var(--border-default);border-radius:8px;padding:14px"><div style="font:500 24px var(--font-serif-display);color:#35597E">12 d</div><div style="font:var(--text-body-sm);color:var(--text-muted)">median workspace setup time</div></div>
+                  <div style="border:1px solid var(--border-default);border-radius:8px;padding:14px"><div style="font:500 24px var(--font-serif-display);color:#35597E">4 / 4</div><div style="font:var(--text-body-sm);color:var(--text-muted)">interviews cited setup friction</div></div>
+                </div>
+                <div style="font:600 14px var(--font-sans);color:var(--text-heading);margin-top:10px">2 · What churned customers told us</div>
+                <p style="font:var(--text-body-sm);color:var(--text-body);margin:0;line-height:1.65">"The workspace setup. We had 40 seats and no way to bulk-assign roles, so it took our admin almost two weeks." — Priya Nair, churned Mar 2026</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ MANAGEMENT (internal) ═══════════ -->
+  <h2 style="font:var(--text-display-md);letter-spacing:-0.015em;color:var(--text-heading);margin:0 0 6px">8 · Management <span style="font:600 11px var(--font-sans);color:var(--slate-600);background:var(--slate-100);padding:3px 10px;border-radius:999px;vertical-align:middle">Internal</span></h2>
+  <p style="font:var(--text-body);color:var(--text-secondary);margin:0 0 24px;max-width:680px">Internal control surface for the agent org — rubric target: a non-engineer defines a new agent role (job, tools, guardrails) in under 10 minutes, unassisted.</p>
+  <div style="display:flex;gap:48px;align-items:flex-start;margin-bottom:96px">
+
+    <div id="1p" style="flex:none">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <a href="#1p" style="display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:26px;padding:0 8px;border-radius:999px;background:var(--ink-900);color:var(--ivory-100);font:600 12px var(--font-mono);text-decoration:none">1p</a>
+        <span style="font:600 15px var(--font-sans);color:var(--text-heading)">Agent roster</span>
+        <span style="display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:999px;background:var(--accent-soft);color:var(--clay-800);font:600 11px var(--font-sans)">Recommended</span>
+        <span style="font:var(--text-body-sm);color:var(--text-muted)">Every role, its tools, guardrails, cost &amp; latency per task — pause and edit inline</span>
+      </div>
+      <div style="width:1440px;height:920px;background:var(--bg-page);border:1px solid var(--border-default);border-radius:12px;box-shadow:0 1px 2px rgba(23,22,18,0.05);display:flex;overflow:hidden">
+        <div style="width:240px;flex:none;border-right:1px solid var(--border-default);display:flex;flex-direction:column">
+          <div style="padding:22px 22px 18px;font:500 20px var(--font-serif-display);letter-spacing:-0.015em;color:var(--text-heading)">Meridian</div>
+          <div style="display:flex;flex-direction:column;gap:2px;padding:0 12px">
+            <sc-for list="{{ navMgmt }}" as="n" hint-placeholder-count="9">
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:{{ n.bg }};color:{{ n.color }};font:{{ n.font }}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="{{ n.d }}"></path></svg>
+                <span>{{ n.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="margin-top:auto;padding:16px 22px;border-top:1px solid var(--border-default);display:flex;align-items:center;justify-content:space-between">
+            <span style="font:var(--text-body-sm);color:var(--text-muted)">Credits</span>
+            <span style="font:500 13px var(--font-mono);color:var(--text-heading)">1,240</span>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0;overflow:hidden;padding:36px 40px 0">
+          <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:20px">
+            <div>
+              <h3 style="font:var(--text-display-md);letter-spacing:-0.015em;color:var(--text-heading);margin:0 0 6px">Management</h3>
+              <p style="font:var(--text-body);color:var(--text-secondary);margin:0">6 roles · 3 active now · avg $0.31 and 2m 40s per task</p>
+            </div>
+            <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="primary" hint-size="auto,36px">New agent role</x-import>
+          </div>
+          <div style="background:var(--surface-card);border:1px solid var(--border-default);border-radius:12px;overflow:hidden;margin-bottom:20px">
+            <div style="display:grid;grid-template-columns:200px 1fr 190px 100px 90px 100px 60px;gap:14px;padding:10px 20px;border-bottom:1px solid var(--border-default);font:600 11px var(--font-mono);letter-spacing:0.08em;color:var(--text-muted)">
+              <span>ROLE</span><span>TOOLS</span><span>GUARDRAILS</span><span>COST/TASK</span><span>LATENCY</span><span>STATUS</span><span>ON</span>
+            </div>
+            <div style="display:grid;grid-template-columns:200px 1fr 190px 100px 90px 100px 60px;gap:14px;padding:14px 20px;border-bottom:1px solid var(--border-default);align-items:center">
+              <div><div style="font:500 15px var(--font-sans);color:var(--text-heading)">Manager</div><div style="font:var(--text-body-sm);color:var(--text-muted)">Plans, delegates, reviews</div></div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap"><x-import component-from-global-scope="MeridianDesignSystem_c43e08.Tag" hint-size="auto,24px">Delegate</x-import><x-import component-from-global-scope="MeridianDesignSystem_c43e08.Tag" hint-size="auto,24px">Review</x-import><x-import component-from-global-scope="MeridianDesignSystem_c43e08.Tag" hint-size="auto,24px">Spawn role</x-import></div>
+              <span style="font:var(--text-body-sm);color:var(--text-secondary)">Escalate after 2 retries</span>
+              <span style="font:500 13px var(--font-mono);color:var(--text-heading)">$0.08</span>
+              <span style="font:500 13px var(--font-mono);color:var(--text-heading)">0:40</span>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Badge" tone="success" dot="{{ true }}" hint-size="auto,22px">Working</x-import>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Switch" checked="{{ true }}" hint-size="40px,22px"></x-import>
+            </div>
+            <div style="display:grid;grid-template-columns:200px 1fr 190px 100px 90px 100px 60px;gap:14px;padding:14px 20px;border-bottom:1px solid var(--border-default);align-items:center">
+              <div><div style="font:500 15px var(--font-sans);color:var(--text-heading)">Research agent</div><div style="font:var(--text-body-sm);color:var(--text-muted)">Reads sources, synthesizes</div></div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap"><x-import component-from-global-scope="MeridianDesignSystem_c43e08.Tag" hint-size="auto,24px">Knowledge</x-import><x-import component-from-global-scope="MeridianDesignSystem_c43e08.Tag" hint-size="auto,24px">Web search</x-import><x-import component-from-global-scope="MeridianDesignSystem_c43e08.Tag" hint-size="auto,24px">Sheets</x-import></div>
+              <span style="font:var(--text-body-sm);color:var(--text-secondary)">Read-only on sources</span>
+              <span style="font:500 13px var(--font-mono);color:var(--text-heading)">$0.42</span>
+              <span style="font:500 13px var(--font-mono);color:var(--text-heading)">3:10</span>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Badge" tone="success" dot="{{ true }}" hint-size="auto,22px">Working</x-import>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Switch" checked="{{ true }}" hint-size="40px,22px"></x-import>
+            </div>
+            <div style="display:grid;grid-template-columns:200px 1fr 190px 100px 90px 100px 60px;gap:14px;padding:14px 20px;border-bottom:1px solid var(--border-default);align-items:center">
+              <div><div style="font:500 15px var(--font-sans);color:var(--text-heading)">Outreach agent</div><div style="font:var(--text-body-sm);color:var(--text-muted)">Sends surveys, follow-ups</div></div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap"><x-import component-from-global-scope="MeridianDesignSystem_c43e08.Tag" hint-size="auto,24px">Email</x-import><x-import component-from-global-scope="MeridianDesignSystem_c43e08.Tag" hint-size="auto,24px">Contacts</x-import></div>
+              <span style="font:var(--text-body-sm);color:var(--text-secondary)">Human approval to send</span>
+              <span style="font:500 13px var(--font-mono);color:var(--text-heading)">$0.11</span>
+              <span style="font:500 13px var(--font-mono);color:var(--text-heading)">1:05</span>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Badge" tone="warning" dot="{{ true }}" hint-size="auto,22px">Waiting</x-import>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Switch" checked="{{ true }}" hint-size="40px,22px"></x-import>
+            </div>
+            <div style="display:grid;grid-template-columns:200px 1fr 190px 100px 90px 100px 60px;gap:14px;padding:14px 20px;border-bottom:1px solid var(--border-default);align-items:center">
+              <div><div style="font:500 15px var(--font-sans);color:var(--text-heading)">Voice agent</div><div style="font:var(--text-body-sm);color:var(--text-muted)">Books and runs calls</div></div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap"><x-import component-from-global-scope="MeridianDesignSystem_c43e08.Tag" hint-size="auto,24px">Telephony</x-import><x-import component-from-global-scope="MeridianDesignSystem_c43e08.Tag" hint-size="auto,24px">Calendar</x-import></div>
+              <span style="font:var(--text-body-sm);color:var(--text-secondary)">Max 30 min per call</span>
+              <span style="font:500 13px var(--font-mono);color:var(--text-heading)">$0.95</span>
+              <span style="font:500 13px var(--font-mono);color:var(--text-heading)">18:00</span>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Badge" tone="success" dot="{{ true }}" hint-size="auto,22px">On call</x-import>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Switch" checked="{{ true }}" hint-size="40px,22px"></x-import>
+            </div>
+            <div style="display:grid;grid-template-columns:200px 1fr 190px 100px 90px 100px 60px;gap:14px;padding:14px 20px;align-items:center">
+              <div><div style="font:500 15px var(--font-sans);color:var(--text-heading)">Synthesis agent</div><div style="font:var(--text-body-sm);color:var(--text-muted)">Compiles branded reports</div></div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap"><x-import component-from-global-scope="MeridianDesignSystem_c43e08.Tag" hint-size="auto,24px">Knowledge</x-import><x-import component-from-global-scope="MeridianDesignSystem_c43e08.Tag" hint-size="auto,24px">Report builder</x-import><x-import component-from-global-scope="MeridianDesignSystem_c43e08.Tag" hint-size="auto,24px">Branding</x-import></div>
+              <span style="font:var(--text-body-sm);color:var(--text-secondary)">≤ 400 credits per report</span>
+              <span style="font:500 13px var(--font-mono);color:var(--text-heading)">$1.20</span>
+              <span style="font:500 13px var(--font-mono);color:var(--text-heading)">6:30</span>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Badge" tone="neutral" hint-size="auto,22px">Idle</x-import>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Switch" checked="{{ true }}" hint-size="40px,22px"></x-import>
+            </div>
+          </div>
+          <div style="display:flex;gap:20px">
+            <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Card" title="Run queue" hint-size="100%,150px">
+              <div style="display:flex;flex-direction:column;gap:8px;font:var(--text-body-sm)">
+                <div style="display:flex;justify-content:space-between;align-items:center"><span style="color:var(--text-body)">Compile final report — Churn study</span><x-import component-from-global-scope="MeridianDesignSystem_c43e08.Badge" tone="accent" dot="{{ true }}" hint-size="auto,22px">Running</x-import></div>
+                <div style="display:flex;justify-content:space-between;align-items:center"><span style="color:var(--text-body)">Send follow-up survey</span><x-import component-from-global-scope="MeridianDesignSystem_c43e08.Badge" tone="warning" dot="{{ true }}" hint-size="auto,22px">Needs approval</x-import></div>
+                <div style="display:flex;justify-content:space-between;align-items:center"><span style="color:var(--text-secondary)">Transcribe 2 recordings</span><x-import component-from-global-scope="MeridianDesignSystem_c43e08.Badge" tone="neutral" hint-size="auto,22px">Queued</x-import></div>
+              </div>
+            </x-import>
+            <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Card" title="Today" hint-size="100%,150px">
+              <div style="display:flex;gap:28px">
+                <div><div style="font:500 26px var(--font-serif-display);color:var(--text-heading)">41</div><div style="font:var(--text-body-sm);color:var(--text-muted)">tasks completed</div></div>
+                <div><div style="font:500 26px var(--font-serif-display);color:var(--text-heading)">92%</div><div style="font:var(--text-body-sm);color:var(--text-muted)">without escalation</div></div>
+                <div><div style="font:500 26px var(--font-serif-display);color:var(--text-heading)">$12.60</div><div style="font:var(--text-body-sm);color:var(--text-muted)">total spend</div></div>
+              </div>
+            </x-import>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="1q" style="flex:none">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <a href="#1q" style="display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:26px;padding:0 8px;border-radius:999px;background:var(--ink-900);color:var(--ivory-100);font:600 12px var(--font-mono);text-decoration:none">1q</a>
+        <span style="font:600 15px var(--font-sans);color:var(--text-heading)">New role wizard</span>
+        <span style="font:var(--text-body-sm);color:var(--text-muted)">The rubric's L5 test — job, tools, guardrails in three plain-language steps</span>
+      </div>
+      <div style="width:1440px;height:920px;background:var(--bg-page);border:1px solid var(--border-default);border-radius:12px;box-shadow:0 1px 2px rgba(23,22,18,0.05);display:flex;overflow:hidden;position:relative">
+        <div style="width:240px;flex:none;border-right:1px solid var(--border-default);display:flex;flex-direction:column">
+          <div style="padding:22px 22px 18px;font:500 20px var(--font-serif-display);letter-spacing:-0.015em;color:var(--text-heading)">Meridian</div>
+          <div style="display:flex;flex-direction:column;gap:2px;padding:0 12px">
+            <sc-for list="{{ navMgmt }}" as="n" hint-placeholder-count="9">
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:{{ n.bg }};color:{{ n.color }};font:{{ n.font }}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="{{ n.d }}"></path></svg>
+                <span>{{ n.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0;overflow:hidden;padding:36px 40px 0">
+          <h3 style="font:var(--text-display-md);letter-spacing:-0.015em;color:var(--text-heading);margin:0 0 24px">Management</h3>
+        </div>
+        <div style="position:absolute;inset:0;background:rgba(23,22,18,0.4);display:flex;align-items:center;justify-content:center">
+          <div style="width:640px;background:var(--surface-overlay);border-radius:16px;box-shadow:0 20px 50px rgba(23,22,18,0.25);padding:32px;display:flex;flex-direction:column;gap:22px">
+            <div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                <div style="font:500 24px var(--font-serif-display);letter-spacing:-0.015em;color:var(--text-heading)">New agent role</div>
+                <span style="font:var(--text-body-sm);color:var(--text-muted)">Step 2 of 3</span>
+              </div>
+              <div style="display:flex;gap:6px">
+                <span style="flex:1;height:4px;border-radius:2px;background:var(--clay-600)"></span>
+                <span style="flex:1;height:4px;border-radius:2px;background:var(--clay-600)"></span>
+                <span style="flex:1;height:4px;border-radius:2px;background:var(--ivory-300)"></span>
+              </div>
+            </div>
+            <div style="background:var(--ivory-100);border:1px solid var(--border-default);border-radius:8px;padding:12px 16px;display:flex;gap:10px;align-items:center">
+              <span style="font:600 11px var(--font-mono);letter-spacing:0.08em;color:var(--text-muted)">JOB</span>
+              <span style="font:var(--text-body);color:var(--text-heading)">Refunds specialist — reviews refund requests against policy and processes eligible ones</span>
+            </div>
+            <div>
+              <div style="font:var(--text-label);color:var(--text-heading);margin-bottom:10px">Which tools can it use?</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                <div style="border:1.5px solid var(--clay-600);background:var(--clay-50);border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:10px"><span style="width:16px;height:16px;border-radius:4px;background:var(--clay-600);color:#fff;display:flex;align-items:center;justify-content:center;flex:none"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg></span><div><div style="font:500 14px var(--font-sans);color:var(--text-heading)">Support queue</div><div style="font:var(--text-body-sm);color:var(--text-muted)">Read and update tickets</div></div></div>
+                <div style="border:1.5px solid var(--clay-600);background:var(--clay-50);border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:10px"><span style="width:16px;height:16px;border-radius:4px;background:var(--clay-600);color:#fff;display:flex;align-items:center;justify-content:center;flex:none"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg></span><div><div style="font:500 14px var(--font-sans);color:var(--text-heading)">Payments</div><div style="font:var(--text-body-sm);color:var(--text-muted)">Issue refunds via Dodo</div></div></div>
+                <div style="border:1px solid var(--border-default);border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:10px"><span style="width:16px;height:16px;border-radius:4px;border:1.5px solid var(--border-strong);flex:none"></span><div><div style="font:500 14px var(--font-sans);color:var(--text-body)">Email</div><div style="font:var(--text-body-sm);color:var(--text-muted)">Send messages to customers</div></div></div>
+                <div style="border:1px solid var(--border-default);border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:10px"><span style="width:16px;height:16px;border-radius:4px;border:1.5px solid var(--border-strong);flex:none"></span><div><div style="font:500 14px var(--font-sans);color:var(--text-body)">Knowledge</div><div style="font:var(--text-body-sm);color:var(--text-muted)">Read policy documents</div></div></div>
+              </div>
+            </div>
+            <div>
+              <div style="font:var(--text-label);color:var(--text-heading);margin-bottom:10px">Guardrails</div>
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;align-items:center;justify-content:space-between;border:1px solid var(--border-default);border-radius:8px;padding:10px 14px">
+                  <span style="font:var(--text-body);color:var(--text-body)">Ask a human before refunds over</span>
+                  <span style="font:500 14px var(--font-mono);color:var(--text-heading);background:var(--ivory-200);padding:4px 12px;border-radius:6px">$50</span>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;border:1px solid var(--border-default);border-radius:8px;padding:10px 14px">
+                  <span style="font:var(--text-body);color:var(--text-body)">Daily spend limit</span>
+                  <span style="font:500 14px var(--font-mono);color:var(--text-heading);background:var(--ivory-200);padding:4px 12px;border-radius:6px">$500</span>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;border:1px solid var(--border-default);border-radius:8px;padding:10px 14px">
+                  <span style="font:var(--text-body);color:var(--text-body)">Escalate when policy is unclear</span>
+                  <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Switch" checked="{{ true }}" hint-size="40px,22px"></x-import>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border-default);padding-top:18px">
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="ghost" hint-size="auto,36px">Back</x-import>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="primary" hint-size="auto,36px">Continue to review</x-import>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ EVALS (internal) ═══════════ -->
+  <h2 style="font:var(--text-display-md);letter-spacing:-0.015em;color:var(--text-heading);margin:0 0 6px">9 · Evals <span style="font:600 11px var(--font-sans);color:var(--slate-600);background:var(--slate-100);padding:3px 10px;border-radius:999px;vertical-align:middle">Internal</span></h2>
+  <p style="font:var(--text-body);color:var(--text-secondary);margin:0 0 24px;max-width:680px">Named eval sets, pass rates across versions, failed runs feeding the set, and a release gate — rubric target: closed-loop evaluation.</p>
+  <div style="display:flex;gap:48px;align-items:flex-start;margin-bottom:96px">
+
+    <div id="1r" style="flex:none">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <a href="#1r" style="display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:26px;padding:0 8px;border-radius:999px;background:var(--ink-900);color:var(--ivory-100);font:600 12px var(--font-mono);text-decoration:none">1r</a>
+        <span style="font:600 15px var(--font-sans);color:var(--text-heading)">Eval sets + versions</span>
+        <span style="display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:999px;background:var(--accent-soft);color:var(--clay-800);font:600 11px var(--font-sans)">Recommended</span>
+        <span style="font:var(--text-body-sm);color:var(--text-muted)">Pass rate climbing across versions, release gate log, failures auto-captured</span>
+      </div>
+      <div style="width:1440px;height:920px;background:var(--bg-page);border:1px solid var(--border-default);border-radius:12px;box-shadow:0 1px 2px rgba(23,22,18,0.05);display:flex;overflow:hidden">
+        <div style="width:240px;flex:none;border-right:1px solid var(--border-default);display:flex;flex-direction:column">
+          <div style="padding:22px 22px 18px;font:500 20px var(--font-serif-display);letter-spacing:-0.015em;color:var(--text-heading)">Meridian</div>
+          <div style="display:flex;flex-direction:column;gap:2px;padding:0 12px">
+            <sc-for list="{{ navEvals }}" as="n" hint-placeholder-count="9">
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:{{ n.bg }};color:{{ n.color }};font:{{ n.font }}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="{{ n.d }}"></path></svg>
+                <span>{{ n.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0;overflow:hidden;padding:36px 40px 0">
+          <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:20px">
+            <div>
+              <h3 style="font:var(--text-display-md);letter-spacing:-0.015em;color:var(--text-heading);margin:0 0 6px">Evals</h3>
+              <p style="font:var(--text-body);color:var(--text-secondary);margin:0">3 named sets · every escalated run becomes a new case automatically</p>
+            </div>
+            <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="primary" hint-size="auto,36px">Run all sets</x-import>
+          </div>
+          <div style="display:flex;gap:24px;align-items:flex-start">
+            <div style="flex:7;min-width:0;display:flex;flex-direction:column;gap:20px">
+              <div style="background:var(--surface-card);border:1px solid var(--border-default);border-radius:12px;overflow:hidden">
+                <div style="display:grid;grid-template-columns:1fr 90px 120px 130px 90px;gap:16px;padding:10px 20px;border-bottom:1px solid var(--border-default);font:600 11px var(--font-mono);letter-spacing:0.08em;color:var(--text-muted)">
+                  <span>EVAL SET</span><span>CASES</span><span>PASS RATE</span><span>LAST RUN</span><span></span>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 90px 120px 130px 90px;gap:16px;padding:14px 20px;border-bottom:1px solid var(--border-default);align-items:center">
+                  <div><div style="font:500 15px var(--font-sans);color:var(--text-heading)">Survey analysis</div><div style="font:var(--text-body-sm);color:var(--text-muted)">Held-out responses with agreed findings</div></div>
+                  <span style="font:500 13px var(--font-mono);color:var(--text-heading)">32</span>
+                  <span style="font:500 13px var(--font-mono);color:var(--green-600)">29 / 32</span>
+                  <span style="font:var(--text-body-sm);color:var(--text-secondary)">Jun 12, 2:10 PM</span>
+                  <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="ghost" size="sm" hint-size="auto,28px">Open</x-import>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 90px 120px 130px 90px;gap:16px;padding:14px 20px;border-bottom:1px solid var(--border-default);align-items:center">
+                  <div><div style="font:500 15px var(--font-sans);color:var(--text-heading)">Call quality</div><div style="font:var(--text-body-sm);color:var(--text-muted)">Transcripts scored on question depth</div></div>
+                  <span style="font:500 13px var(--font-mono);color:var(--text-heading)">18</span>
+                  <span style="font:500 13px var(--font-mono);color:var(--amber-600)">13 / 18</span>
+                  <span style="font:var(--text-body-sm);color:var(--text-secondary)">Jun 12, 1:40 PM</span>
+                  <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="ghost" size="sm" hint-size="auto,28px">Open</x-import>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 90px 120px 130px 90px;gap:16px;padding:14px 20px;align-items:center">
+                  <div><div style="font:500 15px var(--font-sans);color:var(--text-heading)">Report synthesis</div><div style="font:var(--text-body-sm);color:var(--text-muted)">Findings must cite real sources</div></div>
+                  <span style="font:500 13px var(--font-mono);color:var(--text-heading)">25</span>
+                  <span style="font:500 13px var(--font-mono);color:var(--green-600)">24 / 25</span>
+                  <span style="font:var(--text-body-sm);color:var(--text-secondary)">Jun 11, 6:02 PM</span>
+                  <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="ghost" size="sm" hint-size="auto,28px">Open</x-import>
+                </div>
+              </div>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Card" title="Pass rate by version — Survey analysis" hint-size="100%,240px">
+                <div style="display:flex;align-items:flex-end;gap:32px;height:140px;padding:0 8px">
+                  <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end"><span style="font:500 12px var(--font-mono);color:var(--text-muted)">59%</span><span style="width:100%;height:52%;background:var(--sand-300);border-radius:4px 4px 0 0"></span><span style="font:var(--text-body-sm);color:var(--text-muted)">v1</span></div>
+                  <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end"><span style="font:500 12px var(--font-mono);color:var(--text-muted)">69%</span><span style="width:100%;height:62%;background:var(--sand-300);border-radius:4px 4px 0 0"></span><span style="font:var(--text-body-sm);color:var(--text-muted)">v2</span></div>
+                  <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end"><span style="font:500 12px var(--font-mono);color:var(--text-muted)">78%</span><span style="width:100%;height:70%;background:var(--sand-300);border-radius:4px 4px 0 0"></span><span style="font:var(--text-body-sm);color:var(--text-muted)">v3</span></div>
+                  <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end"><span style="font:500 12px var(--font-mono);color:var(--clay-700)">91%</span><span style="width:100%;height:82%;background:var(--clay-600);border-radius:4px 4px 0 0"></span><span style="font:var(--text-body-sm);color:var(--text-heading);font-weight:500">v4 · live</span></div>
+                </div>
+              </x-import>
+            </div>
+            <div style="flex:4;min-width:0;display:flex;flex-direction:column;gap:16px">
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Card" title="Release gate" hint-size="100%,190px">
+                <div style="display:flex;flex-direction:column;gap:10px;font:var(--text-body-sm)">
+                  <div style="display:flex;justify-content:space-between;align-items:center"><span style="color:var(--text-body)">v4 prompt change — research agent</span><x-import component-from-global-scope="MeridianDesignSystem_c43e08.Badge" tone="success" hint-size="auto,22px">Released</x-import></div>
+                  <div style="display:flex;justify-content:space-between;align-items:center"><span style="color:var(--text-body)">v3.2 tone rewrite — voice agent</span><x-import component-from-global-scope="MeridianDesignSystem_c43e08.Badge" tone="danger" hint-size="auto,22px">Blocked</x-import></div>
+                  <div style="color:var(--text-muted)">Blocked Jun 10 — call quality dropped 13 → 9 passing. Releases require no regression on any set.</div>
+                </div>
+              </x-import>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Card" title="New cases from failures" hint-size="100%,200px">
+                <div style="display:flex;flex-direction:column;gap:10px;font:var(--text-body-sm)">
+                  <div style="display:flex;justify-content:space-between;gap:10px"><span style="color:var(--text-body)">Escalated: refund policy ambiguity on partial returns</span><span style="flex:none;color:var(--text-muted)">2h ago</span></div>
+                  <div style="display:flex;justify-content:space-between;gap:10px"><span style="color:var(--text-body)">Escalated: transcript mislabeled speaker on 3-way call</span><span style="flex:none;color:var(--text-muted)">Jun 11</span></div>
+                  <div style="color:var(--text-muted)">Every human escalation is captured as an eval case automatically.</div>
+                </div>
+              </x-import>
+              <div style="background:var(--surface-inverse);border-radius:12px;padding:18px">
+                <div style="font:var(--text-body-sm);color:var(--ink-300)">Prompts and agent definitions are version-controlled. <span style="font:var(--text-code);color:var(--ivory-100)">agents/research@v4</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="1s" style="flex:none">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <a href="#1s" style="display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:26px;padding:0 8px;border-radius:999px;background:var(--ink-900);color:var(--ivory-100);font:600 12px var(--font-mono);text-decoration:none">1s</a>
+        <span style="font:600 15px var(--font-sans);color:var(--text-heading)">Case review</span>
+        <span style="font:var(--text-body-sm);color:var(--text-muted)">One failing case opened — expected vs actual side by side</span>
+      </div>
+      <div style="width:1440px;height:920px;background:var(--bg-page);border:1px solid var(--border-default);border-radius:12px;box-shadow:0 1px 2px rgba(23,22,18,0.05);display:flex;overflow:hidden">
+        <div style="width:240px;flex:none;border-right:1px solid var(--border-default);display:flex;flex-direction:column">
+          <div style="padding:22px 22px 18px;font:500 20px var(--font-serif-display);letter-spacing:-0.015em;color:var(--text-heading)">Meridian</div>
+          <div style="display:flex;flex-direction:column;gap:2px;padding:0 12px">
+            <sc-for list="{{ navEvals }}" as="n" hint-placeholder-count="9">
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:{{ n.bg }};color:{{ n.color }};font:{{ n.font }}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="{{ n.d }}"></path></svg>
+                <span>{{ n.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0;overflow:hidden;padding:36px 40px 0;display:flex;flex-direction:column">
+          <div style="font:var(--text-body-sm);color:var(--text-muted);margin-bottom:4px"><span style="color:var(--text-secondary)">Evals</span><span style="padding:0 6px">/</span><span style="color:var(--text-secondary)">Call quality</span><span style="padding:0 6px">/</span><span style="color:var(--text-heading);font-weight:500">Case 14</span></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+            <h3 style="font:var(--text-display-md);letter-spacing:-0.015em;color:var(--text-heading);margin:0">Speaker labeling on 3-way calls</h3>
+            <div style="display:flex;gap:8px;align-items:center">
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Badge" tone="danger" dot="{{ true }}" hint-size="auto,22px">Failing since v3.2</x-import>
+              <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="secondary" size="sm" hint-size="auto,28px">Re-run case</x-import>
+            </div>
+          </div>
+          <div style="display:flex;gap:24px;flex:1;min-height:0">
+            <div style="flex:1;min-width:0;background:var(--surface-card);border:1px solid var(--border-default);border-radius:12px;padding:22px;display:flex;flex-direction:column;gap:12px;overflow:hidden">
+              <div style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:var(--green-600)"></span><span style="font:600 12px var(--font-mono);letter-spacing:0.08em;color:var(--text-muted)">EXPECTED</span></div>
+              <div style="font:var(--text-body-sm);color:var(--text-body);line-height:1.65">Transcript labels three distinct speakers. Priya's colleague (joined at 04:10) is labeled <span style="font:var(--text-code);background:var(--ivory-200);padding:1px 6px;border-radius:4px">GUEST 2</span> and her feedback on billing is attributed to her, not to Priya.</div>
+              <div style="border-top:1px solid var(--border-default);padding-top:12px;font:var(--text-body-sm);color:var(--text-secondary);line-height:1.7">
+                <div><span style="font:600 12px var(--font-mono);color:var(--text-muted)">PRIYA · </span>The setup took two weeks.</div>
+                <div><span style="font:600 12px var(--font-mono);color:var(--green-600)">GUEST 2 · </span>And billing never matched our PO cycle.</div>
+              </div>
+            </div>
+            <div style="flex:1;min-width:0;background:var(--surface-card);border:1px solid var(--red-100);border-radius:12px;padding:22px;display:flex;flex-direction:column;gap:12px;overflow:hidden">
+              <div style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:var(--red-600)"></span><span style="font:600 12px var(--font-mono);letter-spacing:0.08em;color:var(--text-muted)">ACTUAL · v3.2</span></div>
+              <div style="font:var(--text-body-sm);color:var(--text-body);line-height:1.65">Only two speakers detected. The colleague's remarks are merged into Priya's turns, so the billing complaint is attributed to the wrong person in the findings.</div>
+              <div style="border-top:1px solid var(--border-default);padding-top:12px;font:var(--text-body-sm);color:var(--text-secondary);line-height:1.7">
+                <div><span style="font:600 12px var(--font-mono);color:var(--text-muted)">PRIYA · </span>The setup took two weeks.</div>
+                <div style="background:var(--red-100);border-radius:4px;padding:2px 6px;margin:0 -6px"><span style="font:600 12px var(--font-mono);color:var(--red-600)">PRIYA · </span>And billing never matched our PO cycle.</div>
+              </div>
+              <div style="margin-top:auto;background:var(--ivory-100);border:1px solid var(--border-default);border-radius:8px;padding:12px 14px;font:var(--text-body-sm);color:var(--text-secondary)">Judge note: diarization prompt in v3.2 dropped the "count join events" instruction. <a href="#1s">View prompt diff</a></div>
+            </div>
+          </div>
+          <div style="flex:none;display:flex;justify-content:flex-end;gap:8px;padding:16px 0 24px">
+            <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="ghost" size="sm" hint-size="auto,28px">Mark as known limitation</x-import>
+            <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="primary" size="sm" hint-size="auto,28px">Fix prompt and re-run</x-import>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { decisionVal: 'mid', decisionResolved: false, apStatus: 'pending', apNote: '', actTab: 'needs' };
+
+  componentDidMount() {
+    if (!window.MeridianDesignSystem_c43e08) {
+      this._poll = setInterval(() => {
+        if (window.MeridianDesignSystem_c43e08) { clearInterval(this._poll); this.forceUpdate(); }
+      }, 200);
+    }
+  }
+  componentWillUnmount() { if (this._poll) clearInterval(this._poll); }
+
+  navFor(active, branded) {
+    const icons = {
+      Overview: 'M3 11l9-8 9 8M5 10v11h14V10',
+      Projects: 'M3 8a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+      Activity: 'M6 8a6 6 0 0 1 12 0c0 7 2 8 2 8H4s2-1 2-8M10.3 21a1.9 1.9 0 0 0 3.4 0',
+      Knowledge: 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5v14A2.5 2.5 0 0 0 6.5 22H20',
+      Appointments: 'M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.2a2 2 0 0 1 2.1-.5c.9.3 1.9.6 2.8.7a2 2 0 0 1 1.7 2z',
+      Billing: 'M2 7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2zM2 10h20',
+      Branding: 'M12 21a9 9 0 1 1 9-9c0 1.8-1.2 3-3 3h-2a2.4 2.4 0 0 0-1.8 4c.5.7 0 2-2.2 2z',
+      Management: 'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6',
+      Evals: 'M3.5 5.5L5 7l2.5-2.5M3.5 12.5L5 14l2.5-2.5M3.5 19.5L5 21l2.5-2.5M11 6h10M11 13h10M11 20h10'
+    };
+    const activeBg = branded ? '#E7EDF4' : 'var(--ivory-200)';
+    const activeColor = branded ? '#35597E' : 'var(--ink-900)';
+    return Object.keys(icons).map((label) => {
+      const isActive = label === active;
+      return {
+        label, d: icons[label],
+        bg: isActive ? activeBg : 'transparent',
+        color: isActive ? activeColor : 'var(--ink-500)',
+        font: (isActive ? '600' : '500') + ' 14px var(--font-sans)'
+      };
+    });
+  }
+
+  renderVals() {
+    const noop = () => {};
+    const ds = window.MeridianDesignSystem_c43e08;
+    const models = [
+      { id: 'deep', name: 'Meridian Deep', desc: 'Best for synthesis', tag: 'Recommended' },
+      { id: 'swift', name: 'Meridian Swift', desc: 'Fast, lower cost' }
+    ];
+    return {
+      noop,
+      navChat: this.navFor('Projects'),
+      navActivity: this.navFor('Activity'),
+      navKnowledge: this.navFor('Knowledge'),
+      navAppts: this.navFor('Appointments'),
+      navBilling: this.navFor('Billing'),
+      navBranding: this.navFor('Branding'),
+      navReport: this.navFor('Projects'),
+      navMgmt: this.navFor('Management'),
+      navEvals: this.navFor('Evals'),
+      navBrandedChat: this.navFor('Projects', true),
+      chatStepsA: [
+        { agent: 'Manager', detail: 'Planned 3 subtasks from your brief', state: 'done', time: '2:38 PM' },
+        { agent: 'Research agent', detail: 'Read 48 survey responses', state: 'done', handoffFrom: 'Manager', time: '1m 40s' },
+        { agent: 'Analysis agent', detail: 'Cross-checking against churn cohort', state: 'working', handoffFrom: 'Research agent' },
+        { agent: 'Outreach agent', detail: 'Waiting on your approval to send', state: 'waiting' }
+      ],
+      chatStepsB: [
+        { agent: 'Manager', detail: 'Booked 3 interviews via calendar', state: 'done', time: '2:39 PM' },
+        { agent: 'Voice agent', detail: 'On a call with Priya Nair', state: 'working', handoffFrom: 'Manager' },
+        { agent: 'Transcription', detail: 'Streaming transcript to thread', state: 'working' },
+        { agent: 'Synthesis agent', detail: 'Queued: merge into findings', state: 'queued' }
+      ],
+      reportSteps: [
+        { agent: 'Synthesis agent', detail: 'Merged findings from 4 sub-chats', state: 'done', time: '4:02 PM' },
+        { agent: 'Synthesis agent', detail: 'Writing section 4 · Pricing clarity', state: 'working' },
+        { agent: 'Brand agent', detail: 'Queued: apply Atlas Labs theme', state: 'queued' },
+        { agent: 'Manager', detail: 'Queued: final review pass', state: 'queued' }
+      ],
+      msgSources: [
+        { name: 'Responses.csv', meta: '48 rows', kind: 'file' },
+        { name: 'Launch questionnaire.pdf', meta: 'p. 2', kind: 'file' }
+      ],
+      decisionOptions: [
+        { id: 'all', label: 'All churned accounts' },
+        { id: 'mid', label: 'Mid-market only' },
+        { id: 'beta', label: 'Beta cohort only' }
+      ],
+      decisionVal: this.state.decisionVal,
+      decisionResolved: this.state.decisionResolved,
+      onDecision: (v) => this.setState({ decisionVal: v }),
+      onDecisionSubmit: () => this.setState({ decisionResolved: true }),
+      apStatus: this.state.apStatus,
+      apNote: this.state.apNote,
+      onApprove: () => this.setState({ apStatus: 'approved', apNote: 'by you · just now' }),
+      onDecline: () => this.setState({ apStatus: 'declined', apNote: 'by you · just now' }),
+      actTabs: [
+        { id: 'all', label: 'All', count: 12 },
+        { id: 'needs', label: 'Needs you', count: 4 },
+        { id: 'calls', label: 'Calls' },
+        { id: 'research', label: 'Research' }
+      ],
+      actTab: this.state.actTab,
+      onActTab: (id) => this.setState({ actTab: id }),
+      voiceStatus: 'Listening',
+      modelNode: ds ? React.createElement(ds.ModelPicker, { models, value: 'deep' }) : null
+    };
+  }
+}
+</script>
+</body>
+</html>

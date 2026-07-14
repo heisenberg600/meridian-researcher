@@ -1,0 +1,45 @@
+<!-- @dsCard group="Components" viewport="700x720" name="Human in the loop" subtitle="ApprovalCard, DecisionPrompt, CanvasPanel, PdfPage, SheetGrid" -->
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>body{margin:0;padding:20px 24px;background:var(--bg-page)}</style>
+<div id="root"></div>
+<script type="text/babel">
+const { ApprovalCard, DecisionPrompt, CanvasPanel, SheetGrid } = window.MeridianDesignSystem_c43e08;
+function Demo() {
+  const [status, setStatus] = React.useState("pending");
+  const [seg, setSeg] = React.useState("Enterprise");
+  const [sel, setSel] = React.useState([0, 0]);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <ApprovalCard
+        title="Send survey to 214 customers" meta="Outreach agent"
+        description="Email draft attached. Sends immediately on approval."
+        status={status} onApprove={() => setStatus("approved")} onDecline={() => setStatus("declined")}
+        resolvedNote="by Dana · 2:41 PM"
+      />
+      <DecisionPrompt
+        question="Which customer segment should the questionnaire target?"
+        options={["Enterprise", "Mid-market", "Startups"]}
+        value={seg} onChange={setSeg}
+      />
+      <div style={{ height: 300, border: "1px solid var(--border-default)", borderRadius: "var(--radius-lg)", overflow: "hidden", display: "flex", justifyContent: "flex-end", background: "var(--surface-card)" }}>
+        <CanvasPanel title="questionnaire-responses.xlsx" meta="Sheet 1" kind="sheet" width="100%" onCopy={() => {}} onClose={() => {}}>
+          <SheetGrid
+            columns={["Question", "Type", "Required"]}
+            rows={[
+              ["What does your team spend the most time on?", "Long text", "Yes"],
+              ["How many seats do you need?", "Number", "Yes"],
+              ["Which tools do you use today?", "Multi-select", "No"],
+            ]}
+            selected={sel} onSelect={setSel}
+          />
+        </CanvasPanel>
+      </div>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<Demo />);
+</script>

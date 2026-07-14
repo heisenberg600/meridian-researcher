@@ -1,0 +1,72 @@
+:root {
+  /* ---- Base palette ---- */
+  /* Ivory / paper neutrals (warm) */
+  --ivory-50: #FCFBF9;
+  --ivory-100: #FAF9F6;   /* page background */
+  --ivory-200: #F2F0EA;   /* sunken / wells */
+  --ivory-300: #E9E6DE;
+  --sand-300: #D8D4C8;
+  --sand-400: #BFBAAC;
+
+  /* Ink (warm near-black) */
+  --ink-900: #171612;
+  --ink-700: #3B3A33;
+  --ink-500: #57544C;
+  --ink-400: #7A766B;
+  --ink-300: #9C978A;
+
+  /* Terracotta accent */
+  --clay-600: #C2593B;
+  --clay-700: #A84A2F;
+  --clay-800: #8C3D26;
+  --clay-100: #F6E4DD;
+  --clay-50:  #FBF1EC;
+
+  /* Slate (secondary, links, info) */
+  --slate-600: #46607A;
+  --slate-100: #E4EAF0;
+
+  /* Semantic hues (muted, warm-shifted) */
+  --green-600: #3E7A54;
+  --green-100: #E2EEE5;
+  --amber-600: #A97A22;
+  --amber-100: #F6ECD8;
+  --red-600: #B03B2E;
+  --red-100: #F7E3DF;
+
+  /* ---- Semantic aliases ---- */
+  --bg-page: var(--ivory-100);
+  --bg-sunken: var(--ivory-200);
+  --surface-card: #FFFFFF;
+  --surface-overlay: #FFFFFF;
+  --surface-inverse: var(--ink-900);
+
+  --text-heading: var(--ink-900);
+  --text-body: var(--ink-700);
+  --text-secondary: var(--ink-500);
+  --text-muted: var(--ink-400);
+  --text-inverse: var(--ivory-100);
+  --text-link: var(--clay-700);
+  --text-link-hover: var(--clay-800);
+
+  --accent: var(--clay-600);
+  --accent-hover: var(--clay-700);
+  --accent-active: var(--clay-800);
+  --accent-soft: var(--clay-100);
+  --accent-softer: var(--clay-50);
+
+  --border-default: #E5E2D9;
+  --border-strong: #CFCBBF;
+  --border-focus: var(--clay-600);
+
+  --status-success: var(--green-600);
+  --status-success-bg: var(--green-100);
+  --status-warning: var(--amber-600);
+  --status-warning-bg: var(--amber-100);
+  --status-danger: var(--red-600);
+  --status-danger-bg: var(--red-100);
+  --status-info: var(--slate-600);
+  --status-info-bg: var(--slate-100);
+
+  --focus-ring: 0 0 0 3px rgba(194, 89, 59, 0.25);
+}

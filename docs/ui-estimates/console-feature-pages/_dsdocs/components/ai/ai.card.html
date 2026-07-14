@@ -1,0 +1,36 @@
+<!-- @dsCard group="Components" viewport="700x760" name="AI & Agents" subtitle="ModelPicker, ChatMessage, ChatComposer, AgentTimeline, VoiceAgentBar, SourceChip" -->
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>body{margin:0;padding:20px 24px;background:var(--bg-page)}</style>
+<div id="root"></div>
+<script type="text/babel">
+const { ChatMessage, ChatComposer, ModelPicker, AgentTimeline, VoiceAgentBar, SourceChip } = window.MeridianDesignSystem_c43e08;
+function Demo() {
+  const [model, setModel] = React.useState("meridian-pro");
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 620 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <ChatMessage role="user">Draft an onboarding questionnaire for enterprise customers.</ChatMessage>
+        <ChatMessage role="assistant" author="Meridian" time="2:41 PM" sources={[{ name: "onboarding-questionnaire.pdf", meta: "PDF" }]}>
+          Done — 12 questions across goals, tooling, and rollout. The draft is attached; two sections need your review.
+        </ChatMessage>
+      </div>
+      <AgentTimeline steps={[
+        { agent: "Research agent", detail: "Read 12 survey responses", state: "done", time: "1m 40s" },
+        { agent: "Analysis agent", detail: "Clustering themes across interviews…", state: "working", handoffFrom: "Research agent" },
+        { agent: "Outreach agent", detail: "Waiting for approval to send follow-ups", state: "waiting" },
+        { agent: "Report agent", state: "queued" },
+      ]} />
+      <VoiceAgentBar status="Listening" duration="02:14" style={{ maxWidth: 380 }} />
+      <ChatComposer
+        attachments={[{ name: "brief.docx", meta: "DOCX", onRemove: () => {} }]}
+        toolbar={<ModelPicker value={model} onChange={setModel} />}
+      />
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<Demo />);
+</script>

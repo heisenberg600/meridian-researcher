@@ -1,0 +1,31 @@
+<!-- @dsCard group="Components" viewport="700x480" name="Commerce & Activity" subtitle="CreditBalance, PaymentMethodRow, ActivityItem" -->
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>body{margin:0;padding:20px 24px;background:var(--bg-page)}</style>
+<div id="root"></div>
+<script type="text/babel">
+const { Card, CreditBalance, PaymentMethodRow, ActivityItem } = window.MeridianDesignSystem_c43e08;
+function Demo() {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 620 }}>
+      <Card>
+        <CreditBalance balance={12480} usedThisMonth={3210} refreshNote="Auto-refills at 500 · Dodo Payments" onAdd={() => {}} />
+        <div style={{ borderTop: "1px solid var(--border-default)", marginTop: 16 }}>
+          <PaymentMethodRow brand="visa" last4="4242" expiry="08/27" isDefault />
+          <div style={{ borderTop: "1px solid var(--border-default)" }}></div>
+          <PaymentMethodRow brand="upi" last4="9931" onMakeDefault={() => {}} onRemove={() => {}} />
+        </div>
+      </Card>
+      <Card padded={false} style={{ padding: "6px 4px" }}>
+        <ActivityItem kind="input" unread title="Approval needed to send survey" detail="Outreach agent is waiting on you." project="Churn study" time="2m ago" action="Review" />
+        <ActivityItem kind="form" title="New questionnaire response" detail="Priya S. completed the onboarding questionnaire." project="Onboarding research" time="1h ago" />
+        <ActivityItem kind="call" title="Call picked up" detail="Voice agent completed a 12-minute interview with Marcus L." project="Churn study" time="3h ago" />
+      </Card>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<Demo />);
+</script>

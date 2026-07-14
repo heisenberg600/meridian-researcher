@@ -1,0 +1,32 @@
+:root {
+  /* Families */
+  --font-serif-display: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-sans: "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", "SF Mono", Menlo, monospace;
+
+  /* Scale (display uses serif, everything else sans) */
+  --text-display-xl: 500 3.5rem/1.08 var(--font-serif-display);   /* 56px hero */
+  --text-display-lg: 500 2.5rem/1.12 var(--font-serif-display);   /* 40px page title */
+  --text-display-md: 500 1.75rem/1.2 var(--font-serif-display);   /* 28px section */
+  --text-heading-sm: 600 1.125rem/1.35 var(--font-sans);          /* 18px card title */
+  --text-body-lg: 400 1.0625rem/1.6 var(--font-sans);             /* 17px lede */
+  --text-body: 400 0.9375rem/1.55 var(--font-sans);               /* 15px default */
+  --text-body-sm: 400 0.8125rem/1.5 var(--font-sans);             /* 13px meta */
+  --text-label: 500 0.9375rem/1.2 var(--font-sans);               /* controls */
+  --text-caption: 500 0.6875rem/1.3 var(--font-sans);             /* 11px overline */
+  --text-code: 400 0.8125rem/1.5 var(--font-mono);
+
+  /* Tracking */
+  --tracking-display: -0.015em;
+  --tracking-caps: 0.08em;   /* uppercase overlines only */
+}
+
+body {
+  margin: 0;
+  font: var(--text-body);
+  color: var(--text-body);
+  background: var(--bg-page);
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--text-link); text-decoration: none; }
+a:hover { color: var(--text-link-hover); text-decoration: underline; }
