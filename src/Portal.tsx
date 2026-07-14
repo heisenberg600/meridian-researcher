@@ -46,6 +46,9 @@ import { ParticipantImportWizard } from "./features/participants/import/Particip
 import { createImportReviewState, importReviewReducer } from "./features/participants/import/reviewState";
 import { parseParticipantWorkbook } from "./features/participants/import/workbook";
 import { getPlanApprovalUi, getQuestionnaireGenerationUi } from "./features/studies/planApproval";
+import { createMemoryAdapter } from "./features/context/convexAdapters";
+import { StudyMemoryPage } from "./features/memory/StudyMemoryPage";
+import { canonicalStudyTab, legacyStudyTab } from "./features/study-workflow/legacyRoute";
 
 type MainView = "studies" | "activity" | "settings";
 type StudyTab =
@@ -56,7 +59,8 @@ type StudyTab =
   | "participants"
   | "calls"
   | "feedback"
-  | "artifacts";
+  | "artifacts"
+  | "memory";
 type CurrentUserQuery =
   | {
       user?: { name?: string; email?: string } | null;
@@ -73,11 +77,12 @@ const studyTabs: Array<{ id: StudyTab; label: string }> = [
   { id: "overview", label: "Overview" },
   { id: "chat", label: "Chat" },
   { id: "plan", label: "Plan" },
-  { id: "interview-guide", label: "Interview guide" },
+  { id: "interview-guide", label: "Questionnaire" },
   { id: "participants", label: "Participants" },
-  { id: "calls", label: "Calls" },
-  { id: "feedback", label: "Feedback" },
-  { id: "artifacts", label: "Artifacts" },
+  { id: "calls", label: "Fieldwork" },
+  { id: "feedback", label: "Analysis" },
+  { id: "artifacts", label: "Report" },
+  { id: "memory", label: "Memory" },
 ];
 
 const studyTabIds = new Set<StudyTab>(studyTabs.map((tab) => tab.id));
@@ -112,7 +117,8 @@ function readPortalRoute(): PortalRoute {
   }
 
   if (section === "studies" && studyId) {
-    const studyTab = studyTabIds.has(tabId as StudyTab) ? (tabId as StudyTab) : "overview";
+    const legacyTab = legacyStudyTab(tabId ?? "overview");
+    const studyTab = legacyTab && studyTabIds.has(legacyTab as StudyTab) ? legacyTab as StudyTab : "overview";
     return {
       mainView: "studies",
       selectedChatId: studyTab === "chat" && chatId ? (chatId as Id<"chatSessions">) : null,
@@ -135,7 +141,7 @@ function portalPath(route: PortalRoute) {
   if (!route.selectedStudyId) return "/portal";
 
   const studyId = encodeURIComponent(route.selectedStudyId);
-  const tab = encodeURIComponent(route.studyTab);
+  const tab = encodeURIComponent(canonicalStudyTab(route.studyTab) ?? route.studyTab);
   if (route.studyTab === "chat" && route.selectedChatId) {
     return `/portal/studies/${studyId}/chat/${encodeURIComponent(route.selectedChatId)}`;
   }
@@ -732,6 +738,7 @@ function StudyDetail({
         {studyTab === "calls" ? <StudyCalls selectedStudy={selectedStudy} /> : null}
         {studyTab === "feedback" ? <FeedbackSkeleton /> : null}
         {studyTab === "artifacts" ? <ArtifactsSkeleton /> : null}
+        {studyTab === "memory" ? <StudyMemoryRoute selectedStudy={selectedStudy} /> : null}
       </div>
     </div>
   );
@@ -1766,6 +1773,51 @@ function StudyParticipants({ selectedStudy }: { selectedStudy: Doc<"studies"> })
         </div>
       </div>
     </div>
+  );
+}
+
+function StudyMemoryRoute({ selectedStudy }: { selectedStudy: Doc<"studies"> }) {
+  const convex = useConvex();
+  const adapter = useMemo(() => createMemoryAdapter({
+    listCompany: () => convex.query(api.companyMemory.list, {}),
+    listStudy: ({ studyId }) => convex.query(api.studyMemory.list, {
+      studyId: studyId as Id<"studies">,
+    }),
+    createCompany: (args) => convex.mutation(api.companyMemory.create, args),
+    createStudy: (args) => convex.mutation(api.studyMemory.create, {
+      ...args,
+      studyId: args.studyId as Id<"studies">,
+    }),
+    updateCompany: async (args) => {
+      await convex.mutation(api.companyMemory.update, {
+        ...args,
+        memoryId: args.memoryId as Id<"organizationMemories">,
+      });
+    },
+    updateStudy: async (args) => {
+      await convex.mutation(api.studyMemory.update, {
+        ...args,
+        memoryId: args.memoryId as Id<"studyMemories">,
+      });
+    },
+    archiveCompany: async ({ memoryId }) => {
+      await convex.mutation(api.companyMemory.archive, {
+        memoryId: memoryId as Id<"organizationMemories">,
+      });
+    },
+    archiveStudy: async ({ memoryId }) => {
+      await convex.mutation(api.studyMemory.archive, {
+        memoryId: memoryId as Id<"studyMemories">,
+      });
+    },
+  }), [convex]);
+
+  return (
+    <StudyMemoryPage
+      adapter={adapter}
+      studyId={selectedStudy._id}
+      studyName={selectedStudy.title}
+    />
   );
 }
 
