@@ -337,6 +337,9 @@ export const complete = internalMutation({
       updatedAt: Date.now(),
       completedAt: Date.now(),
     });
+    await ctx.scheduler.runAfter(0, internal.evidence.normalizeCallRecord, {
+      callRecordId: args.callRecordId,
+    });
   },
 });
 

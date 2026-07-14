@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import { action, internalMutation, mutation, query } from "./_generated/server";
 import { assertParticipantCanAnswer } from "./lib/interviewAccess";
 
@@ -191,7 +192,7 @@ export const saveAnswer = mutation({
     const nextStatus = nextAnswerCount >= 5 ? "completed" : "started";
 
     if (!existing) {
-      await ctx.db.insert("interviewSessions", {
+      const interviewSessionId = await ctx.db.insert("interviewSessions", {
         organizationId: participant?.organizationId,
         studyId: participant?.studyId,
         participantId: participant?._id,
@@ -212,6 +213,9 @@ export const saveAnswer = mutation({
           status: nextStatus,
           updatedAt: now,
         });
+      }
+      if (nextStatus === "completed" && participant) {
+        await ctx.scheduler.runAfter(0, internal.evidence.normalizeInterviewSession, { interviewSessionId });
       }
       return null;
     }
@@ -237,6 +241,9 @@ export const saveAnswer = mutation({
     });
     if (participant) {
       await ctx.db.patch(participant._id, { status, updatedAt: now });
+    }
+    if (status === "completed" && participant) {
+      await ctx.scheduler.runAfter(0, internal.evidence.normalizeInterviewSession, { interviewSessionId: existing._id });
     }
     return null;
   },

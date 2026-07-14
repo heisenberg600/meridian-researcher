@@ -1,0 +1,53 @@
+{
+  "study": {
+    "id": "study-fixture",
+    "title": "Choosing a clearer onboarding promise",
+    "businessDecision": "Decide which onboarding promise should lead the next launch."
+  },
+  "analysis": {
+    "runId": "analysis-fixture-v3",
+    "summary": "Teams value faster orientation, but trust depends on visible control and evidence.",
+    "completedAt": 1784025000000,
+    "findings": [
+      {
+        "id": "finding-speed",
+        "title": "Fast orientation is the strongest initial value signal",
+        "narrative": "Seven of nine participants described the first useful summary as the moment the product became valuable.",
+        "findingType": "theme",
+        "strength": "strong",
+        "supportingEvidenceIds": ["evidence-01", "evidence-02", "evidence-03"],
+        "conflictingEvidenceIds": ["evidence-09"]
+      },
+      {
+        "id": "finding-control",
+        "title": "Review controls turn speed into trust",
+        "narrative": "Participants accepted automation when they could inspect sources and revise the output before sharing.",
+        "findingType": "opportunity",
+        "strength": "supported",
+        "supportingEvidenceIds": ["evidence-04", "evidence-05"],
+        "conflictingEvidenceIds": []
+      },
+      {
+        "id": "finding-enterprise",
+        "title": "Enterprise teams need a slower proof step",
+        "narrative": "Security and research leaders asked for methodology detail before relying on a generated recommendation.",
+        "findingType": "risk",
+        "strength": "supported",
+        "segment": "Enterprise",
+        "supportingEvidenceIds": ["evidence-06", "evidence-07"],
+        "conflictingEvidenceIds": ["evidence-08"]
+      }
+    ]
+  },
+  "brand": {
+    "displayName": "Atlas Labs",
+    "primaryColor": "#173A45",
+    "accentColor": "#D46A46",
+    "tone": "precise",
+    "reportTitle": "Onboarding promise decision brief",
+    "reportFooter": "Atlas Labs - Confidential research",
+    "headingFont": "serif",
+    "bodyFont": "sans"
+  },
+  "generatedAt": 1784026800000
+}
