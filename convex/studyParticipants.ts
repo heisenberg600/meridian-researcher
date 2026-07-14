@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
@@ -161,7 +161,12 @@ async function ensureUniqueContact(
       participant.status !== "archived" &&
       ((email && participant.email === email) || (phone && participant.phone === phone)),
   );
-  if (duplicate) throw new Error("A participant with this email or phone already exists");
+  if (duplicate) {
+    throw new ConvexError({
+      code: "DUPLICATE_PARTICIPANT_CONTACT",
+      message: "A participant with this email or phone already exists",
+    });
+  }
 }
 
 async function recordAudit(

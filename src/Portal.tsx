@@ -41,6 +41,7 @@ import {
   PromptInputTools,
 } from "./components/ai-elements/prompt-input";
 import { Badge, Button, Card, SectionHeader, TextInput, Textarea, cx } from "./components/meridian";
+import { getUserFacingConvexError } from "./lib/utils";
 
 type MainView = "studies" | "activity" | "settings";
 type StudyTab =
@@ -1474,7 +1475,7 @@ function StudyParticipants({ selectedStudy }: { selectedStudy: Doc<"studies"> })
       setEditingId(null);
       setForm(emptyParticipantForm);
     } catch (cause) {
-      setParticipantError(cause instanceof Error ? cause.message : "Could not save participant");
+      setParticipantError(getUserFacingConvexError(cause, "Could not save participant"));
     } finally {
       setIsSaving(false);
     }
