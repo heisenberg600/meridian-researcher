@@ -41,6 +41,7 @@ export type ImportReviewEvent =
     }
   | { type: "import_created" | "review_loaded"; batchId: string; rows: ImportReviewRow[] }
   | { type: "row_updated"; row: ImportReviewRow }
+  | { type: "mapping_changed"; field: keyof ImportMapping; columns: string[] }
   | { type: "approval_requested" }
   | { type: "import_approved"; participantCount: number }
   | { type: "failed"; message: string }
@@ -77,6 +78,8 @@ export function importReviewReducer(
         rows: state.rows.map((row) => row.id === event.row.id ? event.row : row),
         error: undefined,
       };
+    case "mapping_changed":
+      return { ...state, mapping: { ...state.mapping, [event.field]: event.columns } };
     case "approval_requested":
       if (!canAdvanceToApproval(state)) {
         throw new Error("Resolve or exclude every row that needs review before approval");

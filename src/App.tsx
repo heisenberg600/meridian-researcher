@@ -29,7 +29,7 @@ function PortalGate({ pathname }: { pathname: string }) {
   }
 
   if (isSignedIn) {
-    const feature = pathname.match(/^\/portal\/(knowledge|memory|brand)\/?$/)?.[1] as "knowledge" | "memory" | "brand" | undefined;
+    const feature = pathname.match(/^\/portal\/(knowledge|memory|brand|billing)\/?$/)?.[1] as "knowledge" | "memory" | "brand" | "billing" | undefined;
     if (feature) return <FeaturePortal page={feature} pathname={pathname} />;
     return <Portal />;
   }

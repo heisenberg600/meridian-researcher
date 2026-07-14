@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { BrandPage } from "@/features/brand/BrandPage";
+import { BillingPage } from "@/features/billing/BillingPage";
 import {
   createBrandAdapter,
   createKnowledgeAdapter,
@@ -12,7 +13,7 @@ import { KnowledgePage } from "@/features/knowledge/KnowledgePage";
 import { CompanyMemoryPage } from "@/features/memory/CompanyMemoryPage";
 import { PortalApp } from "./PortalApp";
 
-export function FeaturePortal({ page, pathname }: { page: "knowledge" | "memory" | "brand"; pathname: string }) {
+export function FeaturePortal({ page, pathname }: { page: "knowledge" | "memory" | "brand" | "billing"; pathname: string }) {
   const convex = useConvex();
   const adapters = useMemo(() => {
     const knowledge = createKnowledgeAdapter({
@@ -58,6 +59,7 @@ export function FeaturePortal({ page, pathname }: { page: "knowledge" | "memory"
       {page === "knowledge" ? <KnowledgePage adapter={adapters.knowledge} scope={{ kind: "company" }} /> : null}
       {page === "memory" ? <CompanyMemoryPage adapter={adapters.memory} /> : null}
       {page === "brand" ? <BrandPage adapter={adapters.brand} /> : null}
+      {page === "billing" ? <BillingPage /> : null}
     </PortalApp>
   );
 }

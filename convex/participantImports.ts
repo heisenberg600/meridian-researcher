@@ -383,8 +383,9 @@ export const createImport = mutation({
       createdAt: now,
       updatedAt: now,
     });
+    const persistedRows = [];
     for (const row of reviewed) {
-      await ctx.db.insert("participantImportRows", {
+      const rowId = await ctx.db.insert("participantImportRows", {
         organizationId: study.organizationId,
         studyId: study._id,
         batchId,
@@ -398,6 +399,7 @@ export const createImport = mutation({
         createdAt: now,
         updatedAt: now,
       });
+      persistedRows.push({ id: rowId, ...row });
     }
     if (study.status === "questionnaire_approved") {
       await transitionStudy(ctx, study._id, "participants_under_review");
@@ -412,7 +414,7 @@ export const createImport = mutation({
       metadata: { batchId, filename, ...counts },
       createdAt: now,
     });
-    return { batchId, counts };
+    return { batchId, counts, rows: persistedRows };
   },
 });
 
@@ -505,7 +507,7 @@ export const updateRow = mutation({
       metadata: { batchId: batch._id, rowId: target._id, rowNumber: target.rowNumber },
       createdAt: now,
     });
-    return reviewed[targetIndex];
+    return { id: target._id, ...reviewed[targetIndex] };
   },
 });
 
