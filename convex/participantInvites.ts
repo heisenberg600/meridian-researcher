@@ -2,15 +2,22 @@ import { v } from "convex/values";
 import { api, internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import { action, internalMutation, query } from "./_generated/server";
+import { assertOutreachDelivery } from "./lib/outreach";
 
 type OutreachContext = {
   participant: Doc<"studyParticipants">;
   study: Doc<"studies">;
   guide: Doc<"interviewBriefVersions">;
+  outreachBatch: Doc<"outreachBatches">;
+};
+
+const deliveryArgs = {
+  participantId: v.id("studyParticipants"),
+  outreachBatchId: v.id("outreachBatches"),
 };
 
 export const emailContext = query({
-  args: { participantId: v.id("studyParticipants") },
+  args: deliveryArgs,
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
@@ -29,12 +36,22 @@ export const emailContext = query({
     if (!study.currentInterviewBriefVersionId) throw new Error("Generate and approve an interview guide first");
     const guide = await ctx.db.get(study.currentInterviewBriefVersionId);
     if (!guide || guide.status !== "approved") throw new Error("Approve the interview guide before inviting participants");
-    return { participant, study, guide };
+    const outreachBatch = await ctx.db.get(args.outreachBatchId);
+    if (!outreachBatch || outreachBatch.studyId !== study._id) throw new Error("Outreach batch not found");
+    assertOutreachDelivery({
+      outreachStatus: outreachBatch.status,
+      participantIncluded: outreachBatch.participantIds.includes(participant._id),
+      questionnaireMatches: outreachBatch.questionnaireVersionId === guide._id,
+      participantBatchMatches: outreachBatch.participantBatchId === participant.importBatchId,
+      channel: "email",
+      channels: outreachBatch.channels,
+    });
+    return { participant, study, guide, outreachBatch };
   },
 });
 
 export const callContext = query({
-  args: { participantId: v.id("studyParticipants") },
+  args: deliveryArgs,
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
@@ -53,12 +70,22 @@ export const callContext = query({
     if (!study.currentInterviewBriefVersionId) throw new Error("Generate and approve an interview guide first");
     const guide = await ctx.db.get(study.currentInterviewBriefVersionId);
     if (!guide || guide.status !== "approved") throw new Error("Approve the interview guide before calling participants");
-    return { participant, study, guide };
+    const outreachBatch = await ctx.db.get(args.outreachBatchId);
+    if (!outreachBatch || outreachBatch.studyId !== study._id) throw new Error("Outreach batch not found");
+    assertOutreachDelivery({
+      outreachStatus: outreachBatch.status,
+      participantIncluded: outreachBatch.participantIds.includes(participant._id),
+      questionnaireMatches: outreachBatch.questionnaireVersionId === guide._id,
+      participantBatchMatches: outreachBatch.participantBatchId === participant.importBatchId,
+      channel: "voice",
+      channels: outreachBatch.channels,
+    });
+    return { participant, study, guide, outreachBatch };
   },
 });
 
 export const sendEmail = action({
-  args: { participantId: v.id("studyParticipants") },
+  args: deliveryArgs,
   handler: async (ctx, args): Promise<{ emailId: string; inviteUrl: string }> => {
     const context = await ctx.runQuery(api.participantInvites.emailContext, args);
     const apiKey = process.env.RESEND_API_KEY;
@@ -95,12 +122,20 @@ export const sendEmail = action({
 });
 
 export const sendOutreach = action({
-  args: { participantId: v.id("studyParticipants") },
+  args: deliveryArgs,
   handler: async (ctx, args): Promise<{
     email: { status: "sent"; providerId: string } | { status: "failed"; error: string };
     call: { status: "initiated"; conversationId?: string; callSid?: string } | { status: "failed"; error: string };
   }> => {
     const context = await ctx.runQuery(api.participantInvites.emailContext, args);
+    assertOutreachDelivery({
+      outreachStatus: context.outreachBatch.status,
+      participantIncluded: true,
+      questionnaireMatches: true,
+      participantBatchMatches: true,
+      channel: "voice",
+      channels: context.outreachBatch.channels,
+    });
     if (!context.participant.phone) throw new Error("Add a phone number before sending phone outreach");
     normalizePhoneNumber(context.participant.phone);
 
@@ -122,7 +157,7 @@ export const sendOutreach = action({
 });
 
 export const sendCall = action({
-  args: { participantId: v.id("studyParticipants") },
+  args: deliveryArgs,
   handler: async (ctx, args): Promise<
     | { status: "initiated"; conversationId?: string; callSid?: string }
     | { status: "failed"; error: string }
@@ -164,6 +199,7 @@ export const getByToken = query({
       estimatedMinutes: guide.brief.estimatedMinutes,
       sponsor: "Meridian",
       preferredMode: participant.preferredMode,
+      consentStatus: participant.consentStatus,
     };
   },
 });

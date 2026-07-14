@@ -37,6 +37,7 @@ function getInterviewSessionKey(inviteId: string) {
 export function InterviewClient({ invite }: InterviewClientProps) {
   const getAiStep = useAction(api.interviews.nextStep);
   const saveAnswer = useMutation(api.interviews.saveAnswer);
+  const recordConsent = useMutation(api.interviews.recordConsent);
   const voiceConfig = useQuery(api.interviews.voiceConfig);
   const [sessionKey] = useState(() => getInterviewSessionKey(invite.id));
   const savedSession = useQuery(api.interviews.sessionForInvite, {
@@ -55,6 +56,9 @@ export function InterviewClient({ invite }: InterviewClientProps) {
   const [multiChoice, setMultiChoice] = useState<string[]>([]);
   const [scaleValue, setScaleValue] = useState("3");
   const [hasHydratedSession, setHasHydratedSession] = useState(false);
+  const [consentStatus, setConsentStatus] = useState(invite.consentStatus ?? "pending");
+  const [consentError, setConsentError] = useState<string | null>(null);
+  const [isSavingConsent, setIsSavingConsent] = useState(false);
   const hydrationStartedRef = useRef(false);
 
   const progress = step?.type === "complete" ? 100 : Math.round((answers.length / 5) * 100);
@@ -154,6 +158,21 @@ export function InterviewClient({ invite }: InterviewClientProps) {
     });
   }
 
+  async function chooseConsent(granted: boolean) {
+    setIsSavingConsent(true);
+    setConsentError(null);
+    try {
+      if (invite.id !== "demo") {
+        await recordConsent({ inviteId: invite.id, granted });
+      }
+      setConsentStatus(granted ? "granted" : "declined");
+    } catch (error) {
+      setConsentError(error instanceof Error ? error.message : "Could not save your response");
+    } finally {
+      setIsSavingConsent(false);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-[var(--bg-page)] text-[var(--ink-700)]">
       <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-5 py-5 md:px-8">
@@ -190,6 +209,13 @@ export function InterviewClient({ invite }: InterviewClientProps) {
                   Loading interview...
                 </p>
               </div>
+            ) : consentStatus !== "granted" ? (
+              <ConsentGate
+                consentStatus={consentStatus}
+                error={consentError}
+                isSaving={isSavingConsent}
+                onChoose={chooseConsent}
+              />
             ) : !mode ? (
               <ModeSelect
                 invite={invite}
@@ -278,6 +304,57 @@ export function InterviewClient({ invite }: InterviewClientProps) {
         </section>
       </div>
     </main>
+  );
+}
+
+export function ConsentGate({
+  consentStatus,
+  error,
+  isSaving,
+  onChoose,
+}: {
+  consentStatus: "unknown" | "pending" | "granted" | "declined";
+  error: string | null;
+  isSaving: boolean;
+  onChoose: (granted: boolean) => Promise<void>;
+}) {
+  if (consentStatus === "declined") {
+    return (
+      <div className="mx-auto w-full max-w-2xl rounded-2xl border border-[var(--border-default)] bg-[var(--surface-card)] p-8">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">Your choice is saved</p>
+        <h2 className="mt-3 text-2xl font-semibold text-[var(--text-heading)]">You declined this interview</h2>
+        <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">No interview answers will be collected.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto w-full max-w-2xl rounded-2xl border border-[var(--border-default)] bg-[var(--surface-card)] p-8">
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">Before we begin</p>
+      <h2 className="mt-3 text-2xl font-semibold text-[var(--text-heading)]">Consent to take part</h2>
+      <p className="mt-4 text-sm leading-6 text-[var(--text-secondary)]">
+        Meridian will record your responses for this research study and share them with the study team for analysis. Participation is voluntary, and you may decline now.
+      </p>
+      {error ? <p role="alert" className="mt-4 text-sm text-red-700">{error}</p> : null}
+      <div className="mt-7 flex flex-wrap gap-3">
+        <button
+          type="button"
+          disabled={isSaving}
+          onClick={() => void onChoose(true)}
+          className="rounded-full bg-[var(--accent)] px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50"
+        >
+          {isSaving ? "Saving…" : "I agree and want to continue"}
+        </button>
+        <button
+          type="button"
+          disabled={isSaving}
+          onClick={() => void onChoose(false)}
+          className="rounded-full border border-[var(--border-default)] px-5 py-2.5 text-sm font-medium text-[var(--text-heading)] disabled:opacity-50"
+        >
+          Decline
+        </button>
+      </div>
+    </div>
   );
 }
 

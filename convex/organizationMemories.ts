@@ -28,7 +28,7 @@ async function requireUser(ctx: Pick<QueryCtx, "auth" | "db">) {
   return user;
 }
 
-function clampScore(value: number, fallback: number) {
+export function clampMemoryScore(value: number, fallback = 0.5) {
   if (!Number.isFinite(value)) return fallback;
   return Math.min(1, Math.max(0, value));
 }
@@ -128,8 +128,8 @@ export const upsertFromAgent = internalMutation({
         value,
         category: args.category,
         status: "active",
-        importance: clampScore(args.importance, existing.importance),
-        confidence: clampScore(args.confidence, existing.confidence),
+        importance: clampMemoryScore(args.importance, existing.importance ?? 0.5),
+        confidence: clampMemoryScore(args.confidence, existing.confidence ?? 0.5),
         source: "agent",
         sourceMessageId: args.sourceMessageId,
         updatedByAgentRunId: args.agentRunId,
@@ -151,8 +151,8 @@ export const upsertFromAgent = internalMutation({
       value,
       category: args.category,
       status: "active",
-      importance: clampScore(args.importance, 0.5),
-      confidence: clampScore(args.confidence, 0.5),
+      importance: clampMemoryScore(args.importance),
+      confidence: clampMemoryScore(args.confidence),
       source: "agent",
       sourceMessageId: args.sourceMessageId,
       createdByAgentRunId: args.agentRunId,

@@ -1,8 +1,8 @@
 "use client";
 
 import { UserButton, useUser } from "@clerk/react";
-import { useAction, useMutation, useQuery } from "convex/react";
-import { Component, useEffect, useMemo, useState } from "react";
+import { useAction, useConvex, useMutation, useQuery } from "convex/react";
+import { Component, useEffect, useMemo, useReducer, useState } from "react";
 import type { ErrorInfo, ReactNode } from "react";
 import {
   BrainIcon,
@@ -42,6 +42,9 @@ import {
 } from "./components/ai-elements/prompt-input";
 import { Badge, Button, Card, SectionHeader, TextInput, Textarea, cx } from "./components/meridian";
 import { getUserFacingConvexError } from "./lib/utils";
+import { ParticipantImportWizard } from "./features/participants/import/ParticipantImportWizard";
+import { createImportReviewState, importReviewReducer } from "./features/participants/import/reviewState";
+import { parseParticipantWorkbook } from "./features/participants/import/workbook";
 
 type MainView = "studies" | "activity" | "settings";
 type StudyTab =
@@ -1016,10 +1019,6 @@ function OrgSettings({
                   <p className="mt-3 [font:var(--text-body-sm)] text-[var(--text-secondary)]">
                     {memory.value}
                   </p>
-                  <div className="mt-4 flex gap-2">
-                    <Badge>Importance {Math.round(memory.importance * 100)}%</Badge>
-                    <Badge>Confidence {Math.round(memory.confidence * 100)}%</Badge>
-                  </div>
                 </div>
               ))
             )}
@@ -1434,19 +1433,21 @@ const emptyParticipantForm: ParticipantFormState = {
 };
 
 function StudyParticipants({ selectedStudy }: { selectedStudy: Doc<"studies"> }) {
+  const convex = useConvex();
   const participants = useQuery(api.studyParticipants.listForStudy, {
     studyId: selectedStudy._id,
   });
   const createParticipant = useMutation(api.studyParticipants.create);
   const updateParticipant = useMutation(api.studyParticipants.update);
   const archiveParticipant = useMutation(api.studyParticipants.archive);
-  const sendParticipantEmail = useAction(api.participantInvites.sendEmail);
-  const callParticipant = useAction(api.participantInvites.sendCall);
+  const createImport = useMutation(api.participantImports.createImport);
+  const updateImportRow = useMutation(api.participantImports.updateRow);
+  const approveImport = useMutation(api.participantImports.approveImport);
+  const [importState, dispatchImport] = useReducer(importReviewReducer, undefined, createImportReviewState);
+  const [importBusy, setImportBusy] = useState(false);
   const [form, setForm] = useState<ParticipantFormState>(emptyParticipantForm);
   const [editingId, setEditingId] = useState<Id<"studyParticipants"> | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [sendingInviteId, setSendingInviteId] = useState<Id<"studyParticipants"> | null>(null);
-  const [outreachChannel, setOutreachChannel] = useState<"email" | "call" | null>(null);
   const [participantError, setParticipantError] = useState<string | null>(null);
 
   const setField = <Key extends keyof ParticipantFormState>(
@@ -1494,26 +1495,11 @@ function StudyParticipants({ selectedStudy }: { selectedStudy: Doc<"studies"> })
     });
   }
 
-  async function handleOutreach(
-    participant: Doc<"studyParticipants">,
-    channel: "email" | "call",
-  ) {
-    setSendingInviteId(participant._id);
-    setOutreachChannel(channel);
-    setParticipantError(null);
-    try {
-      if (channel === "email") {
-        await sendParticipantEmail({ participantId: participant._id });
-      } else {
-        const result = await callParticipant({ participantId: participant._id });
-        if (result.status === "failed") throw new Error(result.error);
-      }
-    } catch (cause) {
-      setParticipantError(cause instanceof Error ? cause.message : `Could not start ${channel} outreach`);
-    } finally {
-      setSendingInviteId(null);
-      setOutreachChannel(null);
-    }
+  async function runImport(action: () => Promise<void>) {
+    setImportBusy(true);
+    try { await action(); }
+    catch (error) { dispatchImport({ type: "failed", message: error instanceof Error ? error.message : "Participant import failed" }); }
+    finally { setImportBusy(false); }
   }
 
   return (
@@ -1528,6 +1514,35 @@ function StudyParticipants({ selectedStudy }: { selectedStudy: Doc<"studies"> })
         <Badge tone="info">{participants?.length ?? 0} active</Badge>
       </div>
 
+      <div className="mt-6">
+        <ParticipantImportWizard
+          state={importState}
+          busy={importBusy}
+          onFileSelected={(file) => runImport(async () => {
+            const workbook = parseParticipantWorkbook(await file.arrayBuffer(), { filename: file.name });
+            const inferred = await convex.query(api.participantImports.inferMapping, { studyId: selectedStudy._id, headers: workbook.headers, sampleRows: workbook.rows.slice(0, 10) });
+            dispatchImport({ type: "workbook_parsed", workbook: { ...workbook, filename: file.name }, mapping: inferred.mapping });
+          })}
+          onMappingChange={(field, columns) => dispatchImport({ type: "mapping_changed", field, columns })}
+          onCreateImport={() => runImport(async () => {
+            if (!importState.workbook) throw new Error("Choose a workbook first");
+            const result = await createImport({ studyId: selectedStudy._id, filename: importState.workbook.filename, mapping: importState.mapping, rows: importState.workbook.rows });
+            dispatchImport({ type: "import_created", batchId: result.batchId, rows: result.rows });
+          })}
+          onUpdateRow={(rowId, normalized, exclude) => runImport(async () => {
+            const row = await updateImportRow({ rowId: rowId as Id<"participantImportRows">, normalized, exclude });
+            dispatchImport({ type: "row_updated", row });
+          })}
+          onRequestApproval={() => dispatchImport({ type: "approval_requested" })}
+          onApprove={() => runImport(async () => {
+            if (!importState.batchId) throw new Error("Create an import review first");
+            const result = await approveImport({ batchId: importState.batchId as Id<"participantImportBatches"> });
+            dispatchImport({ type: "import_approved", participantCount: result.participantIds.length });
+          })}
+          onManualAdd={() => document.getElementById("manual-participant-form")?.scrollIntoView({ behavior: "smooth" })}
+        />
+      </div>
+
       <div className="mt-6 grid items-start gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
         <Card className="p-5">
           <div className="flex items-center gap-2">
@@ -1536,7 +1551,7 @@ function StudyParticipants({ selectedStudy }: { selectedStudy: Doc<"studies"> })
               {editingId ? "Edit participant" : "Add participant"}
             </h2>
           </div>
-          <form onSubmit={handleSaveParticipant} className="mt-4 space-y-3">
+          <form id="manual-participant-form" onSubmit={handleSaveParticipant} className="mt-4 space-y-3">
             <TextInput
               value={form.name}
               onChange={(event) => setField("name", event.target.value)}
@@ -1659,32 +1674,22 @@ function StudyParticipants({ selectedStudy }: { selectedStudy: Doc<"studies"> })
                     type="button"
                     size="sm"
                     variant="outline"
-                    disabled={!participant.email || sendingInviteId === participant._id}
-                    title={participant.email ? "Send interview email" : "Add an email first"}
+                    disabled
+                    title="Approve and launch outreach from Fieldwork"
                     aria-label={`Email ${participant.name}`}
-                    onClick={() => void handleOutreach(participant, "email")}
                   >
-                    {sendingInviteId === participant._id && outreachChannel === "email" ? (
-                      <LoaderCircleIcon className="size-4 animate-spin" />
-                    ) : (
-                      <MailIcon className="size-4" />
-                    )}
+                    <MailIcon className="size-4" />
                     Email
                   </Button>
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
-                    disabled={!participant.phone || sendingInviteId === participant._id}
-                    title={participant.phone ? "Start ElevenLabs call" : "Add a phone first"}
+                    disabled
+                    title="Approve and launch outreach from Fieldwork"
                     aria-label={`Call ${participant.name}`}
-                    onClick={() => void handleOutreach(participant, "call")}
                   >
-                    {sendingInviteId === participant._id && outreachChannel === "call" ? (
-                      <LoaderCircleIcon className="size-4 animate-spin" />
-                    ) : (
-                      <PhoneCallIcon className="size-4" />
-                    )}
+                    <PhoneCallIcon className="size-4" />
                     Call
                   </Button>
                   <Button

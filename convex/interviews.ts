@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { action, internalMutation, mutation, query } from "./_generated/server";
+import { assertParticipantCanAnswer } from "./lib/interviewAccess";
 
 type InterviewAnswer = {
   stepId: string;
@@ -65,6 +66,9 @@ const inviteValidator = v.object({
   estimatedMinutes: v.number(),
   sponsor: v.string(),
   preferredMode: v.optional(v.union(v.literal("form"), v.literal("voice"), v.literal("either"))),
+  consentStatus: v.optional(
+    v.union(v.literal("unknown"), v.literal("pending"), v.literal("granted"), v.literal("declined")),
+  ),
 });
 
 const modeValidator = v.union(v.literal("chat"), v.literal("voice"));
@@ -107,6 +111,47 @@ export const resetInviteSessions = internalMutation({
   },
 });
 
+export const recordConsent = mutation({
+  args: { inviteId: v.string(), granted: v.boolean() },
+  handler: async (ctx, args) => {
+    const participant = await ctx.db
+      .query("studyParticipants")
+      .withIndex("by_invite_token", (q) => q.eq("inviteToken", args.inviteId))
+      .unique();
+    if (!participant || participant.status === "archived") {
+      throw new Error("This interview is no longer available");
+    }
+    if (participant.consentStatus === "declined" && args.granted) {
+      throw new Error("This invitation was already declined");
+    }
+    const study = await ctx.db.get(participant.studyId);
+    const questionnaire = study?.currentInterviewBriefVersionId
+      ? await ctx.db.get(study.currentInterviewBriefVersionId)
+      : null;
+    if (!study || !questionnaire || questionnaire.status !== "approved") {
+      throw new Error("This interview is no longer available");
+    }
+
+    const now = Date.now();
+    await ctx.db.patch(participant._id, {
+      consentStatus: args.granted ? "granted" : "declined",
+      consentGrantedAt: args.granted ? now : undefined,
+      status: args.granted ? "opened" : "declined",
+      updatedAt: now,
+    });
+    await ctx.db.insert("auditEvents", {
+      organizationId: participant.organizationId,
+      studyId: participant.studyId,
+      actorType: "participant",
+      eventType: args.granted ? "participant.consent_granted" : "participant.consent_declined",
+      summary: args.granted ? "Participant granted interview consent" : "Participant declined interview consent",
+      metadata: { participantId: participant._id },
+      createdAt: now,
+    });
+    return args.granted ? "granted" : "declined";
+  },
+});
+
 export const saveAnswer = mutation({
   args: {
     invite: inviteValidator,
@@ -116,6 +161,26 @@ export const saveAnswer = mutation({
   },
   handler: async (ctx, args) => {
     const now = Date.now();
+    const participant =
+      args.invite.id === "demo"
+        ? null
+        : await ctx.db
+            .query("studyParticipants")
+            .withIndex("by_invite_token", (q) => q.eq("inviteToken", args.invite.id))
+            .unique();
+    if (args.invite.id !== "demo" && !participant) {
+      throw new Error("This interview is no longer available");
+    }
+    if (participant) {
+      assertParticipantCanAnswer(participant.status, participant.consentStatus);
+    }
+    const study = participant ? await ctx.db.get(participant.studyId) : null;
+    const questionnaire = study?.currentInterviewBriefVersionId
+      ? await ctx.db.get(study.currentInterviewBriefVersionId)
+      : null;
+    if (participant && (!study || !questionnaire || questionnaire.status !== "approved")) {
+      throw new Error("This interview is no longer available");
+    }
     const existing = await ctx.db
       .query("interviewSessions")
       .withIndex("by_invite_session", (q) =>
@@ -127,10 +192,14 @@ export const saveAnswer = mutation({
 
     if (!existing) {
       await ctx.db.insert("interviewSessions", {
+        organizationId: participant?.organizationId,
+        studyId: participant?.studyId,
+        participantId: participant?._id,
+        questionnaireVersionId: questionnaire?._id,
         inviteId: args.invite.id,
         sessionKey: args.sessionKey,
-        studyTitle: args.invite.studyTitle,
-        respondentLabel: args.invite.respondentLabel,
+        studyTitle: study?.title ?? args.invite.studyTitle,
+        respondentLabel: questionnaire?.brief.respondentProfile ?? args.invite.respondentLabel,
         mode: args.mode,
         answers: [args.answer],
         status: nextStatus,
@@ -138,7 +207,17 @@ export const saveAnswer = mutation({
         updatedAt: now,
         completedAt: nextStatus === "completed" ? now : undefined,
       });
+      if (participant) {
+        await ctx.db.patch(participant._id, {
+          status: nextStatus,
+          updatedAt: now,
+        });
+      }
       return null;
+    }
+
+    if (participant && existing.participantId && existing.participantId !== participant._id) {
+      throw new Error("This interview session is no longer available");
     }
 
     const answers = existing.answers.filter((answer) => answer.stepId !== args.answer.stepId);
@@ -146,12 +225,19 @@ export const saveAnswer = mutation({
     const status = answers.length >= 5 ? "completed" : "started";
 
     await ctx.db.patch(existing._id, {
+      organizationId: participant?.organizationId ?? existing.organizationId,
+      studyId: participant?.studyId ?? existing.studyId,
+      participantId: participant?._id ?? existing.participantId,
+      questionnaireVersionId: questionnaire?._id ?? existing.questionnaireVersionId,
       answers,
       mode: args.mode,
       status,
       updatedAt: now,
       completedAt: status === "completed" ? now : existing.completedAt,
     });
+    if (participant) {
+      await ctx.db.patch(participant._id, { status, updatedAt: now });
+    }
     return null;
   },
 });

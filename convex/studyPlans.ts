@@ -1,33 +1,13 @@
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
-import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { internalMutation, query } from "./_generated/server";
-
-async function requireStudyAccess(
-  ctx: Pick<QueryCtx, "auth" | "db">,
-  studyId: Id<"studies">,
-) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) throw new Error("Not authenticated");
-
-  const user = await ctx.db
-    .query("users")
-    .withIndex("by_auth_token_identifier", (q) =>
-      q.eq("authTokenIdentifier", identity.tokenIdentifier),
-    )
-    .unique();
-  const study = await ctx.db.get(studyId);
-
-  if (!user?.defaultOrganizationId || study?.organizationId !== user.defaultOrganizationId) {
-    throw new Error("Study not found");
-  }
-  return study;
-}
+import type { MutationCtx } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
+import { requireStudyAccess } from "./lib/auth";
 
 export const currentForStudy = query({
   args: { studyId: v.id("studies") },
   handler: async (ctx, args) => {
-    const study = await requireStudyAccess(ctx, args.studyId);
+    const { study } = await requireStudyAccess(ctx, args.studyId);
     if (!study.currentStudyPlanVersionId) return null;
     return await ctx.db.get(study.currentStudyPlanVersionId);
   },
@@ -68,6 +48,12 @@ export const saveFromAgent = internalMutation({
     if (study.currentStudyPlanVersionId) {
       await supersedeCurrentPlan(ctx, study.currentStudyPlanVersionId);
     }
+    if (study.currentInterviewBriefVersionId) {
+      const currentBrief = await ctx.db.get(study.currentInterviewBriefVersionId);
+      if (currentBrief && currentBrief.status !== "superseded") {
+        await ctx.db.patch(currentBrief._id, { status: "superseded" });
+      }
+    }
 
     const now = Date.now();
     const status = args.readiness === "ready_for_review" ? "awaiting_approval" : "draft";
@@ -83,6 +69,7 @@ export const saveFromAgent = internalMutation({
 
     await ctx.db.patch(study._id, {
       currentStudyPlanVersionId: planVersionId,
+      currentInterviewBriefVersionId: undefined,
       status: args.readiness === "ready_for_review" ? "awaiting_plan_approval" : "draft",
       updatedAt: now,
     });
@@ -102,6 +89,52 @@ export const saveFromAgent = internalMutation({
       status,
       changeSummary: args.changeSummary,
     };
+  },
+});
+
+export const approve = mutation({
+  args: { planVersionId: v.id("studyPlanVersions") },
+  handler: async (ctx, args) => {
+    const plan = await ctx.db.get(args.planVersionId);
+    if (!plan) throw new Error("Study Plan not found");
+    const { user, study } = await requireStudyAccess(ctx, plan.studyId);
+    if (study.currentStudyPlanVersionId !== plan._id) {
+      throw new Error("Only the current Study Plan can be approved");
+    }
+    if (plan.status !== "awaiting_approval") {
+      throw new Error("Only a Study Plan awaiting approval can be approved");
+    }
+
+    const now = Date.now();
+    await ctx.db.patch(plan._id, {
+      status: "approved",
+      approvedBy: user._id,
+      approvedAt: now,
+    });
+    await ctx.db.patch(study._id, {
+      status: "plan_approved",
+      updatedAt: now,
+    });
+    await ctx.db.insert("approvals", {
+      organizationId: study.organizationId,
+      studyId: study._id,
+      subjectType: "study_plan",
+      subjectId: plan._id,
+      decision: "approved",
+      decidedBy: user._id,
+      decidedAt: now,
+    });
+    await ctx.db.insert("auditEvents", {
+      organizationId: study.organizationId,
+      studyId: study._id,
+      actorUserId: user._id,
+      actorType: "user",
+      eventType: "study_plan.approved",
+      summary: `Approved Study Plan version ${plan.version}`,
+      metadata: { planVersionId: plan._id, version: plan.version },
+      createdAt: now,
+    });
+    return plan._id;
   },
 });
 

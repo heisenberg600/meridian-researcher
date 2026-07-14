@@ -71,13 +71,17 @@ export default defineSchema({
       v.literal("draft"),
       v.literal("awaiting_plan_approval"),
       v.literal("plan_approved"),
+      v.literal("questionnaire_approved"),
+      v.literal("participants_under_review"),
       v.literal("fieldwork_ready"),
       v.literal("fieldwork_running"),
       v.literal("analyzing"),
+      v.literal("report_ready"),
       v.literal("completed"),
     ),
     currentStudyPlanVersionId: v.optional(v.id("studyPlanVersions")),
     currentInterviewBriefVersionId: v.optional(v.id("interviewBriefVersions")),
+    currentApprovedParticipantBatchId: v.optional(v.id("participantImportBatches")),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -190,9 +194,9 @@ export default defineSchema({
       v.literal("other"),
     ),
     status: v.union(v.literal("active"), v.literal("archived")),
-    importance: v.number(),
-    confidence: v.number(),
-    source: v.union(v.literal("user"), v.literal("agent"), v.literal("import")),
+    importance: v.optional(v.number()),
+    confidence: v.optional(v.number()),
+    source: v.optional(v.union(v.literal("user"), v.literal("agent"), v.literal("import"))),
     sourceMessageId: v.optional(v.id("messages")),
     createdByAgentRunId: v.optional(v.id("agentRuns")),
     updatedByAgentRunId: v.optional(v.id("agentRuns")),
@@ -203,6 +207,72 @@ export default defineSchema({
     .index("by_organization", ["organizationId"])
     .index("by_organization_and_status", ["organizationId", "status"])
     .index("by_organization_and_key", ["organizationId", "key"]),
+
+  knowledgeSources: defineTable({
+    organizationId: v.id("organizations"),
+    studyId: v.optional(v.id("studies")),
+    kind: v.union(
+      v.literal("website"),
+      v.literal("document"),
+      v.literal("spreadsheet"),
+      v.literal("audio"),
+      v.literal("video"),
+      v.literal("public_media"),
+    ),
+    url: v.optional(v.string()),
+    storageId: v.optional(v.id("_storage")),
+    filename: v.optional(v.string()),
+    contentType: v.optional(v.string()),
+    status: v.union(
+      v.literal("queued"),
+      v.literal("processing"),
+      v.literal("ready"),
+      v.literal("failed"),
+    ),
+    extractedSummary: v.optional(v.string()),
+    error: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_organization", ["organizationId"])
+    .index("by_study", ["studyId"])
+    .index("by_organization_status", ["organizationId", "status"]),
+
+  studyMemories: defineTable({
+    organizationId: v.id("organizations"),
+    studyId: v.id("studies"),
+    key: v.string(),
+    value: v.string(),
+    category: v.union(
+      v.literal("decision"),
+      v.literal("audience"),
+      v.literal("hypothesis"),
+      v.literal("constraint"),
+      v.literal("preference"),
+      v.literal("other"),
+    ),
+    status: v.union(v.literal("active"), v.literal("archived")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_study", ["studyId"])
+    .index("by_study_status", ["studyId", "status"])
+    .index("by_study_key", ["studyId", "key"]),
+
+  brandProfiles: defineTable({
+    organizationId: v.id("organizations"),
+    displayName: v.string(),
+    logoStorageId: v.optional(v.id("_storage")),
+    logoName: v.optional(v.string()),
+    primaryColor: v.string(),
+    accentColor: v.string(),
+    tone: v.optional(v.string()),
+    reportTitle: v.optional(v.string()),
+    reportFooter: v.optional(v.string()),
+    headingFont: v.optional(v.union(v.literal("serif"), v.literal("sans"))),
+    bodyFont: v.optional(v.union(v.literal("serif"), v.literal("sans"))),
+    updatedAt: v.number(),
+  }).index("by_organization", ["organizationId"]),
 
   studyPlanVersions: defineTable({
     organizationId: v.id("organizations"),
@@ -260,6 +330,8 @@ export default defineSchema({
       v.literal("granted"),
       v.literal("declined"),
     ),
+    consentGrantedAt: v.optional(v.number()),
+    importBatchId: v.optional(v.id("participantImportBatches")),
     status: v.union(
       v.literal("draft"),
       v.literal("invited"),
@@ -291,7 +363,102 @@ export default defineSchema({
     .index("by_study_status", ["studyId", "status"])
     .index("by_invite_token", ["inviteToken"]),
 
+  participantImportBatches: defineTable({
+    organizationId: v.id("organizations"),
+    studyId: v.id("studies"),
+    filename: v.string(),
+    storageId: v.optional(v.id("_storage")),
+    mapping: v.any(),
+    totalRows: v.number(),
+    validRows: v.number(),
+    invalidRows: v.number(),
+    duplicateRows: v.number(),
+    suppressedRows: v.number(),
+    status: v.union(
+      v.literal("uploaded"),
+      v.literal("mapping"),
+      v.literal("under_review"),
+      v.literal("approved"),
+      v.literal("rejected"),
+    ),
+    approvedBy: v.optional(v.id("users")),
+    approvedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_study", ["studyId"])
+    .index("by_study_status", ["studyId", "status"]),
+
+  participantImportRows: defineTable({
+    organizationId: v.id("organizations"),
+    studyId: v.id("studies"),
+    batchId: v.id("participantImportBatches"),
+    rowNumber: v.number(),
+    raw: v.any(),
+    normalized: v.object({
+      name: v.optional(v.string()),
+      email: v.optional(v.string()),
+      phone: v.optional(v.string()),
+      segment: v.optional(v.string()),
+      preferredMode: v.optional(
+        v.union(v.literal("form"), v.literal("voice"), v.literal("either")),
+      ),
+    }),
+    issues: v.array(v.string()),
+    duplicate: v.boolean(),
+    suppressed: v.boolean(),
+    disposition: v.union(
+      v.literal("ready"),
+      v.literal("needs_review"),
+      v.literal("excluded"),
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_batch", ["batchId"])
+    .index("by_batch_disposition", ["batchId", "disposition"]),
+
+  suppressionEntries: defineTable({
+    organizationId: v.id("organizations"),
+    normalizedEmail: v.optional(v.string()),
+    normalizedPhone: v.optional(v.string()),
+    reason: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_organization", ["organizationId"])
+    .index("by_organization_email", ["organizationId", "normalizedEmail"])
+    .index("by_organization_phone", ["organizationId", "normalizedPhone"]),
+
+  outreachBatches: defineTable({
+    organizationId: v.id("organizations"),
+    studyId: v.id("studies"),
+    questionnaireVersionId: v.id("interviewBriefVersions"),
+    participantBatchId: v.id("participantImportBatches"),
+    participantIds: v.array(v.id("studyParticipants")),
+    channels: v.array(v.union(v.literal("email"), v.literal("voice"))),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("awaiting_approval"),
+      v.literal("approved"),
+      v.literal("running"),
+      v.literal("paused"),
+      v.literal("completed"),
+      v.literal("failed"),
+    ),
+    approvedBy: v.optional(v.id("users")),
+    approvedAt: v.optional(v.number()),
+    launchedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_study", ["studyId"])
+    .index("by_study_status", ["studyId", "status"]),
+
   interviewSessions: defineTable({
+    organizationId: v.optional(v.id("organizations")),
+    studyId: v.optional(v.id("studies")),
+    participantId: v.optional(v.id("studyParticipants")),
+    questionnaireVersionId: v.optional(v.id("interviewBriefVersions")),
     inviteId: v.string(),
     sessionKey: v.string(),
     studyTitle: v.string(),
@@ -314,6 +481,8 @@ export default defineSchema({
     organizationId: v.id("organizations"),
     studyId: v.id("studies"),
     participantId: v.id("studyParticipants"),
+    studyPlanVersionId: v.optional(v.id("studyPlanVersions")),
+    questionnaireVersionId: v.optional(v.id("interviewBriefVersions")),
     conversationId: v.string(),
     callSid: v.optional(v.string()),
     status: v.union(
@@ -376,6 +545,89 @@ export default defineSchema({
     .index("by_study", ["studyId"])
     .index("by_participant", ["participantId"])
     .index("by_conversation", ["conversationId"]),
+
+  responseEvidence: defineTable({
+    organizationId: v.id("organizations"),
+    studyId: v.id("studies"),
+    participantId: v.id("studyParticipants"),
+    questionnaireVersionId: v.id("interviewBriefVersions"),
+    channel: v.union(v.literal("form"), v.literal("voice")),
+    interviewSessionId: v.optional(v.id("interviewSessions")),
+    callRecordId: v.optional(v.id("interviewCallRecords")),
+    questionId: v.optional(v.string()),
+    topicId: v.optional(v.string()),
+    excerpt: v.string(),
+    answerLocator: v.optional(v.string()),
+    timestampSeconds: v.optional(v.number()),
+    segment: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_study", ["studyId"])
+    .index("by_participant", ["participantId"]),
+
+  analysisRuns: defineTable({
+    organizationId: v.id("organizations"),
+    studyId: v.id("studies"),
+    evidenceIds: v.array(v.id("responseEvidence")),
+    status: v.union(
+      v.literal("queued"),
+      v.literal("running"),
+      v.literal("completed"),
+      v.literal("failed"),
+    ),
+    summary: v.optional(v.string()),
+    error: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_study", ["studyId"])
+    .index("by_study_status", ["studyId", "status"]),
+
+  findings: defineTable({
+    organizationId: v.id("organizations"),
+    studyId: v.id("studies"),
+    analysisRunId: v.id("analysisRuns"),
+    title: v.string(),
+    narrative: v.string(),
+    findingType: v.union(
+      v.literal("theme"),
+      v.literal("opportunity"),
+      v.literal("risk"),
+      v.literal("recommendation"),
+    ),
+    strength: v.union(v.literal("emerging"), v.literal("supported"), v.literal("strong")),
+    supportingEvidenceIds: v.array(v.id("responseEvidence")),
+    conflictingEvidenceIds: v.array(v.id("responseEvidence")),
+    segment: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_study", ["studyId"])
+    .index("by_analysis", ["analysisRunId"]),
+
+  reportVersions: defineTable({
+    organizationId: v.id("organizations"),
+    studyId: v.id("studies"),
+    analysisRunId: v.id("analysisRuns"),
+    version: v.number(),
+    brandSnapshot: v.any(),
+    sections: v.array(v.any()),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("generating"),
+      v.literal("ready"),
+      v.literal("published"),
+      v.literal("failed"),
+    ),
+    pdfStorageId: v.optional(v.id("_storage")),
+    pptxStorageId: v.optional(v.id("_storage")),
+    error: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_study", ["studyId"])
+    .index("by_study_version", ["studyId", "version"]),
 
   approvals: defineTable({
     organizationId: v.id("organizations"),
@@ -454,6 +706,133 @@ export default defineSchema({
     .index("by_study", ["studyId"])
     .index("by_run", ["agentRunId"]),
 
+  billingAccounts: defineTable({
+    organizationId: v.id("organizations"),
+    dodoCustomerId: v.optional(v.string()),
+    mode: v.union(v.literal("test"), v.literal("live")),
+    status: v.union(v.literal("active"), v.literal("suspended")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_organization", ["organizationId"]),
+
+  creditWallets: defineTable({
+    organizationId: v.id("organizations"),
+    granted: v.number(),
+    available: v.number(),
+    reserved: v.number(),
+    consumed: v.number(),
+    updatedAt: v.number(),
+  }).index("by_organization", ["organizationId"]),
+
+  creditTransactions: defineTable({
+    organizationId: v.id("organizations"),
+    studyId: v.optional(v.id("studies")),
+    operationId: v.optional(v.string()),
+    operation: v.optional(v.string()),
+    type: v.union(
+      v.literal("grant"),
+      v.literal("reserve"),
+      v.literal("debit"),
+      v.literal("release"),
+      v.literal("refund"),
+      v.literal("adjustment"),
+    ),
+    amount: v.number(),
+    balanceAfter: v.number(),
+    idempotencyKey: v.string(),
+    rateCardVersion: v.optional(v.string()),
+    reservationId: v.optional(v.id("creditReservations")),
+    reason: v.optional(v.string()),
+    providerPaymentId: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_organization", ["organizationId"])
+    .index("by_idempotency_key", ["idempotencyKey"])
+    .index("by_reservation", ["reservationId"])
+    .index("by_provider_payment", ["providerPaymentId"]),
+
+  creditReservations: defineTable({
+    organizationId: v.id("organizations"),
+    studyId: v.optional(v.id("studies")),
+    operationId: v.string(),
+    operation: v.string(),
+    maximumCredits: v.number(),
+    finalDebit: v.optional(v.number()),
+    measuredCredits: v.optional(v.number()),
+    shortfallCredits: v.optional(v.number()),
+    status: v.union(
+      v.literal("reserved"),
+      v.literal("finalized"),
+      v.literal("released"),
+      v.literal("expired"),
+    ),
+    idempotencyKey: v.string(),
+    finalizationIdempotencyKey: v.optional(v.string()),
+    releaseIdempotencyKey: v.optional(v.string()),
+    rateCardVersion: v.string(),
+    expiresAt: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_organization", ["organizationId"])
+    .index("by_operation", ["operationId"])
+    .index("by_idempotency_key", ["idempotencyKey"]),
+
+  checkoutSessions: defineTable({
+    organizationId: v.id("organizations"),
+    checkoutIntentId: v.string(),
+    idempotencyKey: v.string(),
+    dodoSessionId: v.optional(v.string()),
+    dodoPaymentId: v.optional(v.string()),
+    checkoutUrl: v.optional(v.string()),
+    productId: v.string(),
+    mode: v.union(v.literal("test"), v.literal("live")),
+    packKey: v.string(),
+    expectedGrant: v.number(),
+    status: v.union(
+      v.literal("creating"),
+      v.literal("created"),
+      v.literal("paid"),
+      v.literal("expired"),
+      v.literal("failed"),
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_organization", ["organizationId"])
+    .index("by_organization_idempotency", ["organizationId", "idempotencyKey"])
+    .index("by_checkout_intent", ["checkoutIntentId"])
+    .index("by_dodo_session", ["dodoSessionId"])
+    .index("by_dodo_payment", ["dodoPaymentId"]),
+
+  paymentWebhookEvents: defineTable({
+    dodoEventId: v.string(),
+    eventType: v.string(),
+    payloadHash: v.string(),
+    organizationId: v.optional(v.id("organizations")),
+    paymentId: v.optional(v.string()),
+    checkoutSessionId: v.optional(v.string()),
+    status: v.union(v.literal("received"), v.literal("processed"), v.literal("failed")),
+    error: v.optional(v.string()),
+    createdAt: v.number(),
+    processedAt: v.optional(v.number()),
+  })
+    .index("by_dodo_event", ["dodoEventId"])
+    .index("by_payment", ["paymentId"]),
+
+  rateCards: defineTable({
+    version: v.string(),
+    operation: v.string(),
+    nativeUnit: v.string(),
+    creditsPerUnit: v.optional(v.number()),
+    nativeUnitsPerBlock: v.number(),
+    creditsPerBlock: v.number(),
+    activeAt: v.number(),
+    retiredAt: v.optional(v.number()),
+  })
+    .index("by_version", ["version"])
+    .index("by_operation_active", ["operation", "activeAt"]),
+
   usageLedger: defineTable({
     organizationId: v.id("organizations"),
     studyId: v.optional(v.id("studies")),
@@ -464,6 +843,15 @@ export default defineSchema({
     outputTokens: v.number(),
     totalTokens: v.number(),
     costUsd: v.optional(v.number()),
+    provider: v.optional(v.string()),
+    providerOperationId: v.optional(v.string()),
+    nativeQuantity: v.optional(v.number()),
+    nativeUnit: v.optional(v.string()),
+    internalCostMicros: v.optional(v.number()),
+    billedCredits: v.optional(v.number()),
+    creditTransactionId: v.optional(v.id("creditTransactions")),
+    rateCardVersion: v.optional(v.string()),
+    finalized: v.optional(v.boolean()),
     createdAt: v.number(),
   })
     .index("by_study", ["studyId"])
@@ -473,7 +861,12 @@ export default defineSchema({
     organizationId: v.id("organizations"),
     studyId: v.optional(v.id("studies")),
     actorUserId: v.optional(v.id("users")),
-    actorType: v.union(v.literal("user"), v.literal("agent"), v.literal("system")),
+    actorType: v.union(
+      v.literal("user"),
+      v.literal("agent"),
+      v.literal("system"),
+      v.literal("participant"),
+    ),
     eventType: v.string(),
     summary: v.string(),
     metadata: v.optional(v.any()),

@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="_ds/meridian-design-system-c43e081f-cf01-4e0e-8a12-54537493f16b/tokens/fonts.css">
+  <link rel="stylesheet" href="_ds/meridian-design-system-c43e081f-cf01-4e0e-8a12-54537493f16b/tokens/colors.css">
+  <link rel="stylesheet" href="_ds/meridian-design-system-c43e081f-cf01-4e0e-8a12-54537493f16b/tokens/typography.css">
+  <link rel="stylesheet" href="_ds/meridian-design-system-c43e081f-cf01-4e0e-8a12-54537493f16b/tokens/spacing.css">
+  <link rel="stylesheet" href="_ds/meridian-design-system-c43e081f-cf01-4e0e-8a12-54537493f16b/tokens/effects.css">
+  <link rel="stylesheet" href="_ds/meridian-design-system-c43e081f-cf01-4e0e-8a12-54537493f16b/styles.css">
+  <script src="_ds/meridian-design-system-c43e081f-cf01-4e0e-8a12-54537493f16b/_ds_bundle.js"></script>
+  <style>
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    @keyframes ring { 0%,100% { transform: scale(1); opacity: 0.5; } 50% { transform: scale(1.12); opacity: 0.15; } }
+    a { color: var(--accent); }
+  </style>
+</helmet>
+
+<div style="width:1080px;height:760px;background:var(--brand-wash);border:1px solid var(--border-default);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;font-family:var(--font-sans);--accent:#35597E;--accent-hover:#2C4A6B;--accent-active:#243D59;--accent-soft:#E7EDF4;--focus-ring:rgba(53,89,126,0.3);--brand-wash:#F5F7FA">
+
+  <!-- BRAND HEADER (respondent sees the agency's customer brand) -->
+  <div style="height:60px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 32px;border-bottom:1px solid var(--border-default);background:#fff">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="width:28px;height:28px;border-radius:7px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font:500 15px var(--font-serif-display)">A</span>
+      <span style="font:500 18px var(--font-serif-display);letter-spacing:-0.015em;color:var(--text-heading)">Atlas Labs</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;font:var(--text-body-sm);color:var(--text-muted)">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+      Private &amp; secure
+    </div>
+  </div>
+
+  <div style="flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:32px">
+
+    <!-- ============ 1 · INTRO — VOICE FIRST ============ -->
+    <sc-if value="{{ isIntro }}" hint-placeholder-val="{{ true }}">
+      <div style="width:560px;animation:fadeUp 320ms var(--ease-out)">
+        <div style="text-align:center;margin-bottom:28px">
+          <div style="font:600 11px var(--font-mono);letter-spacing:0.09em;color:var(--accent);margin-bottom:12px">CUSTOMER CONVERSATION · 15 MIN</div>
+          <h1 style="font:500 32px var(--font-serif-display);letter-spacing:-0.02em;color:var(--text-heading);margin:0 0 12px;line-height:1.2">Tell us why you left, in your own words</h1>
+          <p style="font:var(--text-body-lg);color:var(--text-secondary);margin:0 auto;max-width:440px;line-height:1.55">The fastest way is to talk — our interviewer will call you right now and it takes about fifteen minutes.</p>
+        </div>
+
+        <!-- VOICE — primary path, front and center -->
+        <div style="background:#fff;border:1px solid var(--border-default);border-radius:16px;padding:24px;box-shadow:0 4px 20px rgba(23,22,18,0.06);margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+            <span style="width:40px;height:40px;flex:none;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.2a2 2 0 0 1 2.1-.5c.9.3 1.9.6 2.8.7a2 2 0 0 1 1.7 2z"></path></svg></span>
+            <div><div style="font:500 17px var(--font-sans);color:var(--text-heading)">Have us call you now</div><div style="font:var(--text-body-sm);color:var(--text-muted)">Enter your number — the call comes through in seconds</div></div>
+          </div>
+          <div style="display:flex;gap:10px">
+            <div style="flex:1"><x-import component-from-global-scope="MeridianDesignSystem_c43e08.Input" value="{{ phone }}" placeholder="+1 (555) 000-0000" onChange="{{ onPhone }}" hint-size="100%,44px"></x-import></div>
+            <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="primary" size="lg" onClick="{{ startCall }}" disabled="{{ callDisabled }}" hint-size="auto,44px">Call me now</x-import>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:12px;font:var(--text-body-sm);color:var(--text-muted)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
+            Or <a href="#" onClick="{{ pickSchedule }}" style="text-decoration:underline">schedule for later</a> if now isn't a good time
+          </div>
+        </div>
+
+        <!-- TYPE — secondary path -->
+        <div onClick="{{ startType }}" style="display:flex;align-items:center;gap:12px;background:transparent;border:1px solid var(--border-default);border-radius:12px;padding:16px 18px;cursor:pointer" style-hover="background:#fff">
+          <span style="width:36px;height:36px;flex:none;border-radius:9px;background:var(--ivory-200);color:var(--text-secondary);display:flex;align-items:center;justify-content:center"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg></span>
+          <div style="flex:1"><div style="font:500 15px var(--font-sans);color:var(--text-heading)">Prefer to type?</div><div style="font:var(--text-body-sm);color:var(--text-muted)">Answer four short questions instead — about five minutes</div></div>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"></path></svg>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ============ 2 · CALLING ============ -->
+    <sc-if value="{{ isCalling }}" hint-placeholder-val="{{ true }}">
+      <div style="width:440px;text-align:center;animation:fadeUp 320ms var(--ease-out)">
+        <div style="position:relative;width:112px;height:112px;margin:0 auto 28px">
+          <span style="position:absolute;inset:0;border-radius:50%;background:var(--accent-soft);animation:ring 1.6s var(--ease-out) infinite"></span>
+          <span style="position:absolute;inset:18px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.2a2 2 0 0 1 2.1-.5c.9.3 1.9.6 2.8.7a2 2 0 0 1 1.7 2z"></path></svg></span>
+        </div>
+        <h2 style="font:500 24px var(--font-serif-display);letter-spacing:-0.015em;color:var(--text-heading);margin:0 0 8px">Calling you now…</h2>
+        <p style="font:var(--text-body);color:var(--text-secondary);margin:0 0 24px">We're ringing <span style="font:500 15px var(--font-mono);color:var(--text-heading)">{{ phoneShown }}</span>. Pick up when it rings.</p>
+        <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="ghost" onClick="{{ cancelCall }}" hint-size="auto,36px">Cancel</x-import>
+      </div>
+    </sc-if>
+
+    <!-- ============ 3 · LIVE CALL ============ -->
+    <sc-if value="{{ isLive }}" hint-placeholder-val="{{ true }}">
+      <div style="width:560px;animation:fadeUp 320ms var(--ease-out)">
+        <div style="text-align:center;margin-bottom:20px">
+          <div style="display:inline-flex;align-items:center;gap:8px;font:600 12px var(--font-mono);letter-spacing:0.06em;color:var(--accent);margin-bottom:10px"><span style="width:8px;height:8px;border-radius:50%;background:var(--accent)"></span>CONNECTED · {{ liveClock }}</div>
+          <h2 style="font:500 24px var(--font-serif-display);letter-spacing:-0.015em;color:var(--text-heading);margin:0">You're talking with Atlas Labs</h2>
+        </div>
+        <div style="background:#fff;border:1px solid var(--border-default);border-radius:16px;padding:22px;box-shadow:0 4px 20px rgba(23,22,18,0.06);margin-bottom:16px">
+          <x-import component-from-global-scope="MeridianDesignSystem_c43e08.VoiceAgentBar" status="Interviewer speaking" duration="{{ liveClock }}" onMute="{{ noop }}" onEnd="{{ endCall }}" hint-size="100%,52px"></x-import>
+          <div style="margin-top:18px;display:flex;flex-direction:column;gap:12px">
+            <sc-for list="{{ liveTranscript }}" as="t" hint-placeholder-count="3">
+              <div style="display:flex;gap:12px;opacity:{{ t.opacity }}">
+                <span style="flex:none;width:70px;font:600 11px var(--font-mono);letter-spacing:0.04em;color:{{ t.color }};padding-top:2px">{{ t.who }}</span>
+                <span style="font:var(--text-body);color:var(--text-body);line-height:1.55">{{ t.text }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:10px;font:var(--text-body-sm);color:var(--text-muted)">
+            <span>Question {{ liveStep }} of 5</span>
+            <span style="width:140px;height:5px;border-radius:3px;background:var(--ivory-200);overflow:hidden"><span style="display:block;height:100%;background:var(--accent);width:{{ livePct }};transition:width 400ms var(--ease-out)"></span></span>
+          </div>
+          <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="ghost" size="sm" onClick="{{ endCall }}" hint-size="auto,28px">End call</x-import>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ============ 4 · TYPE FLOW (one question at a time) ============ -->
+    <sc-if value="{{ isType }}" hint-placeholder-val="{{ true }}">
+      <div style="width:600px">
+        <!-- progress -->
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:32px">
+          <span style="flex:1;height:5px;border-radius:3px;background:var(--ivory-200);overflow:hidden"><span style="display:block;height:100%;background:var(--accent);width:{{ typePct }};transition:width 360ms var(--ease-out)"></span></span>
+          <span style="font:500 12px var(--font-mono);color:var(--text-muted)">{{ typeIdxLabel }}</span>
+        </div>
+
+        <div style="animation:fadeUp 300ms var(--ease-out)" key="{{ qKey }}">
+          <div style="font:600 11px var(--font-mono);letter-spacing:0.09em;color:var(--accent);margin-bottom:10px">{{ q.section }}</div>
+          <h2 style="font:500 27px var(--font-serif-display);letter-spacing:-0.015em;color:var(--text-heading);margin:0 0 22px;line-height:1.25">{{ q.title }}</h2>
+
+          <!-- single choice -->
+          <sc-if value="{{ q.isChoice }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <sc-for list="{{ q.options }}" as="o" hint-placeholder-count="4">
+                <div onClick="{{ o.onPick }}" style="display:flex;align-items:center;gap:12px;border:1.5px solid {{ o.border }};background:{{ o.bg }};border-radius:11px;padding:15px 16px;cursor:pointer" style-hover="border-color:var(--accent)">
+                  <span style="flex:none;width:24px;height:24px;border-radius:6px;border:1.5px solid {{ o.markBorder }};background:{{ o.markBg }};color:{{ o.markColor }};display:flex;align-items:center;justify-content:center;font:600 12px var(--font-mono)">{{ o.key }}</span>
+                  <span style="font:500 15px var(--font-sans);color:var(--text-heading)">{{ o.label }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <!-- multi select -->
+          <sc-if value="{{ q.isMulti }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <sc-for list="{{ q.options }}" as="o" hint-placeholder-count="4">
+                <div onClick="{{ o.onPick }}" style="display:flex;align-items:center;gap:12px;border:1.5px solid {{ o.border }};background:{{ o.bg }};border-radius:11px;padding:15px 16px;cursor:pointer" style-hover="border-color:var(--accent)">
+                  <span style="flex:none;width:22px;height:22px;border-radius:6px;border:1.5px solid {{ o.markBorder }};background:{{ o.markBg }};color:#fff;display:flex;align-items:center;justify-content:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg></span>
+                  <span style="font:500 15px var(--font-sans);color:var(--text-heading)">{{ o.label }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <!-- rating -->
+          <sc-if value="{{ q.isRating }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;gap:10px">
+              <sc-for list="{{ q.scale }}" as="r" hint-placeholder-count="5">
+                <div onClick="{{ r.onPick }}" style="flex:1;aspect-ratio:1;border:1.5px solid {{ r.border }};background:{{ r.bg }};border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:3px" style-hover="border-color:var(--accent)">
+                  <span style="font:500 22px var(--font-serif-display);color:{{ r.numColor }}">{{ r.n }}</span>
+                  <span style="font:var(--text-body-sm);color:var(--text-muted)">{{ r.tag }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <!-- long text -->
+          <sc-if value="{{ q.isText }}" hint-placeholder-val="{{ true }}">
+            <textarea onInput="{{ onText }}" placeholder="Type your answer…" style="width:100%;min-height:130px;resize:none;border:1.5px solid var(--border-default);border-radius:11px;padding:15px 16px;font:15px var(--font-sans);color:var(--text-body);background:#fff;box-sizing:border-box;outline:none;line-height:1.5">{{ textValue }}</textarea>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:12px;padding:12px 14px;background:var(--accent-soft);border-radius:10px;font:var(--text-body-sm);color:var(--accent)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.2a2 2 0 0 1 2.1-.5c.9.3 1.9.6 2.8.7a2 2 0 0 1 1.7 2z"></path></svg>
+              Rather say it out loud? <a href="#" onClick="{{ switchToVoice }}" style="text-decoration:underline;font-weight:500">Have us call you instead</a>
+            </div>
+          </sc-if>
+
+          <!-- nav -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:28px">
+            <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="ghost" onClick="{{ prevQ }}" hint-size="auto,40px">{{ backLabel }}</x-import>
+            <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="primary" size="lg" onClick="{{ nextQ }}" disabled="{{ nextDisabled }}" hint-size="auto,44px">{{ nextLabel }}</x-import>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ============ 5 · DONE ============ -->
+    <sc-if value="{{ isDone }}" hint-placeholder-val="{{ true }}">
+      <div style="width:460px;text-align:center;animation:fadeUp 320ms var(--ease-out)">
+        <span style="width:60px;height:60px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:inline-flex;align-items:center;justify-content:center;margin-bottom:22px"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg></span>
+        <h2 style="font:500 27px var(--font-serif-display);letter-spacing:-0.015em;color:var(--text-heading);margin:0 0 10px">{{ doneTitle }}</h2>
+        <p style="font:var(--text-body-lg);color:var(--text-secondary);margin:0 0 24px;line-height:1.55">{{ doneBody }}</p>
+        <x-import component-from-global-scope="MeridianDesignSystem_c43e08.Button" variant="secondary" onClick="{{ restart }}" hint-size="auto,40px">Back to start</x-import>
+        <div style="margin-top:28px;font:var(--text-body-sm);color:var(--text-muted)">Powered by Atlas Labs · your responses are confidential</div>
+      </div>
+    </sc-if>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1080,&quot;height&quot;:760}}">
+class Component extends DCLogic {
+  state = {
+    screen: 'intro', phone: '', live: 0, liveStep: 2,
+    qIdx: 0, single: {}, multi: {}, rating: {}, text: {}, doneVia: 'type'
+  };
+
+  componentDidMount() {
+    this.timer = setInterval(() => {
+      this.setState((s) => {
+        if (s.screen === 'live') {
+          const nl = s.live + 1;
+          const step = Math.min(5, 2 + Math.floor(nl / 8));
+          return { live: nl, liveStep: step };
+        }
+        return null;
+      });
+    }, 1000);
+    if (!window.MeridianDesignSystem_c43e08) {
+      this.poll = setInterval(() => {
+        if (window.MeridianDesignSystem_c43e08) { clearInterval(this.poll); this.forceUpdate(); }
+      }, 200);
+    }
+  }
+  componentWillUnmount() { clearInterval(this.timer); if (this.poll) clearInterval(this.poll); }
+
+  fmt(s) { const m = Math.floor(s / 60), ss = s % 60; return m + ':' + String(ss).padStart(2, '0'); }
+
+  questions() {
+    return [
+      { id: 'tenure', section: 'ABOUT YOUR TIME WITH US', type: 'choice', title: 'How long were you an Atlas Labs customer?',
+        options: [ ['a', 'Less than 3 months'], ['b', '3 to 6 months'], ['c', '6 to 12 months'], ['d', 'Over a year'] ] },
+      { id: 'onboarding', section: 'ONBOARDING', type: 'rating', title: 'How smooth was getting set up in the first two weeks?',
+        scale: [ [1, 'Rough'], [2, ''], [3, 'Okay'], [4, ''], [5, 'Smooth'] ] },
+      { id: 'blockers', section: 'WHAT GOT IN THE WAY', type: 'multi', title: 'Which of these slowed you down? Pick all that apply.',
+        options: [ ['a', 'Setting up the workspace'], ['b', 'Assigning roles to the team'], ['c', 'Understanding pricing'], ['d', 'Connecting other tools'] ] },
+      { id: 'keep', section: 'WRAP-UP', type: 'text', title: 'If we could have changed one thing to keep you, what would it be?' }
+    ];
+  }
+
+  renderVals() {
+    const noop = () => {};
+    const s = this.state;
+    const qs = this.questions();
+    const q = qs[s.qIdx];
+
+    // intro
+    const cleaned = s.phone.replace(/[^0-9]/g, '');
+    const callDisabled = cleaned.length < 7;
+    const goCall = () => { if (!callDisabled) this.setState({ screen: 'calling' }); if (!callDisabled) setTimeout(() => this.setState((p) => p.screen === 'calling' ? { screen: 'live', live: 0, liveStep: 2 } : null), 2600); };
+
+    // type flow answer state
+    const answered = (() => {
+      if (!q) return false;
+      if (q.type === 'choice') return !!s.single[q.id];
+      if (q.type === 'rating') return !!s.rating[q.id];
+      if (q.type === 'multi') return (s.multi[q.id] || []).length > 0;
+      if (q.type === 'text') return (s.text[q.id] || '').trim().length > 0;
+      return false;
+    })();
+
+    const advance = () => {
+      if (!answered) return;
+      if (s.qIdx >= qs.length - 1) this.setState({ screen: 'done', doneVia: 'type' });
+      else this.setState({ qIdx: s.qIdx + 1 });
+    };
+    const back = () => { if (s.qIdx === 0) this.setState({ screen: 'intro' }); else this.setState({ qIdx: s.qIdx - 1 }); };
+
+    let qView = {};
+    if (q) {
+      if (q.type === 'choice') {
+        qView = { isChoice: true, options: q.options.map(([k, label]) => {
+          const on = s.single[q.id] === k;
+          return { key: k.toUpperCase(), label, onPick: () => this.setState({ single: Object.assign({}, s.single, { [q.id]: k }) }),
+            border: on ? 'var(--accent)' : 'var(--border-default)', bg: on ? 'var(--accent-soft)' : '#fff',
+            markBorder: on ? 'var(--accent)' : 'var(--border-strong)', markBg: on ? 'var(--accent)' : 'transparent',
+            markColor: on ? '#fff' : 'var(--text-muted)' };
+        }) };
+      } else if (q.type === 'multi') {
+        const sel = s.multi[q.id] || [];
+        qView = { isMulti: true, options: q.options.map(([k, label]) => {
+          const on = sel.includes(k);
+          return { label, onPick: () => { const next = on ? sel.filter((x) => x !== k) : sel.concat(k); this.setState({ multi: Object.assign({}, s.multi, { [q.id]: next }) }); },
+            border: on ? 'var(--accent)' : 'var(--border-default)', bg: on ? 'var(--accent-soft)' : '#fff',
+            markBorder: on ? 'var(--accent)' : 'var(--border-strong)', markBg: on ? 'var(--accent)' : 'transparent' };
+        }) };
+      } else if (q.type === 'rating') {
+        qView = { isRating: true, scale: q.scale.map(([n, tag]) => {
+          const on = s.rating[q.id] === n;
+          return { n, tag, onPick: () => this.setState({ rating: Object.assign({}, s.rating, { [q.id]: n }) }),
+            border: on ? 'var(--accent)' : 'var(--border-default)', bg: on ? 'var(--accent-soft)' : '#fff',
+            numColor: on ? 'var(--accent)' : 'var(--text-heading)' };
+        }) };
+      } else if (q.type === 'text') {
+        qView = { isText: true };
+      }
+      qView.section = q.section; qView.title = q.title;
+    }
+
+    return {
+      noop,
+      isIntro: s.screen === 'intro', isCalling: s.screen === 'calling', isLive: s.screen === 'live',
+      isType: s.screen === 'type', isDone: s.screen === 'done',
+
+      // intro
+      phone: s.phone, onPhone: (v) => this.setState({ phone: typeof v === 'string' ? v : (v && v.target ? v.target.value : '') }),
+      callDisabled, startCall: goCall,
+      startType: () => this.setState({ screen: 'type', qIdx: 0 }),
+      pickSchedule: (e) => { if (e && e.preventDefault) e.preventDefault(); this.setState({ screen: 'type', qIdx: 0 }); },
+
+      // calling / live
+      phoneShown: s.phone || 'your number',
+      cancelCall: () => this.setState({ screen: 'intro' }),
+      liveClock: this.fmt(s.live), liveStep: s.liveStep, livePct: (s.liveStep / 5 * 100) + '%',
+      endCall: () => this.setState({ screen: 'done', doneVia: 'voice' }),
+      liveTranscript: [
+        { who: 'ATLAS', text: "Thanks for picking up. To start — how long were you using Atlas Labs?", color: 'var(--text-muted)', opacity: '1' },
+        { who: 'YOU', text: "About eight months, then we moved off it in the spring.", color: 'var(--accent)', opacity: '1' },
+        { who: 'ATLAS', text: "Got it. What was going on around the time you decided to leave?", color: 'var(--text-muted)', opacity: '0.5' }
+      ],
+
+      // type flow
+      q: qView, qKey: s.qIdx,
+      typePct: ((s.qIdx) / qs.length * 100) + '%',
+      typeIdxLabel: (s.qIdx + 1) + ' of ' + qs.length,
+      textValue: s.text[q ? q.id : ''] || '',
+      onText: (e) => { const v = e && e.target ? e.target.value : ''; this.setState({ text: Object.assign({}, s.text, { [q.id]: v }) }); },
+      nextDisabled: !answered,
+      nextLabel: s.qIdx >= qs.length - 1 ? 'Submit' : 'Continue',
+      backLabel: s.qIdx === 0 ? 'Back' : 'Previous',
+      nextQ: advance, prevQ: back,
+      switchToVoice: (e) => { if (e && e.preventDefault) e.preventDefault(); this.setState({ screen: 'intro' }); },
+
+      // done
+      doneTitle: s.doneVia === 'voice' ? 'Thanks for talking with us' : 'Thanks — that is everything',
+      doneBody: s.doneVia === 'voice'
+        ? 'The conversation has been shared with the Atlas Labs team. If anything else comes to mind, you can always call back on this link.'
+        : 'Your answers have been sent to the Atlas Labs team. We may follow up by email if we have a quick question.',
+      restart: () => this.setState({ screen: 'intro', qIdx: 0, single: {}, multi: {}, rating: {}, text: {}, phone: '' })
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,8 +1,10 @@
 import { v } from "convex/values";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import type { MutationCtx, QueryCtx } from "./_generated/server";
+import type { MutationCtx } from "./_generated/server";
 import { action, internalMutation, mutation, query } from "./_generated/server";
+import { requireStudyAccess } from "./lib/auth";
+import { assertStudyCan } from "./lib/workflow";
 
 const briefValidator = v.object({
   title: v.string(),
@@ -40,25 +42,6 @@ type Brief = {
   guardrails: string[];
 };
 
-async function requireStudyAccess(
-  ctx: Pick<QueryCtx, "auth" | "db">,
-  studyId: Id<"studies">,
-) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) throw new Error("Not authenticated");
-  const user = await ctx.db
-    .query("users")
-    .withIndex("by_auth_token_identifier", (q) =>
-      q.eq("authTokenIdentifier", identity.tokenIdentifier),
-    )
-    .unique();
-  const study = await ctx.db.get(studyId);
-  if (!user?.defaultOrganizationId || study?.organizationId !== user.defaultOrganizationId) {
-    throw new Error("Study not found");
-  }
-  return { user, study };
-}
-
 export const currentForStudy = query({
   args: { studyId: v.id("studies") },
   handler: async (ctx, args) => {
@@ -87,6 +70,10 @@ export const generationContext = query({
     if (!study.currentStudyPlanVersionId) throw new Error("Create a Study Plan first");
     const plan = await ctx.db.get(study.currentStudyPlanVersionId);
     if (!plan) throw new Error("Current Study Plan was not found");
+    if (plan.status !== "approved") {
+      throw new Error("Approve the current Study Plan before generating a questionnaire");
+    }
+    assertStudyCan(study.status, "generate_questionnaire");
     return {
       studyId: study._id,
       organizationId: study.organizationId,
@@ -196,7 +183,7 @@ export const approve = mutation({
     }
     const now = Date.now();
     await ctx.db.patch(brief._id, { status: "approved", approvedBy: user._id, approvedAt: now });
-    await ctx.db.patch(study._id, { status: "fieldwork_ready", updatedAt: now });
+    await ctx.db.patch(study._id, { status: "questionnaire_approved", updatedAt: now });
     await ctx.db.insert("approvals", {
       organizationId: study.organizationId,
       studyId: study._id,
