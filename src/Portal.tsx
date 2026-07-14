@@ -49,6 +49,7 @@ import { getPlanApprovalUi, getQuestionnaireGenerationUi } from "./features/stud
 import { createMemoryAdapter } from "./features/context/convexAdapters";
 import { StudyMemoryPage } from "./features/memory/StudyMemoryPage";
 import { canonicalStudyTab, legacyStudyTab } from "./features/study-workflow/legacyRoute";
+import { AnalysisPage } from "./features/analysis/AnalysisPage";
 
 type MainView = "studies" | "activity" | "settings";
 type StudyTab =
@@ -736,7 +737,7 @@ function StudyDetail({
         ) : null}
         {studyTab === "participants" ? <StudyParticipants selectedStudy={selectedStudy} /> : null}
         {studyTab === "calls" ? <StudyCalls selectedStudy={selectedStudy} /> : null}
-        {studyTab === "feedback" ? <FeedbackSkeleton /> : null}
+        {studyTab === "feedback" ? <StudyAnalysisRoute selectedStudy={selectedStudy} /> : null}
         {studyTab === "artifacts" ? <ArtifactsSkeleton /> : null}
         {studyTab === "memory" ? <StudyMemoryRoute selectedStudy={selectedStudy} /> : null}
       </div>
@@ -2152,13 +2153,67 @@ function ScoreRow({ label, value }: { label: string; value: number }) {
   );
 }
 
-function FeedbackSkeleton() {
+function StudyAnalysisRoute({ selectedStudy }: { selectedStudy: Doc<"studies"> }) {
+  const analysis = useQuery(api.analysisActions.getAnalysis, { studyId: selectedStudy._id });
+  const findings = useQuery(api.findings.listFindings, {
+    studyId: selectedStudy._id,
+    analysisRunId: analysis?._id,
+  });
+  const startAnalysis = useAction(api.analysisActions.startAnalysis);
+  const [selectedEvidenceId, setSelectedEvidenceId] = useState<Id<"responseEvidence"> | null>(null);
+  const evidence = useQuery(
+    api.evidence.getEvidenceDetail,
+    selectedEvidenceId ? { evidenceId: selectedEvidenceId } : "skip",
+  );
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   return (
-    <SkeletonGrid
-      title="Feedback"
-      description="Respondent evidence will appear here after interviews produce persisted answers, quotes, and themes."
-      items={["Quotes", "Themes", "Objections", "Evidence tags"]}
-    />
+    <div>
+      {error ? (
+        <div role="alert" className="mb-5 border border-[var(--status-danger)] bg-[var(--status-danger-soft)] p-4 [font:var(--text-body-sm)] text-[var(--status-danger)]">
+          {error}
+        </div>
+      ) : null}
+      <AnalysisPage
+        analysis={analysis ? {
+          id: analysis._id,
+          snapshotKind: analysis.snapshotKind,
+          status: analysis.status,
+          summary: analysis.summary,
+          evidenceCount: analysis.evidenceIds.length,
+        } : null}
+        findings={(findings ?? []).map((finding) => ({
+          id: finding._id,
+          viewType: finding.viewType ?? "theme",
+          title: finding.title,
+          narrative: finding.narrative,
+          strength: finding.strength,
+          supportingEvidenceIds: finding.supportingEvidenceIds,
+          conflictingEvidenceIds: finding.conflictingEvidenceIds,
+          segment: finding.segment,
+        }))}
+        evidence={evidence ? {
+          id: evidence._id,
+          channel: evidence.channel,
+          excerpt: evidence.excerpt,
+          answerLocator: evidence.answerLocator,
+          participantName: evidence.participant?.name,
+          questionLabel: evidence.questionLabel,
+        } : null}
+        selectedEvidenceId={selectedEvidenceId ?? undefined}
+        onOpenEvidence={(id) => setSelectedEvidenceId(id as Id<"responseEvidence">)}
+        onCloseEvidence={() => setSelectedEvidenceId(null)}
+        busy={busy}
+        onStartAnalysis={() => {
+          setBusy(true);
+          setError(null);
+          void startAnalysis({ studyId: selectedStudy._id })
+            .catch((cause) => setError(getUserFacingConvexError(cause, "Analysis could not start")))
+            .finally(() => setBusy(false));
+        }}
+      />
+    </div>
   );
 }
 
