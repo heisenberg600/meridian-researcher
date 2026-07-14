@@ -1,6 +1,14 @@
 @import "tailwindcss";
 @import "../docs/ui-estimates/console-feature-pages/_ds/meridian-design-system-c43e081f-cf01-4e0e-8a12-54537493f16b/styles.css";
 
+.font-display {
+  font-family: var(--font-serif-display);
+}
+
+.font-mono-ds {
+  font-family: var(--font-mono);
+}
+
 :root {
   /* shadcn semantic contract, backed by the Meridian token system */
   --background: var(--bg-page);
