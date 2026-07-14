@@ -2,6 +2,7 @@ import { ConvexError, v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
+import { planDeliveryRetry } from "./lib/outreach";
 
 const preferredMode = v.union(v.literal("form"), v.literal("voice"), v.literal("either"));
 
@@ -42,6 +43,35 @@ export const listForStudy = query({
     return args.includeArchived
       ? participants
       : participants.filter((participant) => participant.status !== "archived");
+  },
+});
+
+export const fieldworkForStudy = query({
+  args: { studyId: v.id("studies") },
+  handler: async (ctx, args) => {
+    await requireStudyAccess(ctx, args.studyId);
+    const [participants, deliveries] = await Promise.all([
+      ctx.db.query("studyParticipants").withIndex("by_study", (q) => q.eq("studyId", args.studyId)).collect(),
+      ctx.db.query("outreachDeliveries").collect(),
+    ]);
+    return participants
+      .filter((participant) => participant.status !== "archived")
+      .map((participant) => {
+        const participantDeliveries = deliveries
+          .filter((delivery) => delivery.studyId === args.studyId && delivery.participantId === participant._id)
+          .sort((a, b) => b.updatedAt - a.updatedAt);
+        const retry = participantDeliveries.find((delivery) => planDeliveryRetry(delivery) === "dispatch");
+        return {
+          id: participant._id,
+          name: participant.name,
+          segment: participant.segment,
+          status: participant.status,
+          consentStatus: participant.consentStatus,
+          channels: [...new Set(participantDeliveries.map((delivery) => delivery.channel))],
+          deliveryStatus: participantDeliveries[0]?.status ?? "pending",
+          retryDeliveryId: retry?._id,
+        };
+      });
   },
 });
 

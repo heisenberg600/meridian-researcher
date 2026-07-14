@@ -13,6 +13,9 @@ import {
   planDeliveryRetry,
 } from "../convex/lib/outreach";
 import * as outreachBatches from "../convex/outreachBatches";
+import * as participantInvites from "../convex/participantInvites";
+import * as studyParticipants from "../convex/studyParticipants";
+import { readFileSync } from "node:fs";
 
 const ready = {
   studyStatus: "fieldwork_ready",
@@ -140,7 +143,46 @@ test("outreach exposes an explicit draft, approval, and launch boundary", () => 
   assert.ok("createDraft" in outreachBatches);
   assert.ok("submitForApproval" in outreachBatches);
   assert.ok("approve" in outreachBatches);
-  assert.ok("launch" in outreachBatches);
+  assert.ok("launchApprovedBatch" in outreachBatches);
+});
+
+test("external providers are only reachable through internal delivery actions", () => {
+  assert.equal("sendEmail" in participantInvites, false);
+  assert.equal("sendCall" in participantInvites, false);
+  assert.equal("sendOutreach" in participantInvites, false);
+
+  const source = readFileSync(new URL("../convex/participantInvites.ts", import.meta.url), "utf8");
+  assert.match(source, /export const executeDelivery = internalAction/);
+  assert.match(source, /deliveryId: v\.id\("outreachDeliveries"\)/);
+  assert.match(source, /internal\.participantInvites\.deliveryContext/);
+  assert.match(source, /assertDeliveryGate/);
+});
+
+test("governed dispatch records provider identity and fail-closed voice ambiguity", () => {
+  const source = readFileSync(new URL("../convex/outreachBatches.ts", import.meta.url), "utf8");
+  assert.match(source, /markDispatching/);
+  assert.match(source, /providerOperationId/);
+  assert.match(source, /markDeliveryUnknown/);
+  assert.match(source, /retrySafe: false/);
+  const providerSource = readFileSync(new URL("../convex/participantInvites.ts", import.meta.url), "utf8");
+  assert.match(providerSource, /Idempotency-Key/);
+});
+
+test("voice credits settle from measured call duration and lifecycle is persisted", () => {
+  const calls = readFileSync(new URL("../convex/callRecords.ts", import.meta.url), "utf8");
+  assert.match(calls, /durationSeconds/);
+  assert.match(calls, /internal\.credits\.reconcileUsage/);
+  assert.match(calls, /outreachDeliveryId/);
+  assert.match(calls, /status: "completed"/);
+  assert.match(calls, /participant[\s\S]*status/);
+});
+
+test("fieldwork exposes joined participant and delivery lifecycle state", () => {
+  assert.ok("fieldworkForStudy" in studyParticipants);
+  const source = readFileSync(new URL("../convex/studyParticipants.ts", import.meta.url), "utf8");
+  assert.match(source, /deliveryStatus/);
+  assert.match(source, /retryDeliveryId/);
+  assert.match(source, /planDeliveryRetry/);
 });
 
 test("provider delivery cannot bypass a running approved outreach snapshot", () => {

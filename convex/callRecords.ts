@@ -96,6 +96,8 @@ export const schedule = internalMutation({
     participantId: v.id("studyParticipants"),
     conversationId: v.string(),
     callSid: v.optional(v.string()),
+    outreachDeliveryId: v.optional(v.id("outreachDeliveries")),
+    creditReservationId: v.optional(v.id("creditReservations")),
   },
   handler: async (ctx, args) => {
     const participant = await ctx.db.get(args.participantId);
@@ -112,6 +114,8 @@ export const schedule = internalMutation({
       participantId: participant._id,
       conversationId: args.conversationId,
       callSid: args.callSid,
+      outreachDeliveryId: args.outreachDeliveryId,
+      creditReservationId: args.creditReservationId,
       status: "scheduled",
       attempts: 0,
       createdAt: now,
@@ -325,6 +329,9 @@ export const complete = internalMutation({
     terminationReason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const record = await ctx.db.get(args.callRecordId);
+    if (!record) return;
+    const now = Date.now();
     await ctx.db.patch(args.callRecordId, {
       transcript: args.transcript,
       analysis: args.analysis,
@@ -334,23 +341,62 @@ export const complete = internalMutation({
       terminationReason: args.terminationReason,
       status: "completed",
       error: undefined,
-      updatedAt: Date.now(),
-      completedAt: Date.now(),
+      updatedAt: now,
+      completedAt: now,
     });
+    const participant = await ctx.db.get(record.participantId);
+    if (participant) await ctx.db.patch(participant._id, { status: "completed", updatedAt: now });
+    if (record.outreachDeliveryId) await ctx.db.patch(record.outreachDeliveryId, { status: "accepted", updatedAt: now });
+    if (record.creditReservationId && args.durationSeconds !== undefined && !record.creditsFinalizedAt) {
+      await ctx.scheduler.runAfter(0, internal.callRecords.finalizeVoiceCredits, { callRecordId: record._id });
+    }
     await ctx.scheduler.runAfter(0, internal.evidence.normalizeCallRecord, {
       callRecordId: args.callRecordId,
     });
   },
 });
 
+export const finalizeVoiceCredits = internalAction({
+  args: { callRecordId: v.id("interviewCallRecords") },
+  handler: async (ctx, args) => {
+    const record = await ctx.runQuery(internal.callRecords.getInternal, args);
+    if (!record?.creditReservationId || record.creditsFinalizedAt || record.durationSeconds === undefined) return;
+    await ctx.runMutation(internal.credits.reconcileUsage, {
+      organizationId: record.organizationId,
+      reservationId: record.creditReservationId,
+      provider: "elevenlabs",
+      providerOperationId: record.conversationId,
+      nativeQuantity: Math.max(0, Math.ceil(record.durationSeconds)),
+      internalCostMicros: 0,
+      model: "elevenlabs-convai",
+    });
+    await ctx.runMutation(internal.callRecords.markCreditsFinalized, { callRecordId: record._id });
+  },
+});
+
+export const markCreditsFinalized = internalMutation({
+  args: { callRecordId: v.id("interviewCallRecords") },
+  handler: async (ctx, args) => {
+    const record = await ctx.db.get(args.callRecordId);
+    if (record && !record.creditsFinalizedAt) await ctx.db.patch(record._id, { creditsFinalizedAt: Date.now(), updatedAt: Date.now() });
+  },
+});
+
 export const fail = internalMutation({
   args: { callRecordId: v.id("interviewCallRecords"), error: v.string() },
   handler: async (ctx, args) => {
+    const record = await ctx.db.get(args.callRecordId);
     await ctx.db.patch(args.callRecordId, {
       status: "failed",
       error: args.error,
       updatedAt: Date.now(),
     });
+    if (record) {
+      const participant = await ctx.db.get(record.participantId);
+      if (participant && participant.status !== "completed" && participant.status !== "declined" && participant.status !== "archived") {
+        await ctx.db.patch(participant._id, { status: "failed", updatedAt: Date.now() });
+      }
+    }
   },
 });
 

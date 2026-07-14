@@ -186,7 +186,7 @@ export const approve = mutation({
   },
 });
 
-export const launch = action({
+export const launchApprovedBatch = action({
   args: { outreachBatchId: v.id("outreachBatches") },
   handler: async (ctx, args) => {
     const prepared = await ctx.runMutation(internal.outreachBatches.prepareLaunch, args);
@@ -205,10 +205,39 @@ export const launch = action({
     const deliveries = await ctx.runQuery(api.outreachBatches.deliveriesForBatch, args);
     for (const delivery of deliveries) {
       if (planDeliveryRetry(delivery) === "dispatch") {
-        if (delivery.channel === "email") await ctx.runAction(api.participantInvites.sendEmail, { participantId: delivery.participantId, outreachBatchId: args.outreachBatchId });
-        else await ctx.runAction(api.participantInvites.sendCall, { participantId: delivery.participantId, outreachBatchId: args.outreachBatchId });
-        const accepted = await ctx.runMutation(internal.outreachBatches.markAccepted, { deliveryId: delivery._id });
-        if (accepted?.channel === "email" && accepted.creditReservationId) await ctx.runMutation(internal.credits.reconcileUsage, { organizationId: accepted.organizationId, reservationId: accepted.creditReservationId, provider: "resend", providerOperationId: accepted.deliveryKey, nativeQuantity: 1, internalCostMicros: 0, model: "resend-email" });
+        await ctx.runMutation(internal.outreachBatches.markDispatching, { deliveryId: delivery._id });
+        try {
+          const result = await ctx.runAction(internal.participantInvites.executeDelivery, { deliveryId: delivery._id });
+          const accepted = await ctx.runMutation(internal.outreachBatches.markAccepted, {
+            deliveryId: delivery._id,
+            providerOperationId: result.providerOperationId,
+            inviteToken: result.inviteToken,
+            conversationId: result.conversationId,
+            callSid: result.callSid,
+          });
+          if (accepted?.channel === "email" && accepted.creditReservationId) {
+            await ctx.runMutation(internal.credits.reconcileUsage, {
+              organizationId: accepted.organizationId, reservationId: accepted.creditReservationId,
+              provider: "resend", providerOperationId: result.providerOperationId,
+              nativeQuantity: 1, internalCostMicros: 0, model: "resend-email",
+            });
+          }
+        } catch (cause) {
+          const error = cause instanceof Error ? cause.message : "Provider delivery failed";
+          const suppressed = /suppressed|declined|archived|completed/i.test(error);
+          if (suppressed) {
+            const blocked = await ctx.runMutation(internal.outreachBatches.markSuppressed, { deliveryId: delivery._id, error });
+            if (blocked?.creditReservationId) await ctx.runMutation(internal.credits.releaseReservation, {
+              organizationId: blocked.organizationId, reservationId: blocked.creditReservationId,
+              idempotencyKey: `release:${blocked.deliveryKey}`,
+              reason: "outreach_blocked_at_delivery_gate",
+            });
+          } else if (delivery.channel === "voice") {
+            await ctx.runMutation(internal.outreachBatches.markDeliveryUnknown, { deliveryId: delivery._id, error });
+          } else {
+            await ctx.runMutation(internal.outreachBatches.markFailed, { deliveryId: delivery._id, error });
+          }
+        }
       }
     }
     return args.outreachBatchId;
@@ -239,9 +268,13 @@ export const prepareLaunch = internalMutation({
 
 export const attachReservation = internalMutation({ args: { deliveryId: v.id("outreachDeliveries"), reservationId: v.id("creditReservations") }, handler: async (ctx, args) => { const delivery = await ctx.db.get(args.deliveryId); if (delivery && !delivery.creditReservationId) await ctx.db.patch(delivery._id, { creditReservationId: args.reservationId, status: "reserved", updatedAt: Date.now() }); } });
 export const activateLaunch = internalMutation({ args: { outreachBatchId: v.id("outreachBatches") }, handler: async (ctx, args) => { const batch = await ctx.db.get(args.outreachBatchId); if (!batch) throw new Error("Outreach batch not found"); const now = Date.now(); await ctx.db.patch(batch._id, { status: "running", launchedAt: batch.launchedAt ?? now, updatedAt: now }); await ctx.db.patch(batch.studyId, { status: "fieldwork_running", updatedAt: now }); } });
-export const markAccepted = internalMutation({ args: { deliveryId: v.id("outreachDeliveries") }, handler: async (ctx, args) => { const delivery = await ctx.db.get(args.deliveryId); if (!delivery || delivery.status === "accepted") return delivery; const now = Date.now(); await ctx.db.patch(delivery._id, { status: "accepted", attempts: delivery.attempts + 1, providerAcceptedAt: now, retrySafe: false, updatedAt: now }); return delivery; } });
+export const markDispatching = internalMutation({ args: { deliveryId: v.id("outreachDeliveries") }, handler: async (ctx, args) => { const delivery = await ctx.db.get(args.deliveryId); if (!delivery) throw new Error("Delivery not found"); await ctx.db.patch(delivery._id, { status: "dispatching", attempts: delivery.attempts + 1, updatedAt: Date.now() }); } });
+export const markAccepted = internalMutation({ args: { deliveryId: v.id("outreachDeliveries"), providerOperationId: v.string(), inviteToken: v.string(), conversationId: v.optional(v.string()), callSid: v.optional(v.string()) }, handler: async (ctx, args) => { const delivery = await ctx.db.get(args.deliveryId); if (!delivery || delivery.status === "accepted") return delivery; const participant = await ctx.db.get(delivery.participantId); const now = Date.now(); await ctx.db.patch(delivery._id, { status: "accepted", providerOperationId: args.providerOperationId, providerAcceptedAt: now, retrySafe: false, error: undefined, updatedAt: now }); if (participant) { await ctx.db.patch(participant._id, { inviteToken: args.inviteToken, invitedAt: now, status: "invited", consentStatus: participant.consentStatus === "unknown" ? "pending" : participant.consentStatus, lastInviteEmailId: delivery.channel === "email" ? args.providerOperationId : participant.lastInviteEmailId, emailOutreachStatus: delivery.channel === "email" ? "sent" : participant.emailOutreachStatus, callOutreachStatus: delivery.channel === "voice" ? "initiated" : participant.callOutreachStatus, elevenLabsConversationId: args.conversationId ?? participant.elevenLabsConversationId, telephonyCallSid: args.callSid ?? participant.telephonyCallSid, updatedAt: now }); if (delivery.channel === "voice" && args.conversationId) await ctx.scheduler.runAfter(0, internal.callRecords.schedule, { participantId: participant._id, conversationId: args.conversationId, callSid: args.callSid, outreachDeliveryId: delivery._id, creditReservationId: delivery.creditReservationId }); } return delivery; } });
+export const markFailed = internalMutation({ args: { deliveryId: v.id("outreachDeliveries"), error: v.string() }, handler: async (ctx, args) => { const delivery = await ctx.db.get(args.deliveryId); if (!delivery) return; await ctx.db.patch(delivery._id, { status: "failed", retrySafe: true, error: args.error, updatedAt: Date.now() }); const participant = await ctx.db.get(delivery.participantId); if (participant) await ctx.db.patch(participant._id, { status: "failed", updatedAt: Date.now() }); } });
+export const markDeliveryUnknown = internalMutation({ args: { deliveryId: v.id("outreachDeliveries"), error: v.string() }, handler: async (ctx, args) => { const delivery = await ctx.db.get(args.deliveryId); if (!delivery) return; await ctx.db.patch(delivery._id, { status: "unknown", retrySafe: false, error: args.error, updatedAt: Date.now() }); const participant = await ctx.db.get(delivery.participantId); if (participant) await ctx.db.patch(participant._id, { status: "failed", updatedAt: Date.now() }); } });
+export const markSuppressed = internalMutation({ args: { deliveryId: v.id("outreachDeliveries"), error: v.string() }, handler: async (ctx, args) => { const delivery = await ctx.db.get(args.deliveryId); if (!delivery) return null; await ctx.db.patch(delivery._id, { status: "suppressed", retrySafe: false, error: args.error, updatedAt: Date.now() }); return delivery; } });
 
-export const retryDelivery = action({ args: { deliveryId: v.id("outreachDeliveries") }, handler: async (ctx, args): Promise<Id<"outreachBatches">> => { const delivery: Doc<"outreachDeliveries"> = await ctx.runQuery(api.outreachBatches.deliveryForRetry, args); if (planDeliveryRetry(delivery) !== "dispatch") throw new Error("This delivery cannot be retried safely"); return await ctx.runAction(api.outreachBatches.launch, { outreachBatchId: delivery.outreachBatchId }); } });
+export const retryDelivery = action({ args: { deliveryId: v.id("outreachDeliveries") }, handler: async (ctx, args): Promise<Id<"outreachBatches">> => { const delivery: Doc<"outreachDeliveries"> = await ctx.runQuery(api.outreachBatches.deliveryForRetry, args); if (planDeliveryRetry(delivery) !== "dispatch") throw new Error("This delivery cannot be retried safely"); return await ctx.runAction(api.outreachBatches.launchApprovedBatch, { outreachBatchId: delivery.outreachBatchId }); } });
 export const deliveryForRetry = query({ args: { deliveryId: v.id("outreachDeliveries") }, handler: async (ctx, args) => { const delivery = await ctx.db.get(args.deliveryId); if (!delivery) throw new Error("Delivery not found"); await requireStudyAccess(ctx, delivery.studyId); return delivery; } });
 
 async function recordAudit(

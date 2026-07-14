@@ -1,101 +1,73 @@
 import { v } from "convex/values";
-import { api, internal } from "./_generated/api";
+import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
-import { action, internalMutation, query } from "./_generated/server";
-import { assertOutreachDelivery } from "./lib/outreach";
+import { internalAction, internalMutation, internalQuery, query } from "./_generated/server";
+import { assertDeliveryGate } from "./lib/outreach";
 
 type OutreachContext = {
   participant: Doc<"studyParticipants">;
   study: Doc<"studies">;
   guide: Doc<"interviewBriefVersions">;
   outreachBatch: Doc<"outreachBatches">;
+  delivery: Doc<"outreachDeliveries">;
 };
 
 const deliveryArgs = {
-  participantId: v.id("studyParticipants"),
-  outreachBatchId: v.id("outreachBatches"),
+  deliveryId: v.id("outreachDeliveries"),
 };
 
-export const emailContext = query({
+export const deliveryContext = internalQuery({
   args: deliveryArgs,
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_auth_token_identifier", (q) =>
-        q.eq("authTokenIdentifier", identity.tokenIdentifier),
-      )
-      .unique();
-    const participant = await ctx.db.get(args.participantId);
+    const delivery = await ctx.db.get(args.deliveryId);
+    if (!delivery) throw new Error("Delivery not found");
+    const participant = await ctx.db.get(delivery.participantId);
     const study = participant ? await ctx.db.get(participant.studyId) : null;
-    if (!user?.defaultOrganizationId || !participant || !study || study.organizationId !== user.defaultOrganizationId) {
-      throw new Error("Participant not found");
-    }
-    if (!participant.email) throw new Error("This participant does not have an email address");
-    if (!study.currentInterviewBriefVersionId) throw new Error("Generate and approve an interview guide first");
-    const guide = await ctx.db.get(study.currentInterviewBriefVersionId);
-    if (!guide || guide.status !== "approved") throw new Error("Approve the interview guide before inviting participants");
-    const outreachBatch = await ctx.db.get(args.outreachBatchId);
-    if (!outreachBatch || outreachBatch.studyId !== study._id) throw new Error("Outreach batch not found");
-    assertOutreachDelivery({
+    const outreachBatch = await ctx.db.get(delivery.outreachBatchId);
+    const guide = await ctx.db.get(delivery.questionnaireVersionId);
+    if (!participant || !study || !outreachBatch || !guide) throw new Error("Approved delivery context changed");
+    const recipient = outreachBatch.approvedSnapshot?.recipients.find((item) => item.participantId === participant._id);
+    const suppressions = await ctx.db.query("suppressionEntries").withIndex("by_organization", (q) => q.eq("organizationId", delivery.organizationId)).collect();
+    const normalizedPhone = participant.phone?.replace(/\D/g, "");
+    const suppressed = suppressions.some((entry) =>
+      (participant.email && entry.normalizedEmail?.toLowerCase() === participant.email.toLowerCase()) ||
+      (normalizedPhone && entry.normalizedPhone?.replace(/\D/g, "") === normalizedPhone));
+    assertDeliveryGate({
       outreachStatus: outreachBatch.status,
-      participantIncluded: outreachBatch.participantIds.includes(participant._id),
-      questionnaireMatches: outreachBatch.questionnaireVersionId === guide._id,
-      participantBatchMatches: outreachBatch.participantBatchId === participant.importBatchId,
-      channel: "email",
-      channels: outreachBatch.channels,
+      snapshotMatches: Boolean(
+        outreachBatch.approvedSnapshot && recipient?.channels.includes(delivery.channel) &&
+        outreachBatch.approvedSnapshot.questionnaireVersionId === guide._id &&
+        outreachBatch.approvedSnapshot.participantBatchId === participant.importBatchId),
+      participantStatus: participant.status,
+      consentStatus: participant.consentStatus,
+      suppressed,
     });
-    return { participant, study, guide, outreachBatch };
+    if (delivery.channel === "email" && !participant.email) throw new Error("Participant has no email address");
+    if (delivery.channel === "voice" && !participant.phone) throw new Error("Participant has no phone number");
+    return { participant, study, guide, outreachBatch, delivery };
   },
 });
 
-export const callContext = query({
+export const executeDelivery = internalAction({
   args: deliveryArgs,
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_auth_token_identifier", (q) =>
-        q.eq("authTokenIdentifier", identity.tokenIdentifier),
-      )
-      .unique();
-    const participant = await ctx.db.get(args.participantId);
-    const study = participant ? await ctx.db.get(participant.studyId) : null;
-    if (!user?.defaultOrganizationId || !participant || !study || study.organizationId !== user.defaultOrganizationId) {
-      throw new Error("Participant not found");
-    }
-    if (!participant.phone) throw new Error("This participant does not have a phone number");
-    if (!study.currentInterviewBriefVersionId) throw new Error("Generate and approve an interview guide first");
-    const guide = await ctx.db.get(study.currentInterviewBriefVersionId);
-    if (!guide || guide.status !== "approved") throw new Error("Approve the interview guide before calling participants");
-    const outreachBatch = await ctx.db.get(args.outreachBatchId);
-    if (!outreachBatch || outreachBatch.studyId !== study._id) throw new Error("Outreach batch not found");
-    assertOutreachDelivery({
-      outreachStatus: outreachBatch.status,
-      participantIncluded: outreachBatch.participantIds.includes(participant._id),
-      questionnaireMatches: outreachBatch.questionnaireVersionId === guide._id,
-      participantBatchMatches: outreachBatch.participantBatchId === participant.importBatchId,
-      channel: "voice",
-      channels: outreachBatch.channels,
-    });
-    return { participant, study, guide, outreachBatch };
-  },
-});
-
-export const sendEmail = action({
-  args: deliveryArgs,
-  handler: async (ctx, args): Promise<{ emailId: string; inviteUrl: string }> => {
-    const context = await ctx.runQuery(api.participantInvites.emailContext, args);
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) throw new Error("RESEND_API_KEY is not configured in Convex");
+  handler: async (ctx, args): Promise<{ providerOperationId: string; inviteToken: string; conversationId?: string; callSid?: string }> => {
+    // This is intentionally the last read before the provider request.
+    const context = await ctx.runQuery(internal.participantInvites.deliveryContext, args);
     const inviteToken = context.participant.inviteToken ?? crypto.randomUUID();
     const appUrl = (process.env.MERIDIAN_APP_URL ?? "https://hermes-researcher.pages.dev").replace(/\/$/, "");
     const inviteUrl = `${appUrl}/interview/${encodeURIComponent(inviteToken)}`;
+    if (context.delivery.channel === "voice") {
+      const result = await sendCallAttempt(context, inviteToken, inviteUrl);
+      if (result.status === "failed") throw new Error(result.error);
+      const providerOperationId = result.conversationId ?? result.callSid;
+      if (!providerOperationId) throw new Error("ElevenLabs acceptance was ambiguous");
+      return { providerOperationId, inviteToken, conversationId: result.conversationId, callSid: result.callSid };
+    }
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) throw new Error("RESEND_API_KEY is not configured in Convex");
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json", "Idempotency-Key": context.delivery.deliveryKey },
       body: JSON.stringify({
         from: process.env.RESEND_FROM_EMAIL ?? "Meridian Research <onboarding@resend.dev>",
         to: [context.participant.email],
@@ -112,68 +84,7 @@ export const sendEmail = action({
     const payload = await response.json();
     const emailId = String(payload.id ?? "");
     if (!emailId) throw new Error("Resend did not return an email id");
-    await ctx.runMutation(internal.participantInvites.markSent, {
-      participantId: context.participant._id,
-      inviteToken,
-      emailId,
-    });
-    return { emailId, inviteUrl };
-  },
-});
-
-export const sendOutreach = action({
-  args: deliveryArgs,
-  handler: async (ctx, args): Promise<{
-    email: { status: "sent"; providerId: string } | { status: "failed"; error: string };
-    call: { status: "initiated"; conversationId?: string; callSid?: string } | { status: "failed"; error: string };
-  }> => {
-    const context = await ctx.runQuery(api.participantInvites.emailContext, args);
-    assertOutreachDelivery({
-      outreachStatus: context.outreachBatch.status,
-      participantIncluded: true,
-      questionnaireMatches: true,
-      participantBatchMatches: true,
-      channel: "voice",
-      channels: context.outreachBatch.channels,
-    });
-    if (!context.participant.phone) throw new Error("Add a phone number before sending phone outreach");
-    normalizePhoneNumber(context.participant.phone);
-
-    const inviteToken = context.participant.inviteToken ?? crypto.randomUUID();
-    const appUrl = (process.env.MERIDIAN_APP_URL ?? "https://hermes-researcher.pages.dev").replace(/\/$/, "");
-    const inviteUrl = `${appUrl}/interview/${encodeURIComponent(inviteToken)}`;
-    const [email, call] = await Promise.all([
-      sendEmailAttempt(context, inviteUrl),
-      sendCallAttempt(context, inviteToken, inviteUrl),
-    ]);
-    await ctx.runMutation(internal.participantInvites.recordOutreach, {
-      participantId: context.participant._id,
-      inviteToken,
-      email,
-      call,
-    });
-    return { email, call };
-  },
-});
-
-export const sendCall = action({
-  args: deliveryArgs,
-  handler: async (ctx, args): Promise<
-    | { status: "initiated"; conversationId?: string; callSid?: string }
-    | { status: "failed"; error: string }
-  > => {
-    const context = await ctx.runQuery(api.participantInvites.callContext, args);
-    normalizePhoneNumber(context.participant.phone!);
-    const inviteToken = context.participant.inviteToken ?? crypto.randomUUID();
-    const appUrl = (process.env.MERIDIAN_APP_URL ?? "https://hermes-researcher.pages.dev").replace(/\/$/, "");
-    const inviteUrl = `${appUrl}/interview/${encodeURIComponent(inviteToken)}`;
-    const result = await sendCallAttempt(context, inviteToken, inviteUrl);
-    await ctx.runMutation(internal.participantInvites.recordCallOutreach, {
-      participantId: context.participant._id,
-      inviteToken,
-      call: result,
-    });
-    return result;
+    return { providerOperationId: emailId, inviteToken };
   },
 });
 
@@ -336,38 +247,6 @@ export const recordCallOutreach = internalMutation({
     }
   },
 });
-
-async function sendEmailAttempt(
-  context: OutreachContext,
-  inviteUrl: string,
-): Promise<{ status: "sent"; providerId: string } | { status: "failed"; error: string }> {
-  try {
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) throw new Error("RESEND_API_KEY is not configured in Convex");
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from: process.env.RESEND_FROM_EMAIL ?? "Meridian Research <onboarding@resend.dev>",
-        to: [context.participant.email],
-        subject: `Invitation: ${context.study.title}`,
-        html: inviteEmailHtml({
-          participantName: context.participant.name,
-          studyTitle: context.study.title,
-          estimatedMinutes: context.guide.brief.estimatedMinutes,
-          inviteUrl,
-        }),
-      }),
-    });
-    if (!response.ok) throw new Error(`Resend rejected the invitation (${response.status}): ${await response.text()}`);
-    const payload = await response.json();
-    const providerId = String(payload.id ?? "");
-    if (!providerId) throw new Error("Resend did not return an email id");
-    return { status: "sent", providerId };
-  } catch (cause) {
-    return { status: "failed", error: cause instanceof Error ? cause.message : "Email failed" };
-  }
-}
 
 async function sendCallAttempt(
   context: OutreachContext,
