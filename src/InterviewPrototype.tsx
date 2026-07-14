@@ -37,6 +37,7 @@ function getInterviewSessionKey(inviteId: string) {
 export function InterviewClient({ invite }: InterviewClientProps) {
   const getAiStep = useAction(api.interviews.nextStep);
   const saveAnswer = useMutation(api.interviews.saveAnswer);
+  const voiceConfig = useQuery(api.interviews.voiceConfig);
   const [sessionKey] = useState(() => getInterviewSessionKey(invite.id));
   const savedSession = useQuery(api.interviews.sessionForInvite, {
     inviteId: invite.id,
@@ -190,7 +191,11 @@ export function InterviewClient({ invite }: InterviewClientProps) {
                 </p>
               </div>
             ) : !mode ? (
-              <ModeSelect invite={invite} setMode={setMode} />
+              <ModeSelect
+                invite={invite}
+                isVoiceConfigured={voiceConfig?.enabled}
+                setMode={setMode}
+              />
             ) : mode === "voice" ? (
               <VoiceExperiment
                 answers={answers}
@@ -278,11 +283,27 @@ export function InterviewClient({ invite }: InterviewClientProps) {
 
 function ModeSelect({
   invite,
+  isVoiceConfigured,
   setMode,
 }: {
   invite: InterviewInvite;
+  isVoiceConfigured: boolean | undefined;
   setMode: (mode: InterviewMode) => void;
 }) {
+  const voiceAllowedByInvite = invite.preferredMode !== "form";
+  const voiceDisabledLabel = !voiceAllowedByInvite
+    ? "Chat only"
+    : isVoiceConfigured === undefined
+      ? "Checking"
+      : "Unavailable";
+  const voiceDisabledReason = !voiceAllowedByInvite
+    ? "This invite is configured for chat responses."
+    : isVoiceConfigured === undefined
+      ? "Checking ElevenLabs voice availability..."
+      : !isVoiceConfigured
+        ? "Voice is temporarily unavailable while ElevenLabs is configured."
+        : null;
+
   return (
     <div className="mx-auto w-full max-w-3xl">
       <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">
@@ -308,9 +329,14 @@ function ModeSelect({
           onClick={() => setMode("chat")}
         />
         <ModeButton
-          description="Voice interviewing will be available after the ElevenLabs agent is configured."
-          disabled
+          description={
+            voiceDisabledReason ??
+            "Live ElevenLabs interview with adaptive spoken follow-ups."
+          }
+          disabled={Boolean(voiceDisabledReason)}
+          disabledLabel={voiceDisabledLabel}
           label="Voice"
+          onClick={() => setMode("voice")}
         />
       </div>
     </div>
@@ -340,11 +366,13 @@ function GatewayBadge({
 function ModeButton({
   description,
   disabled,
+  disabledLabel,
   label,
   onClick,
 }: {
   description: string;
   disabled?: boolean;
+  disabledLabel?: string;
   label: string;
   onClick?: () => void;
 }) {
@@ -363,7 +391,7 @@ function ModeButton({
         {label}
         {disabled ? (
           <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
-            Soon
+            {disabledLabel ?? "Unavailable"}
           </span>
         ) : null}
       </span>

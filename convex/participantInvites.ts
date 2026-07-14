@@ -163,6 +163,7 @@ export const getByToken = query({
       respondentLabel: guide.brief.respondentProfile,
       estimatedMinutes: guide.brief.estimatedMinutes,
       sponsor: "Meridian",
+      preferredMode: participant.preferredMode,
     };
   },
 });

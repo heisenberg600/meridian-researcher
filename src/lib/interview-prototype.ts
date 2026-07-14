@@ -46,6 +46,7 @@ export type InterviewInvite = {
   respondentLabel: string;
   estimatedMinutes: number;
   sponsor: string;
+  preferredMode?: "form" | "voice" | "either";
 };
 
 const invites: Record<string, InterviewInvite> = {
@@ -64,6 +65,7 @@ const invites: Record<string, InterviewInvite> = {
     respondentLabel: "Product and research leaders",
     estimatedMinutes: 7,
     sponsor: "Meridian",
+    preferredMode: "either",
   },
 };
 

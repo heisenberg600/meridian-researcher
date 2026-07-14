@@ -64,6 +64,7 @@ const inviteValidator = v.object({
   respondentLabel: v.string(),
   estimatedMinutes: v.number(),
   sponsor: v.string(),
+  preferredMode: v.optional(v.union(v.literal("form"), v.literal("voice"), v.literal("either"))),
 });
 
 const modeValidator = v.union(v.literal("chat"), v.literal("voice"));
@@ -71,6 +72,15 @@ const modeValidator = v.union(v.literal("chat"), v.literal("voice"));
 const INTERVIEW_MODEL = "google/gemini-3.1-flash-lite";
 const AI_GATEWAY_BASE_URL = "https://ai-gateway.vercel.sh/v1";
 const ELEVENLABS_BASE_URL = "https://api.elevenlabs.io/v1";
+
+export const voiceConfig = query({
+  args: {},
+  handler: async () => {
+    return {
+      enabled: Boolean(process.env.ELEVENLABS_API_KEY && process.env.ELEVENLABS_AGENT_ID),
+    };
+  },
+});
 
 export const sessionForInvite = query({
   args: {
