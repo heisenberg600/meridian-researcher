@@ -1,8 +1,9 @@
 import { v } from "convex/values";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import type { MutationCtx, QueryCtx } from "./_generated/server";
+import type { MutationCtx } from "./_generated/server";
 import { action, internalMutation, mutation, query } from "./_generated/server";
+import { requireStudyAccess } from "./lib/auth";
 import { assertStudyCan } from "./lib/workflow";
 
 const briefValidator = v.object({
@@ -40,25 +41,6 @@ type Brief = {
   closingScript: string;
   guardrails: string[];
 };
-
-async function requireStudyAccess(
-  ctx: Pick<QueryCtx, "auth" | "db">,
-  studyId: Id<"studies">,
-) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) throw new Error("Not authenticated");
-  const user = await ctx.db
-    .query("users")
-    .withIndex("by_auth_token_identifier", (q) =>
-      q.eq("authTokenIdentifier", identity.tokenIdentifier),
-    )
-    .unique();
-  const study = await ctx.db.get(studyId);
-  if (!user?.defaultOrganizationId || study?.organizationId !== user.defaultOrganizationId) {
-    throw new Error("Study not found");
-  }
-  return { user, study };
-}
 
 export const currentForStudy = query({
   args: { studyId: v.id("studies") },
