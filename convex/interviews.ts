@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { action, internalMutation, mutation, query } from "./_generated/server";
 import { assertParticipantCanAnswer } from "./lib/interviewAccess";
+import { getOpenAIConfig, getOpenAIModel, requireOpenAIKey } from "./lib/ai";
 
 type InterviewAnswer = {
   stepId: string;
@@ -74,8 +75,6 @@ const inviteValidator = v.object({
 
 const modeValidator = v.union(v.literal("chat"), v.literal("voice"));
 
-const INTERVIEW_MODEL = "google/gemini-3.1-flash-lite";
-const AI_GATEWAY_BASE_URL = "https://ai-gateway.vercel.sh/v1";
 const ELEVENLABS_BASE_URL = "https://api.elevenlabs.io/v1";
 
 export const voiceConfig = query({
@@ -256,11 +255,7 @@ export const nextStep = action({
   },
   handler: async (_ctx, args) => {
     const fallbackStep = getScriptedStep(args.answers);
-    const apiKey =
-      process.env.AI_GATEWAY_API_KEY ??
-      process.env.VERCEL_AI_GATEWAY_API_KEY ??
-      process.env.VERCEL_AI_GATEWAY_KEY;
-    const model = INTERVIEW_MODEL;
+    const model = getOpenAIModel("interview");
 
     if (args.answers.length >= 5) {
       return {
@@ -276,17 +271,21 @@ export const nextStep = action({
       };
     }
 
-    if (!apiKey) {
+    let apiKey: string;
+    try {
+      apiKey = requireOpenAIKey();
+    } catch {
       return {
         step: fallbackStep,
         source: "scripted" as const,
         model,
-        warning: "Missing AI_GATEWAY_API_KEY in Convex environment.",
+        warning: "Missing OPENAI_API_KEY in Convex environment.",
       };
     }
+    const config = getOpenAIConfig("interview");
 
     try {
-      const response = await fetch(`${AI_GATEWAY_BASE_URL}/chat/completions`, {
+      const response = await fetch(`${config.baseURL}/chat/completions`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${apiKey}`,
@@ -314,8 +313,7 @@ export const nextStep = action({
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`AI Gateway request failed: ${response.status} ${errorText}`);
+        throw new Error(`OpenAI request failed (${response.status}). Please retry.`);
       }
 
       const payload = await response.json();
@@ -332,7 +330,7 @@ export const nextStep = action({
         step: fallbackStep,
         source: "scripted" as const,
         model,
-        warning: error instanceof Error ? error.message : "AI Gateway request failed.",
+        warning: error instanceof Error ? error.message : "OpenAI request failed.",
       };
     }
   },
@@ -439,7 +437,7 @@ function parseStep(text: string): InterviewStep {
 
 function normalizeStep(value: unknown): InterviewStep {
   if (!value || typeof value !== "object") {
-    throw new Error("Gemini returned a non-object step.");
+    throw new Error("The AI provider returned a non-object step.");
   }
 
   const record = value as Record<string, unknown>;
@@ -490,7 +488,7 @@ function normalizeStep(value: unknown): InterviewStep {
     return { id, type: "multi_select", prompt, helper, required, options };
   }
 
-  throw new Error("Gemini returned an unsupported step type.");
+  throw new Error("The AI provider returned an unsupported step type.");
 }
 
 function normalizeOptions(value: unknown) {
@@ -508,7 +506,7 @@ function normalizeOptions(value: unknown) {
     .slice(0, 6);
 
   if (normalized.length < 2) {
-    throw new Error("Gemini returned too few options.");
+    throw new Error("The AI provider returned too few options.");
   }
 
   return normalized;

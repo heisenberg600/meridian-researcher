@@ -2,7 +2,8 @@ import { v } from "convex/values";
 
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { internalMutation, mutation, query } from "./_generated/server";
+import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { requireCurrentUser, requireOrganizationAccess, requireStudyAccess } from "./lib/auth";
 import {
   classifyKnowledgeUpload,
@@ -58,7 +59,7 @@ export const submitLink = mutation({
     const scope = await requireScope(ctx, args.studyId);
     const input = normalizePublicKnowledgeLink(args.kind, args.url);
     const now = Date.now();
-    return await ctx.db.insert("knowledgeSources", {
+    const sourceId = await ctx.db.insert("knowledgeSources", {
       organizationId: scope.organizationId,
       studyId: args.studyId,
       kind: input.kind,
@@ -67,6 +68,8 @@ export const submitLink = mutation({
       createdAt: now,
       updatedAt: now,
     });
+    await ctx.scheduler.runAfter(0, internal.knowledgeActions.processSource, { sourceId });
+    return sourceId;
   },
 });
 
@@ -83,7 +86,7 @@ export const submitUpload = mutation({
     if (!filename) throw new Error("A filename is required");
     const kind = classifyKnowledgeUpload(filename, args.contentType);
     const now = Date.now();
-    return await ctx.db.insert("knowledgeSources", {
+    const sourceId = await ctx.db.insert("knowledgeSources", {
       organizationId: scope.organizationId,
       studyId: args.studyId,
       kind,
@@ -94,6 +97,8 @@ export const submitUpload = mutation({
       createdAt: now,
       updatedAt: now,
     });
+    await ctx.scheduler.runAfter(0, internal.knowledgeActions.processSource, { sourceId });
+    return sourceId;
   },
 });
 
@@ -108,6 +113,7 @@ export const retry = mutation({
       extractedSummary: undefined,
       updatedAt: Date.now(),
     });
+    await ctx.scheduler.runAfter(0, internal.knowledgeActions.processSource, { sourceId: source._id });
   },
 });
 
@@ -133,6 +139,18 @@ export const completeProcessing = internalMutation({
 export const failProcessing = internalMutation({
   args: { sourceId: v.id("knowledgeSources"), error: v.string() },
   handler: async (ctx, args) => transitionSource(ctx, args.sourceId, "failed", { error: args.error }),
+});
+
+export const getProcessingSource = internalQuery({
+  args: { sourceId: v.id("knowledgeSources") },
+  handler: async (ctx, args) => {
+    const source = await ctx.db.get(args.sourceId);
+    if (!source) return null;
+    return {
+      ...source,
+      storageUrl: source.storageId ? await ctx.storage.getUrl(source.storageId) : undefined,
+    };
+  },
 });
 
 async function requireScope(ctx: QueryCtx | MutationCtx, studyId?: Id<"studies">) {

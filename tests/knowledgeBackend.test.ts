@@ -16,10 +16,12 @@ function companyContext({ membership = true } = {}) {
   const patched: Array<{ id: string; value: Record<string, unknown> }> = [];
   const deleted: string[] = [];
   const sources = new Map<string, Record<string, unknown>>();
+  const scheduled: Array<{ delay: number; args: Record<string, unknown> }> = [];
 
   const ctx = {
     auth: { getUserIdentity: async () => ({ tokenIdentifier: "clerk|user-1" }) },
     storage: { generateUploadUrl: async () => "https://upload.example.test/token" },
+    scheduler: { runAfter: async (delay: number, _fn: unknown, args: Record<string, unknown>) => { scheduled.push({ delay, args }); } },
     db: {
       get: async (id: string) => id === "study-1"
         ? { _id: "study-1", organizationId: "organization-1" }
@@ -49,7 +51,7 @@ function companyContext({ membership = true } = {}) {
     },
   };
 
-  return { ctx, inserted, patched, deleted, sources };
+  return { ctx, inserted, patched, deleted, sources, scheduled };
 }
 
 test("knowledge submissions accept public links and supported v1 file kinds", () => {
@@ -85,8 +87,8 @@ test("knowledge status transitions reject skipped or ambiguous processing states
   assert.throws(() => requireSourceStatusTransition("processing", "failed"), /user-readable error/i);
 });
 
-test("knowledge mutations create queued company sources and upload metadata", async () => {
-  const { ctx, inserted } = companyContext();
+test("knowledge mutations create queued sources and schedule processing", async () => {
+  const { ctx, inserted, scheduled } = companyContext();
 
   const linkId = await handler<{ kind: "website"; url: string }, string>(submitLink)(ctx, {
     kind: "website",
@@ -112,10 +114,14 @@ test("knowledge mutations create queued company sources and upload metadata", as
     { table: "knowledgeSources", organizationId: "organization-1", studyId: undefined, kind: "website", status: "queued" },
     { table: "knowledgeSources", organizationId: "organization-1", studyId: undefined, kind: "spreadsheet", status: "queued" },
   ]);
+  assert.deepEqual(scheduled, [
+    { delay: 0, args: { sourceId: "knowledgeSources-1" } },
+    { delay: 0, args: { sourceId: "knowledgeSources-2" } },
+  ]);
 });
 
 test("knowledge list, retry, and removal stay inside the current workspace", async () => {
-  const { ctx, sources, patched, deleted } = companyContext();
+  const { ctx, sources, patched, deleted, scheduled } = companyContext();
   sources.set("company-source", {
     _id: "company-source",
     organizationId: "organization-1",
@@ -145,6 +151,7 @@ test("knowledge list, retry, and removal stay inside the current workspace", asy
   assert.deepEqual(companySources.map((source) => source._id), ["company-source"]);
   assert.deepEqual(studySources.map((source) => source._id), ["study-source"]);
   assert.deepEqual(patched[0], { id: "company-source", value: { status: "queued", error: undefined, extractedSummary: undefined, updatedAt: patched[0]?.value.updatedAt } });
+  assert.deepEqual(scheduled, [{ delay: 0, args: { sourceId: "company-source" } }]);
   assert.deepEqual(deleted, ["company-source"]);
   await assert.rejects(
     () => handler<{ sourceId: string }, void>(retry)(ctx, { sourceId: "foreign-source" }),

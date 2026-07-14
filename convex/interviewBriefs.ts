@@ -5,6 +5,7 @@ import type { MutationCtx } from "./_generated/server";
 import { action, internalMutation, mutation, query } from "./_generated/server";
 import { requireStudyAccess } from "./lib/auth";
 import { assertStudyCan } from "./lib/workflow";
+import { getOpenAIConfig, requireOpenAIKey } from "./lib/ai";
 
 const briefValidator = v.object({
   title: v.string(),
@@ -89,17 +90,14 @@ export const generateFromPlan = action({
   args: { studyId: v.id("studies") },
   handler: async (ctx, args): Promise<{ briefId: Id<"interviewBriefVersions">; version: number }> => {
     const context = await ctx.runQuery(api.interviewBriefs.generationContext, args);
-    const apiKey =
-      process.env.AI_GATEWAY_API_KEY ??
-      process.env.VERCEL_AI_GATEWAY_API_KEY ??
-      process.env.VERCEL_AI_GATEWAY_KEY;
-    if (!apiKey) throw new Error("AI Gateway is not configured");
+    const apiKey = requireOpenAIKey();
+    const config = getOpenAIConfig("questionnaire");
 
-    const response = await fetch("https://ai-gateway.vercel.sh/v1/chat/completions", {
+    const response = await fetch(`${config.baseURL}/chat/completions`, {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: process.env.MERIDIAN_MODEL ?? "google/gemini-3.1-flash-lite",
+        model: config.model,
         temperature: 0.3,
         messages: [
           {
@@ -115,7 +113,7 @@ export const generateFromPlan = action({
       }),
     });
     if (!response.ok) {
-      throw new Error(`Interview guide generation failed (${response.status}): ${await response.text()}`);
+      throw new Error(`Interview guide generation failed (${response.status}). Please retry.`);
     }
     const payload = await response.json();
     const raw = String(payload?.choices?.[0]?.message?.content ?? "");

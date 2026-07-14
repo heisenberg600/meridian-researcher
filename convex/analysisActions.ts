@@ -5,6 +5,7 @@ import { action, internalMutation, query } from "./_generated/server";
 import { calculateBillableCredits } from "./lib/billing";
 import { requireStudyAccess } from "./lib/auth";
 import { validateAnalysisResponse } from "./findings";
+import { getOpenAIConfig, normalizeOpenAIUsage, requireOpenAIKey } from "./lib/ai";
 
 export type AnalysisSnapshotKind = "provisional" | "final";
 
@@ -12,37 +13,13 @@ export function snapshotKindForStudyStatus(status: string): AnalysisSnapshotKind
   return status === "fieldwork_running" ? "provisional" : "final";
 }
 
-export function normalizeProviderUsage(value: unknown): {
-  inputTokens: number;
-  outputTokens: number;
-  totalTokens: number;
-} {
-  if (!value || typeof value !== "object") throw new Error("Provider did not return exact usage");
-  const usage = value as Record<string, unknown>;
-  const inputTokens = usage.prompt_tokens;
-  const outputTokens = usage.completion_tokens;
-  const totalTokens = usage.total_tokens;
-  for (const [name, count] of Object.entries({ inputTokens, outputTokens, totalTokens })) {
-    if (!Number.isSafeInteger(count) || Number(count) < 0) {
-      throw new Error(`Provider did not return exact ${name === "totalTokens" ? "total_tokens" : name}`);
-    }
-  }
-  if (Number(totalTokens) < Number(inputTokens) + Number(outputTokens)) {
-    throw new Error("Provider total_tokens cannot be lower than prompt and completion tokens");
-  }
-  return {
-    inputTokens: Number(inputTokens),
-    outputTokens: Number(outputTokens),
-    totalTokens: Number(totalTokens),
-  };
-}
+export const normalizeProviderUsage = normalizeOpenAIUsage;
 
 export function analysisMaximumCredits(maximumTokens: number) {
   return calculateBillableCredits({ operation: "analysis", nativeQuantity: maximumTokens }).credits;
 }
 
-const MODEL = "openai/gpt-5-mini";
-const PROVIDER = "vercel-ai-gateway";
+const PROVIDER = "openai";
 
 export const startAnalysis = action({
   args: { studyId: v.id("studies") },
@@ -62,12 +39,12 @@ export const startAnalysis = action({
       });
       reservationId = reservation.reservationId;
       await ctx.runMutation(internal.analysisActions.attachReservation, { analysisRunId: started.analysisRunId, reservationId });
-      const apiKey = process.env.AI_GATEWAY_API_KEY ?? process.env.VERCEL_AI_GATEWAY_API_KEY;
-      if (!apiKey) throw new Error("AI_GATEWAY_API_KEY is not configured");
-      const response = await fetch("https://ai-gateway.vercel.sh/v1/chat/completions", {
+      const apiKey = requireOpenAIKey();
+      const config = getOpenAIConfig("analysis");
+      const response = await fetch(`${config.baseURL}/chat/completions`, {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ model: MODEL, temperature: 0.15, response_format: { type: "json_object" }, messages: [
+        body: JSON.stringify({ model: config.model, temperature: 0.15, response_format: { type: "json_object" }, messages: [
           { role: "system", content: analysisSystemPrompt() },
           { role: "user", content: JSON.stringify({ snapshotKind: started.snapshotKind, evidence: started.evidence }) },
         ] }),
@@ -85,7 +62,7 @@ export const startAnalysis = action({
         providerOperationId,
         nativeQuantity: usage.totalTokens,
         internalCostMicros: 0,
-        model: MODEL,
+        model: config.model,
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens,
         totalTokens: usage.totalTokens,
@@ -126,7 +103,7 @@ export const beginAnalysis = internalMutation({
     if (!evidence.length) throw new Error("No completed participant responses are available for analysis");
     const snapshotKind = snapshotKindForStudyStatus(study.status);
     const now = Date.now();
-    const analysisRunId = await ctx.db.insert("analysisRuns", { organizationId: study.organizationId, studyId: study._id, evidenceIds: evidence.map((item) => item._id), snapshotKind, status: "running", model: MODEL, provider: PROVIDER, createdAt: now, updatedAt: now });
+    const analysisRunId = await ctx.db.insert("analysisRuns", { organizationId: study.organizationId, studyId: study._id, evidenceIds: evidence.map((item) => item._id), snapshotKind, status: "running", model: getOpenAIConfig("analysis").model, provider: PROVIDER, createdAt: now, updatedAt: now });
     const maximumTokens = Math.max(4_000, Math.ceil(evidence.reduce((sum, item) => sum + item.excerpt.length, 0) / 2) + 4_000);
     return { analysisRunId, organizationId: study.organizationId, snapshotKind, maximumCredits: analysisMaximumCredits(maximumTokens), evidence: evidence.map((item) => ({ id: item._id, questionId: item.questionId, question: item.questionLabel, segment: item.segment, excerpt: item.excerpt, channel: item.channel, locator: item.answerLocator })) };
   },

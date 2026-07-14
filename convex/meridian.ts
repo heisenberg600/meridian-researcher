@@ -9,9 +9,8 @@ import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { type ActionCtx, internalAction } from "./_generated/server";
 import { v } from "convex/values";
+import { getOpenAIConfig, getOpenAIModel, normalizeAISDKUsage, requireOpenAIKey, safeProviderError } from "./lib/ai";
 
-const DEFAULT_MODEL = "google/gemini-3.1-flash-lite";
-const AI_GATEWAY_BASE_URL = "https://ai-gateway.vercel.sh/v1";
 const LINKUP_SEARCH_URL = "https://api.linkup.so/v1/search";
 const TEXT_FLUSH_INTERVAL_MS = 250;
 const WORKSPACE_ROOT = "/workspace";
@@ -106,14 +105,7 @@ async function executeMeridianRun(
     const context: MeridianRunContext = await ctx.runQuery(internal.meridianData.getRunContext, {
       agentRunId: args.agentRunId,
     });
-    const model =
-      process.env.AI_GATEWAY_MODEL ??
-      process.env.MERIDIAN_MODEL ??
-      DEFAULT_MODEL;
-    const apiKey =
-      process.env.AI_GATEWAY_API_KEY ??
-      process.env.VERCEL_AI_GATEWAY_API_KEY ??
-      process.env.VERCEL_AI_GATEWAY_KEY;
+    const model = getOpenAIModel("chat");
 
     if (tracingEnabled) {
       Laminar.setTraceMetadata({ model });
@@ -124,31 +116,30 @@ async function executeMeridianRun(
       model,
     });
 
-    if (!apiKey) {
-      const text = [
-        "Meridian is wired to the backend, but the AI Gateway key is not configured yet.",
-        "Set `AI_GATEWAY_API_KEY` in Convex to enable live agent responses.",
-      ].join(" ");
-      await ctx.runMutation(internal.messages.appendTextDelta, {
-        messageId: args.assistantMessageId,
-        textDelta: text,
-      });
+    let apiKey: string;
+    try {
+      apiKey = requireOpenAIKey();
+    } catch {
+      const message = "Meridian needs OPENAI_API_KEY configured in Convex before it can respond.";
       await ctx.runMutation(internal.messages.finalizeAssistantMessage, {
         messageId: args.assistantMessageId,
-        status: "complete",
+        status: "error",
+        errorText: message,
       });
-      await ctx.runMutation(internal.meridianData.completeRun, {
+      await ctx.runMutation(internal.meridianData.failRun, {
         agentRunId: args.agentRunId,
         chatSessionId: context.chatSession._id,
+        error: message,
       });
       return;
     }
+    const config = getOpenAIConfig("chat");
 
     let sandbox: MeridianSandbox | undefined;
     try {
       const provider = createOpenAICompatible({
-        name: "vercel-ai-gateway",
-        baseURL: AI_GATEWAY_BASE_URL,
+        name: config.provider,
+        baseURL: config.baseURL,
         apiKey,
         includeUsage: true,
       });
@@ -203,10 +194,7 @@ async function executeMeridianRun(
       }
       await flushText();
 
-      const usage = await result.usage;
-      const inputTokens = usage.inputTokens ?? 0;
-      const outputTokens = usage.outputTokens ?? 0;
-      const totalTokens = usage.totalTokens ?? inputTokens + outputTokens;
+      const { inputTokens, outputTokens, totalTokens } = normalizeAISDKUsage(await result.usage);
 
       await checkpointWorkspace(ctx, {
         sandbox,
@@ -241,7 +229,7 @@ async function executeMeridianRun(
         });
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Meridian failed to respond.";
+      const message = safeProviderError(error, [apiKey]);
       try {
         if (sandbox) {
           await checkpointWorkspace(ctx, {
