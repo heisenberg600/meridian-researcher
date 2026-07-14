@@ -51,6 +51,7 @@ import { StudyMemoryPage } from "./features/memory/StudyMemoryPage";
 import { canonicalStudyTab, legacyStudyTab } from "./features/study-workflow/legacyRoute";
 import { AnalysisPage } from "./features/analysis/AnalysisPage";
 import { FieldworkPage } from "./features/fieldwork/FieldworkPage";
+import { ReportPage } from "./features/report/ReportPage";
 
 type MainView = "studies" | "activity" | "settings";
 type StudyTab =
@@ -739,7 +740,7 @@ function StudyDetail({
         {studyTab === "participants" ? <StudyParticipants selectedStudy={selectedStudy} /> : null}
         {studyTab === "calls" ? <StudyFieldworkRoute selectedStudy={selectedStudy} /> : null}
         {studyTab === "feedback" ? <StudyAnalysisRoute selectedStudy={selectedStudy} /> : null}
-        {studyTab === "artifacts" ? <ArtifactsSkeleton /> : null}
+        {studyTab === "artifacts" ? <StudyReportRoute selectedStudy={selectedStudy} /> : null}
         {studyTab === "memory" ? <StudyMemoryRoute selectedStudy={selectedStudy} /> : null}
       </div>
     </div>
@@ -1835,7 +1836,7 @@ function StudyFieldworkRoute({ selectedStudy }: { selectedStudy: Doc<"studies"> 
   });
   const calls = useQuery(api.callRecords.listForStudy, { studyId: selectedStudy._id });
   const approve = useMutation(api.outreachBatches.approve);
-  const launch = useAction(api.outreachBatches.launch);
+  const launch = useAction(api.outreachBatches.launchApprovedBatch);
   const retry = useAction(api.outreachBatches.retryDelivery);
 
   return (
@@ -2289,38 +2290,71 @@ function StudyAnalysisRoute({ selectedStudy }: { selectedStudy: Doc<"studies"> }
   );
 }
 
-function ArtifactsSkeleton() {
-  return (
-    <SkeletonGrid
-      title="Artifacts"
-      description="Generated reports, exports, and source files will collect here after the study has evidence to synthesize."
-      items={["Reports", "Briefs", "Exports", "Sources"]}
-    />
-  );
-}
+function StudyReportRoute({ selectedStudy }: { selectedStudy: Doc<"studies"> }) {
+  const reports = useQuery(api.reports.listReports, { studyId: selectedStudy._id });
+  const generateReport = useAction(api.reportActions.generateReport);
+  const regenerateReportExports = useAction(api.reportActions.regenerateReportExports);
+  const updateSection = useMutation(api.reports.updateReportSection);
+  const publishReport = useMutation(api.reports.publishReport);
+  const convex = useConvex();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const report = reports?.[0];
 
-function SkeletonGrid({
-  description,
-  items,
-  title,
-}: {
-  description: string;
-  items: string[];
-  title: string;
-}) {
+  const run = async (work: () => Promise<unknown>, fallback: string) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await work();
+    } catch (cause) {
+      setError(getUserFacingConvexError(cause, fallback));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div>
-      <SectionHeader title={title} description={description} />
-      <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {items.map((item) => (
-          <Card key={item} className="p-5">
-            <h2 className="[font:var(--text-heading-sm)] text-[var(--text-heading)]">{item}</h2>
-            <p className="mt-3 [font:var(--text-body-sm)] text-[var(--text-muted)]">
-              Not active for this study yet.
-            </p>
-          </Card>
-        ))}
-      </div>
+      {error ? (
+        <div role="alert" className="mb-5 border border-[var(--status-danger)] bg-[var(--status-danger-soft)] p-4 [font:var(--text-body-sm)] text-[var(--status-danger)]">
+          {error}
+        </div>
+      ) : null}
+      <ReportPage
+        report={report ? {
+          id: report._id,
+          status: report.status,
+          brandName: (report.brandSnapshot as { displayName?: string }).displayName ?? "Meridian",
+          sections: report.sections.map((section) => ({
+            key: section.id,
+            title: section.title,
+            body: section.body.join("\n\n"),
+          })),
+          availableFormats: [
+            ...(report.pdfStorageId ? ["pdf" as const] : []),
+            ...(report.pptxStorageId ? ["pptx" as const] : []),
+          ],
+        } : null}
+        busy={busy || reports === undefined}
+        onGenerate={() => void run(() => generateReport({ studyId: selectedStudy._id }), "Report generation failed")}
+        onSaveSection={(sectionId, body) => {
+          const section = report?.sections.find((item) => item.id === sectionId);
+          if (!report || !section) return;
+          void run(async () => {
+            await updateSection({
+              reportVersionId: report._id,
+              sectionId,
+              section: { ...section, body: body.split(/\n\s*\n/).map((line) => line.trim()).filter(Boolean) },
+            });
+            await regenerateReportExports({ reportVersionId: report._id });
+          }, "Report section or exports could not be saved");
+        }}
+        onPublish={() => report && void run(() => publishReport({ reportVersionId: report._id }), "Report could not be published")}
+        onDownload={(format) => report && void run(async () => {
+          const download = await convex.query(api.reports.getReportDownloadUrl, { reportVersionId: report._id, format });
+          window.open(download.url, "_blank", "noopener,noreferrer");
+        }, `${format.toUpperCase()} download failed`)}
+      />
     </div>
   );
 }

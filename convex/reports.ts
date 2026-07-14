@@ -109,6 +109,16 @@ export const beginReport = internalMutation({
 
 export const attachReservation = internalMutation({ args: { reportVersionId: v.id("reportVersions"), reservationId: v.id("creditReservations") }, handler: async (ctx, args) => { await ctx.db.patch(args.reportVersionId, { reservationId: args.reservationId, updatedAt: Date.now() }); } });
 export const completeReport = internalMutation({ args: { reportVersionId: v.id("reportVersions"), document: v.any(), pdfStorageId: v.id("_storage"), pptxStorageId: v.id("_storage"), finalizedCredits: v.number() }, handler: async (ctx, args) => { const report = await ctx.db.get(args.reportVersionId); if (!report) throw new Error("Report not found"); await ctx.db.patch(report._id, { document: args.document, sections: args.document.sections, pdfStorageId: args.pdfStorageId, pptxStorageId: args.pptxStorageId, finalizedCredits: args.finalizedCredits, status: "ready", updatedAt: Date.now() }); await ctx.db.patch(report.studyId, { status: "report_ready", updatedAt: Date.now() }); } });
+export const replaceExports = internalMutation({
+  args: { reportVersionId: v.id("reportVersions"), pdfStorageId: v.id("_storage"), pptxStorageId: v.id("_storage") },
+  handler: async (ctx, args) => {
+    const report = await ctx.db.get(args.reportVersionId);
+    if (!report) throw new Error("Report not found");
+    if (report.pdfStorageId) await ctx.storage.delete(report.pdfStorageId);
+    if (report.pptxStorageId) await ctx.storage.delete(report.pptxStorageId);
+    await ctx.db.patch(report._id, { pdfStorageId: args.pdfStorageId, pptxStorageId: args.pptxStorageId, updatedAt: Date.now() });
+  },
+});
 export const failReport = internalMutation({ args: { reportVersionId: v.id("reportVersions"), error: v.string() }, handler: async (ctx, args) => { await ctx.db.patch(args.reportVersionId, { status: "failed", error: args.error, updatedAt: Date.now() }); } });
 
 async function requireReportAccess(ctx: Parameters<typeof requireStudyAccess>[0], reportVersionId: Id<"reportVersions">) {

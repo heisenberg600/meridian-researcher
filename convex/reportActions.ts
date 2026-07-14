@@ -38,3 +38,18 @@ export const generateReport = action({
     }
   },
 });
+
+export const regenerateReportExports = action({
+  args: { reportVersionId: v.id("reportVersions") },
+  handler: async (ctx, args): Promise<void> => {
+    const report = await ctx.runQuery(api.reports.getReport, args);
+    if (!report) throw new Error("Report not found");
+    if (report.status === "published") throw new Error("A published report cannot be changed");
+    const [pdf, pptx] = await Promise.all([renderReportPdf(report.document), renderReportPptx(report.document)]);
+    const [pdfStorageId, pptxStorageId] = await Promise.all([
+      ctx.storage.store(new Blob([Buffer.from(pdf)], { type: "application/pdf" })),
+      ctx.storage.store(new Blob([Buffer.from(pptx)], { type: "application/vnd.openxmlformats-officedocument.presentationml.presentation" })),
+    ]);
+    await ctx.runMutation(internal.reports.replaceExports, { reportVersionId: args.reportVersionId, pdfStorageId, pptxStorageId });
+  },
+});
