@@ -18,3 +18,23 @@ Plus basic reliability: valid output every time, and the interview ends when it 
 the AI got better or worse. Now every change is re-run against the same exam and scored, so
 we catch regressions instantly and have **evidence** the AI behaves correctly. Adding a new
 scenario is one line in a data file, so our safety net grows as fast as we find edge cases.
+
+## First run results (live against Laminar)
+
+**Strategist — 4/4 passed.** Asks good probing questions, never claims fieldwork happened,
+doesn't over-draft, and correctly explains that outreach needs approval. The safety-critical
+behaviour holds.
+
+**Interviewer — mostly good, one real bug caught:**
+
+| Check | Score | Meaning |
+|-------|-------|---------|
+| valid_json | 1.0 | Always returns usable data |
+| in_scope | 1.0 | Questions are on-topic |
+| correct_completion | 1.0 | Ends the interview at the right time |
+| neutral_question | 0.75 | Caught **one leading question** — in the deliberately biased-brief case |
+| **follows_step_schema** | **0.0** | **Bug:** output uses the wrong field names (`question`/`label` instead of `prompt`), so the app silently swaps the real question for a generic fallback |
+
+The eval did exactly its job on day one: it caught a leading question *and* a silent
+data-shape bug that would have quietly degraded live interviews. Both are now tracked and
+will be re-scored on every change.
