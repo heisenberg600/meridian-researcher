@@ -1016,10 +1016,6 @@ function OrgSettings({
                   <p className="mt-3 [font:var(--text-body-sm)] text-[var(--text-secondary)]">
                     {memory.value}
                   </p>
-                  <div className="mt-4 flex gap-2">
-                    <Badge>Importance {Math.round(memory.importance * 100)}%</Badge>
-                    <Badge>Confidence {Math.round(memory.confidence * 100)}%</Badge>
-                  </div>
                 </div>
               ))
             )}

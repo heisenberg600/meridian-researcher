@@ -3,6 +3,7 @@ import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { action, internalMutation, mutation, query } from "./_generated/server";
+import { assertStudyCan } from "./lib/workflow";
 
 const briefValidator = v.object({
   title: v.string(),
@@ -87,6 +88,10 @@ export const generationContext = query({
     if (!study.currentStudyPlanVersionId) throw new Error("Create a Study Plan first");
     const plan = await ctx.db.get(study.currentStudyPlanVersionId);
     if (!plan) throw new Error("Current Study Plan was not found");
+    if (plan.status !== "approved") {
+      throw new Error("Approve the current Study Plan before generating a questionnaire");
+    }
+    assertStudyCan(study.status, "generate_questionnaire");
     return {
       studyId: study._id,
       organizationId: study.organizationId,
@@ -196,7 +201,7 @@ export const approve = mutation({
     }
     const now = Date.now();
     await ctx.db.patch(brief._id, { status: "approved", approvedBy: user._id, approvedAt: now });
-    await ctx.db.patch(study._id, { status: "fieldwork_ready", updatedAt: now });
+    await ctx.db.patch(study._id, { status: "questionnaire_approved", updatedAt: now });
     await ctx.db.insert("approvals", {
       organizationId: study.organizationId,
       studyId: study._id,
