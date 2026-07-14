@@ -1930,7 +1930,7 @@ function StudyParticipants({
         </Card>
 
         <div className="min-w-0 overflow-hidden border border-[var(--border-default)] bg-[var(--surface-card)]">
-          <div className="hidden grid-cols-[minmax(160px,1.2fr)_minmax(140px,1fr)_100px_220px] gap-4 border-b border-[var(--border-default)] bg-[var(--bg-sunken)] px-4 py-2.5 [font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--text-muted)] 2xl:grid">
+          <div className="hidden grid-cols-[minmax(160px,1.2fr)_minmax(120px,1fr)_80px_360px] gap-4 border-b border-[var(--border-default)] bg-[var(--bg-sunken)] px-4 py-2.5 [font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--text-muted)] 2xl:grid">
             <span>Participant</span>
             <span>Segment</span>
             <span>Mode</span>
@@ -1977,7 +1977,7 @@ function StudyParticipants({
               return (
               <div
                 key={participant._id}
-                className="grid min-w-0 gap-4 border-b border-[var(--border-default)] p-4 last:border-b-0 2xl:grid-cols-[minmax(160px,1.2fr)_minmax(140px,1fr)_100px_220px] 2xl:items-center 2xl:px-4 2xl:py-3"
+                className="grid min-w-0 gap-4 border-b border-[var(--border-default)] p-4 last:border-b-0 2xl:grid-cols-[minmax(160px,1.2fr)_minmax(120px,1fr)_80px_360px] 2xl:items-center 2xl:px-4 2xl:py-3"
               >
                 <div className="min-w-0">
                   <p className="mb-1 [font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--text-muted)] 2xl:hidden">
@@ -2009,7 +2009,7 @@ function StudyParticipants({
                     </span>
                   </div>
                 </div>
-                <div className="flex min-w-0 flex-wrap justify-start gap-1 2xl:justify-end">
+                <div className="flex min-w-0 flex-wrap justify-start gap-1 2xl:flex-nowrap 2xl:justify-end">
                   <Button
                     type="button"
                     size="sm"
