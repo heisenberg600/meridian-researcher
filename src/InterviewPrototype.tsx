@@ -327,7 +327,7 @@ function GatewayBadge({
   const label = isThinking
     ? "AI thinking"
     : gateway.source === "gateway"
-      ? `AI Gateway ${gateway.model}`
+      ? "AI generated"
       : `${gateway.source} fallback`;
 
   return (
@@ -411,7 +411,7 @@ function StepInput({
     return (
       <div className="flex items-center gap-3 text-sm font-medium text-[var(--text-secondary)]">
         <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--accent)]" />
-        Waiting for AI Gateway...
+        Preparing the next question...
       </div>
     );
   }
