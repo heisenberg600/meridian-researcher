@@ -17,6 +17,7 @@ import type * as meridianData from "../meridianData.js";
 import type * as messages from "../messages.js";
 import type * as organizationMemories from "../organizationMemories.js";
 import type * as studies from "../studies.js";
+import type * as studyParticipants from "../studyParticipants.js";
 import type * as studyPlans from "../studyPlans.js";
 import type * as users from "../users.js";
 
@@ -36,6 +37,7 @@ declare const fullApi: ApiFromModules<{
   messages: typeof messages;
   organizationMemories: typeof organizationMemories;
   studies: typeof studies;
+  studyParticipants: typeof studyParticipants;
   studyPlans: typeof studyPlans;
   users: typeof users;
 }>;

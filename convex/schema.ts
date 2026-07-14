@@ -69,6 +69,7 @@ export default defineSchema({
       v.literal("report"),
     ),
     status: v.union(v.literal("active"), v.literal("archived")),
+    activeSkillNames: v.optional(v.array(v.string())),
     activeAgentRunId: v.optional(v.id("agentRuns")),
     createdBy: v.id("users"),
     createdAt: v.number(),
@@ -198,6 +199,37 @@ export default defineSchema({
     approvedAt: v.optional(v.number()),
     createdAt: v.number(),
   }).index("by_study", ["studyId"]),
+
+  studyParticipants: defineTable({
+    organizationId: v.id("organizations"),
+    studyId: v.id("studies"),
+    name: v.string(),
+    email: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    segment: v.optional(v.string()),
+    preferredMode: v.union(v.literal("form"), v.literal("voice"), v.literal("either")),
+    consentStatus: v.union(
+      v.literal("unknown"),
+      v.literal("pending"),
+      v.literal("granted"),
+      v.literal("declined"),
+    ),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("invited"),
+      v.literal("opened"),
+      v.literal("started"),
+      v.literal("completed"),
+      v.literal("declined"),
+      v.literal("archived"),
+    ),
+    notes: v.optional(v.string()),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_study", ["studyId"])
+    .index("by_study_status", ["studyId", "status"]),
 
   approvals: defineTable({
     organizationId: v.id("organizations"),

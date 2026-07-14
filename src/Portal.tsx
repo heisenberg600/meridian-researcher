@@ -5,6 +5,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useEffect, useMemo, useState } from "react";
 import {
   BrainIcon,
+  ArchiveIcon,
   CheckCircle2Icon,
   CircleAlertIcon,
   DatabaseIcon,
@@ -13,8 +14,10 @@ import {
   HistoryIcon,
   LoaderCircleIcon,
   MessageSquareIcon,
+  PencilIcon,
   PlusIcon,
   Trash2Icon,
+  UserPlusIcon,
 } from "lucide-react";
 import "streamdown/styles.css";
 import { api } from "../convex/_generated/api";
@@ -36,7 +39,14 @@ import {
 import { Badge, Button, Card, SectionHeader, TextInput, Textarea, cx } from "./components/meridian";
 
 type MainView = "studies" | "activity" | "settings";
-type StudyTab = "overview" | "chat" | "plan" | "calls" | "feedback" | "artifacts";
+type StudyTab =
+  | "overview"
+  | "chat"
+  | "plan"
+  | "participants"
+  | "calls"
+  | "feedback"
+  | "artifacts";
 type CurrentUserQuery =
   | {
       user?: { name?: string; email?: string } | null;
@@ -49,6 +59,7 @@ const studyTabs: Array<{ id: StudyTab; label: string }> = [
   { id: "overview", label: "Overview" },
   { id: "chat", label: "Chat" },
   { id: "plan", label: "Plan" },
+  { id: "participants", label: "Participants" },
   { id: "calls", label: "Calls" },
   { id: "feedback", label: "Feedback" },
   { id: "artifacts", label: "Artifacts" },
@@ -543,6 +554,7 @@ function StudyDetail({
         {studyTab === "plan" ? (
           <StudyPlan selectedStudy={selectedStudy} onOpenChat={() => setStudyTab("chat")} />
         ) : null}
+        {studyTab === "participants" ? <StudyParticipants selectedStudy={selectedStudy} /> : null}
         {studyTab === "calls" ? <CallsSkeleton /> : null}
         {studyTab === "feedback" ? <FeedbackSkeleton /> : null}
         {studyTab === "artifacts" ? <ArtifactsSkeleton /> : null}
@@ -986,6 +998,250 @@ function StudyPlan({
           })}
         </div>
       </aside>
+    </div>
+  );
+}
+
+type ParticipantFormState = {
+  name: string;
+  email: string;
+  phone: string;
+  segment: string;
+  preferredMode: "form" | "voice" | "either";
+  notes: string;
+};
+
+const emptyParticipantForm: ParticipantFormState = {
+  name: "",
+  email: "",
+  phone: "",
+  segment: "",
+  preferredMode: "either",
+  notes: "",
+};
+
+function StudyParticipants({ selectedStudy }: { selectedStudy: Doc<"studies"> }) {
+  const participants = useQuery(api.studyParticipants.listForStudy, {
+    studyId: selectedStudy._id,
+  });
+  const createParticipant = useMutation(api.studyParticipants.create);
+  const updateParticipant = useMutation(api.studyParticipants.update);
+  const archiveParticipant = useMutation(api.studyParticipants.archive);
+  const [form, setForm] = useState<ParticipantFormState>(emptyParticipantForm);
+  const [editingId, setEditingId] = useState<Id<"studyParticipants"> | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [participantError, setParticipantError] = useState<string | null>(null);
+
+  const setField = <Key extends keyof ParticipantFormState>(
+    key: Key,
+    value: ParticipantFormState[Key],
+  ) => setForm((current) => ({ ...current, [key]: value }));
+
+  async function handleSaveParticipant(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setParticipantError(null);
+    setIsSaving(true);
+    try {
+      const values = {
+        name: form.name,
+        email: form.email || undefined,
+        phone: form.phone || undefined,
+        segment: form.segment || undefined,
+        preferredMode: form.preferredMode,
+        notes: form.notes || undefined,
+      };
+      if (editingId) {
+        await updateParticipant({ participantId: editingId, ...values });
+      } else {
+        await createParticipant({ studyId: selectedStudy._id, ...values });
+      }
+      setEditingId(null);
+      setForm(emptyParticipantForm);
+    } catch (cause) {
+      setParticipantError(cause instanceof Error ? cause.message : "Could not save participant");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  function beginEdit(participant: Doc<"studyParticipants">) {
+    setEditingId(participant._id);
+    setParticipantError(null);
+    setForm({
+      name: participant.name,
+      email: participant.email ?? "",
+      phone: participant.phone ?? "",
+      segment: participant.segment ?? "",
+      preferredMode: participant.preferredMode,
+      notes: participant.notes ?? "",
+    });
+  }
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="[font:var(--text-heading-sm)] text-[var(--text-heading)]">Participants</h1>
+          <p className="mt-1 [font:var(--text-body-sm)] text-[var(--text-secondary)]">
+            People recruited specifically for this study.
+          </p>
+        </div>
+        <Badge tone="info">{participants?.length ?? 0} active</Badge>
+      </div>
+
+      <div className="mt-6 grid items-start gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
+        <Card className="p-5">
+          <div className="flex items-center gap-2">
+            <UserPlusIcon className="size-4 text-[var(--text-muted)]" />
+            <h2 className="[font:var(--text-body)] font-semibold text-[var(--text-heading)]">
+              {editingId ? "Edit participant" : "Add participant"}
+            </h2>
+          </div>
+          <form onSubmit={handleSaveParticipant} className="mt-4 space-y-3">
+            <TextInput
+              value={form.name}
+              onChange={(event) => setField("name", event.target.value)}
+              placeholder="Full name"
+              aria-label="Full name"
+            />
+            <TextInput
+              type="email"
+              value={form.email}
+              onChange={(event) => setField("email", event.target.value)}
+              placeholder="Email address"
+              aria-label="Email address"
+            />
+            <TextInput
+              type="tel"
+              value={form.phone}
+              onChange={(event) => setField("phone", event.target.value)}
+              placeholder="Phone number"
+              aria-label="Phone number"
+            />
+            <TextInput
+              value={form.segment}
+              onChange={(event) => setField("segment", event.target.value)}
+              placeholder="Segment (optional)"
+              aria-label="Segment"
+            />
+            <label className="block">
+              <span className="mb-1.5 block [font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--text-muted)]">
+                Interview mode
+              </span>
+              <select
+                value={form.preferredMode}
+                onChange={(event) =>
+                  setField("preferredMode", event.target.value as ParticipantFormState["preferredMode"])
+                }
+                className="h-9 w-full rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--surface-card)] px-3 [font:var(--text-body-sm)] outline-none focus:border-[var(--border-focus)] focus:shadow-[var(--focus-ring)]"
+              >
+                <option value="either">Form or voice</option>
+                <option value="form">Form</option>
+                <option value="voice">Voice</option>
+              </select>
+            </label>
+            <Textarea
+              value={form.notes}
+              onChange={(event) => setField("notes", event.target.value)}
+              placeholder="Recruitment notes (optional)"
+              rows={3}
+            />
+            {participantError ? (
+              <p className="[font:var(--text-body-sm)] text-[var(--status-danger)]">
+                {participantError}
+              </p>
+            ) : null}
+            <div className="flex gap-2">
+              <Button type="submit" disabled={isSaving} className="flex-1">
+                {isSaving ? "Saving..." : editingId ? "Save changes" : "Add participant"}
+              </Button>
+              {editingId ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setEditingId(null);
+                    setForm(emptyParticipantForm);
+                  }}
+                >
+                  Cancel
+                </Button>
+              ) : null}
+            </div>
+          </form>
+        </Card>
+
+        <div className="overflow-hidden border border-[var(--border-default)] bg-[var(--surface-card)]">
+          <div className="grid grid-cols-[minmax(160px,1.2fr)_minmax(140px,1fr)_110px_96px] gap-4 border-b border-[var(--border-default)] bg-[var(--bg-sunken)] px-4 py-2.5 [font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--text-muted)]">
+            <span>Participant</span>
+            <span>Segment</span>
+            <span>Mode</span>
+            <span className="text-right">Actions</span>
+          </div>
+          {participants === undefined ? (
+            <p className="p-5 [font:var(--text-body)] text-[var(--text-muted)]">
+              Loading participants...
+            </p>
+          ) : participants.length === 0 ? (
+            <div className="p-8 text-center">
+              <UserPlusIcon className="mx-auto size-5 text-[var(--text-muted)]" />
+              <p className="mt-3 [font:var(--text-body)] font-semibold text-[var(--text-heading)]">
+                No participants yet
+              </p>
+              <p className="mt-1 [font:var(--text-body-sm)] text-[var(--text-muted)]">
+                Add an internal test participant before connecting outreach.
+              </p>
+            </div>
+          ) : (
+            participants.map((participant) => (
+              <div
+                key={participant._id}
+                className="grid grid-cols-[minmax(160px,1.2fr)_minmax(140px,1fr)_110px_96px] items-center gap-4 border-b border-[var(--border-default)] px-4 py-3 last:border-b-0"
+              >
+                <div className="min-w-0">
+                  <p className="truncate [font:var(--text-body-sm)] font-semibold text-[var(--text-heading)]">
+                    {participant.name}
+                  </p>
+                  <p className="truncate [font:var(--text-caption)] text-[var(--text-muted)]">
+                    {participant.email ?? participant.phone}
+                  </p>
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate [font:var(--text-body-sm)] text-[var(--text-secondary)]">
+                    {participant.segment ?? "Unassigned"}
+                  </p>
+                  <Badge className="mt-1">{formatStatus(participant.status)}</Badge>
+                </div>
+                <span className="[font:var(--text-body-sm)] capitalize text-[var(--text-secondary)]">
+                  {participant.preferredMode === "either" ? "Either" : participant.preferredMode}
+                </span>
+                <div className="flex justify-end gap-1">
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    title="Edit participant"
+                    aria-label={`Edit ${participant.name}`}
+                    onClick={() => beginEdit(participant)}
+                  >
+                    <PencilIcon className="size-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    title="Archive participant"
+                    aria-label={`Archive ${participant.name}`}
+                    onClick={() => void archiveParticipant({ participantId: participant._id })}
+                  >
+                    <ArchiveIcon className="size-4" />
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
     </div>
   );
 }
