@@ -6,6 +6,7 @@ import { validatePersistedPayment } from "../convex/paymentWebhooks";
 
 const storeUrl = new URL("../convex/paymentWebhooks.ts", import.meta.url);
 const actionsUrl = new URL("../convex/paymentWebhookActions.ts", import.meta.url);
+const wrapperUrl = new URL("../convex/paymentWebhookHttp.ts", import.meta.url);
 const httpUrl = new URL("../convex/http.ts", import.meta.url);
 
 test("webhook persistence exposes durable event and atomic payment mutations", async () => {
@@ -21,12 +22,14 @@ test("webhook persistence exposes durable event and atomic payment mutations", a
 
 test("HTTP webhook verifies the untouched body with the official Dodo SDK", async () => {
   const source = await readFile(actionsUrl, "utf8").catch(() => "");
+  const wrapperSource = await readFile(wrapperUrl, "utf8").catch(() => "");
   const httpSource = await readFile(httpUrl, "utf8").catch(() => "");
 
   assert.match(source, /import DodoPayments from "dodopayments"/);
   assert.match(source, /environment: "test_mode"/);
-  assert.match(source, /await request\.text\(\)/);
-  assert.equal(source.match(/request\.text\(\)/g)?.length, 1);
+  assert.match(wrapperSource, /await request\.text\(\)/);
+  assert.equal(wrapperSource.match(/request\.text\(\)/g)?.length, 1);
+  assert.match(wrapperSource, /ctx\.runAction\(verifyAndProcessRef/);
   assert.match(source, /client\.webhooks\.unwrap\(rawBody, \{ headers, key \}\)/);
   assert.doesNotMatch(source, /unsafeUnwrap/);
   assert.doesNotMatch(source, /data\.metadata|metadata\./);

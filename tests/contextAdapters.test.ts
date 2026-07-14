@@ -7,6 +7,7 @@ import {
   createMemoryAdapter,
   mapBrandProfile,
   mapKnowledgeSource,
+  type BackendBrandProfile,
 } from "../src/features/context/convexAdapters";
 import { DEFAULT_BRAND_PROFILE, type BrandProfile } from "../src/features/context/contracts";
 
@@ -97,7 +98,7 @@ test("memory adapter maps category vocabularies and remembers which scoped API o
   ]);
 });
 
-test("brand adapter maps schema-backed fields while keeping preview-only preferences in the active edit", async () => {
+test("brand adapter persists every report preference", async () => {
   const backendProfile = {
     displayName: "Atlas Labs",
     primaryColor: "#35597E",
@@ -111,10 +112,10 @@ test("brand adapter maps schema-backed fields while keeping preview-only prefere
   });
 
   let updated: unknown;
-  let currentBackend = { ...backendProfile, logoUrl: undefined as string | undefined };
+  let currentBackend: BackendBrandProfile = { ...backendProfile, logoUrl: undefined };
   const adapter = createBrandAdapter({
     getProfile: async () => currentBackend,
-    updateProfile: async (value) => { updated = value; },
+    updateProfile: async (value) => { updated = value; currentBackend = { ...currentBackend, ...value }; },
     generateLogoUploadUrl: async () => "https://upload.example.test/logo",
     uploadFile: async () => ({ storageId: "logo-1" }),
     setLogo: async () => { currentBackend = { ...currentBackend, logoUrl: "https://cdn.example.test/logo-1" }; },
@@ -129,7 +130,12 @@ test("brand adapter maps schema-backed fields while keeping preview-only prefere
   const saved = await adapter.updateBrandProfile(profile);
   const logo = await adapter.uploadLogo(new File(["logo"], "atlas.svg", { type: "image/svg+xml" }));
 
-  assert.deepEqual(updated, backendProfile);
+  assert.deepEqual(updated, {
+    ...backendProfile,
+    reportTitle: "Customer evidence brief",
+    headingFont: "sans",
+    bodyFont: "sans",
+  });
   assert.equal(saved.reportTitle, "Customer evidence brief");
   assert.equal(saved.headingFont, "sans");
   assert.deepEqual(logo, { logoUrl: "https://cdn.example.test/logo-1", logoName: "atlas.svg" });

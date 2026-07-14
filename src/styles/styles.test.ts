@@ -105,3 +105,4 @@ test("base styles preserve visible focus, reduced motion, and readable selection
   assert.match(css, /color-scheme:\s*light/);
   assert.doesNotMatch(css, /transition:\s*all/);
 });
+// @vitest-environment node
