@@ -123,6 +123,10 @@ We imagine customer research becoming a living capability inside every company: 
 
 Meridian is the beginning of that research team.
 
+## Deployment
+
+CI/CD setup is documented in [docs/CLOUDFLARE_CICD.md](docs/CLOUDFLARE_CICD.md). The GitHub Actions workflow builds pull requests and deploys pushes to `main` to Cloudflare Pages.
+
 <div align="center">
 
 ### From a business question to a decision your team can defend.
