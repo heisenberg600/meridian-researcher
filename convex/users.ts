@@ -1,4 +1,5 @@
 import { mutation, query } from "./_generated/server";
+import { ensureStarterGrantForOrganization } from "./credits";
 
 function workspaceNameFromIdentity(identity: { name?: string; email?: string }) {
   const displayName = identity.name ?? identity.email;
@@ -57,13 +58,14 @@ export const ensureCurrent = mutation({
       )
       .unique();
 
+    const now = Date.now();
     const values = {
       authTokenIdentifier: identity.tokenIdentifier,
       clerkUserId: identity.subject,
       email: identity.email,
       name: identity.name,
       imageUrl: identity.pictureUrl,
-      lastSeenAt: Date.now(),
+      lastSeenAt: now,
     };
 
     if (existing) {
@@ -73,16 +75,16 @@ export const ensureCurrent = mutation({
         if (organization && shouldRepairDefaultWorkspaceName(organization.name)) {
           await ctx.db.patch(organization._id, {
             name: workspaceNameFromIdentity(identity),
-            updatedAt: Date.now(),
+            updatedAt: now,
           });
         }
+        await ensureStarterGrantForOrganization(ctx, existing.defaultOrganizationId, now);
         return {
           userId: existing._id,
           organizationId: existing.defaultOrganizationId,
         };
       }
 
-      const now = Date.now();
       const organizationId = await ctx.db.insert("organizations", {
         name: workspaceNameFromIdentity(identity),
         createdBy: existing._id,
@@ -97,12 +99,12 @@ export const ensureCurrent = mutation({
         updatedAt: now,
       });
       await ctx.db.patch(existing._id, { defaultOrganizationId: organizationId });
+      await ensureStarterGrantForOrganization(ctx, organizationId, now);
 
       return { userId: existing._id, organizationId };
     }
 
     const userId = await ctx.db.insert("users", values);
-    const now = Date.now();
     const organizationId = await ctx.db.insert("organizations", {
       name: workspaceNameFromIdentity(identity),
       createdBy: userId,
@@ -117,6 +119,7 @@ export const ensureCurrent = mutation({
       updatedAt: now,
     });
     await ctx.db.patch(userId, { defaultOrganizationId: organizationId });
+    await ensureStarterGrantForOrganization(ctx, organizationId, now);
 
     return { userId, organizationId };
   },

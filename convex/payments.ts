@@ -1,3 +1,6 @@
+import { v } from "convex/values";
+import { internalMutation, query } from "./_generated/server";
+import { requireOrganizationAccess } from "./lib/auth";
 import { assertWholeCredits } from "./lib/billing";
 
 export const TOP_UP_PACKS = {
@@ -114,6 +117,12 @@ export function createPaymentsService(
           if (existing.packKey !== args.packKey) {
             throw new Error("Idempotency key was already used with a different checkout pack");
           }
+          if (existing.status === "creating" || existing.status === "failed") {
+            existing.status = "creating";
+            existing.error = undefined;
+            existing.updatedAt = timestamp;
+            return { created: true, checkout: existing };
+          }
           return { created: false, checkout: existing };
         }
         const checkout: CheckoutRecord = {
@@ -226,4 +235,189 @@ function assertSecureUrl(value: string, label: string) {
   if (url.protocol !== "https:" || url.username || url.password) {
     throw new Error(`${label} must be a secure HTTPS URL`);
   }
+}
+
+const topUpPackValidator = v.union(
+  v.literal("credits_1m"),
+  v.literal("credits_3m"),
+  v.literal("credits_10m"),
+);
+
+export const authorizeCheckout = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await requireOrganizationAccess(ctx, args.organizationId);
+    return { authorized: true as const };
+  },
+});
+
+export const getCheckout = query({
+  args: {
+    organizationId: v.id("organizations"),
+    checkoutIntentId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await requireOrganizationAccess(ctx, args.organizationId);
+    assertNonEmpty(args.checkoutIntentId, "checkout intent ID");
+    const checkout = await ctx.db
+      .query("checkoutSessions")
+      .withIndex("by_checkout_intent", (q) => q.eq("checkoutIntentId", args.checkoutIntentId))
+      .unique();
+    if (!checkout || checkout.organizationId !== args.organizationId) return null;
+    return checkout;
+  },
+});
+
+export const prepareCheckout = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    packKey: topUpPackValidator,
+    callerIdempotencyKey: v.string(),
+    proposedCheckoutIntentId: v.string(),
+    productId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    assertNonEmpty(args.callerIdempotencyKey, "checkout idempotency key");
+    assertNonEmpty(args.proposedCheckoutIntentId, "checkout intent ID");
+    assertNonEmpty(args.productId, "Dodo product ID");
+    const expectedGrant = TOP_UP_PACKS[args.packKey].credits;
+    assertWholeCredits(expectedGrant, "expected credit grant");
+    const timestamp = Date.now();
+
+    const account = await ctx.db
+      .query("billingAccounts")
+      .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
+      .unique();
+    if (account?.status === "suspended") throw new Error("Billing account is suspended");
+    if (account?.mode === "live") {
+      throw new Error("Live Mode billing is disabled for this Test Mode deployment");
+    }
+    if (!account) {
+      await ctx.db.insert("billingAccounts", {
+        organizationId: args.organizationId,
+        mode: "test",
+        status: "active",
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+    }
+
+    const idempotencyKey = scopedCheckoutKey(args.organizationId, args.callerIdempotencyKey);
+    const existing = await ctx.db
+      .query("checkoutSessions")
+      .withIndex("by_organization_idempotency", (q) =>
+        q.eq("organizationId", args.organizationId).eq("idempotencyKey", idempotencyKey),
+      )
+      .unique();
+    if (existing) {
+      if (
+        existing.packKey !== args.packKey ||
+        existing.expectedGrant !== expectedGrant ||
+        existing.productId !== args.productId ||
+        existing.mode !== "test"
+      ) {
+        throw new Error("Idempotency key was already used with different checkout inputs");
+      }
+      if (existing.status === "failed") {
+        await ctx.db.patch(existing._id, { status: "creating", updatedAt: timestamp });
+        return { ...existing, status: "creating" as const, updatedAt: timestamp };
+      }
+      return existing;
+    }
+
+    await ctx.db.insert("checkoutSessions", {
+      organizationId: args.organizationId,
+      checkoutIntentId: args.proposedCheckoutIntentId,
+      idempotencyKey,
+      productId: args.productId,
+      mode: "test",
+      packKey: args.packKey,
+      expectedGrant,
+      status: "creating",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+    return await ctx.db
+      .query("checkoutSessions")
+      .withIndex("by_checkout_intent", (q) =>
+        q.eq("checkoutIntentId", args.proposedCheckoutIntentId),
+      )
+      .unique();
+  },
+});
+
+export const completeCheckout = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    checkoutIntentId: v.string(),
+    productId: v.string(),
+    dodoSessionId: v.string(),
+    checkoutUrl: v.string(),
+  },
+  handler: async (ctx, args) => {
+    assertNonEmpty(args.dodoSessionId, "Dodo checkout session ID");
+    assertSecureUrl(args.checkoutUrl, "provider checkout URL");
+    const checkout = await ctx.db
+      .query("checkoutSessions")
+      .withIndex("by_checkout_intent", (q) => q.eq("checkoutIntentId", args.checkoutIntentId))
+      .unique();
+    if (!checkout || checkout.organizationId !== args.organizationId) {
+      throw new Error("Checkout intent not found");
+    }
+    if (checkout.productId !== args.productId || checkout.mode !== "test") {
+      throw new Error("Provider checkout does not match the persisted Test Mode intent");
+    }
+    const sessionOwner = await ctx.db
+      .query("checkoutSessions")
+      .withIndex("by_dodo_session", (q) => q.eq("dodoSessionId", args.dodoSessionId))
+      .unique();
+    if (sessionOwner && sessionOwner._id !== checkout._id) {
+      throw new Error("Dodo checkout session is already attached to another intent");
+    }
+    if (checkout.status === "created") {
+      if (
+        checkout.dodoSessionId !== args.dodoSessionId ||
+        checkout.checkoutUrl !== args.checkoutUrl
+      ) {
+        throw new Error("Checkout intent was already completed with different provider data");
+      }
+      return checkout;
+    }
+    if (checkout.status !== "creating" && checkout.status !== "failed") {
+      throw new Error(`Cannot complete a ${checkout.status} checkout intent`);
+    }
+    await ctx.db.patch(checkout._id, {
+      dodoSessionId: args.dodoSessionId,
+      checkoutUrl: args.checkoutUrl,
+      status: "created",
+      updatedAt: Date.now(),
+    });
+    return await ctx.db.get(checkout._id);
+  },
+});
+
+export const failCheckout = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    checkoutIntentId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const checkout = await ctx.db
+      .query("checkoutSessions")
+      .withIndex("by_checkout_intent", (q) => q.eq("checkoutIntentId", args.checkoutIntentId))
+      .unique();
+    if (!checkout || checkout.organizationId !== args.organizationId) return null;
+    if (checkout.status === "creating") {
+      await ctx.db.patch(checkout._id, { status: "failed", updatedAt: Date.now() });
+    }
+    return await ctx.db.get(checkout._id);
+  },
+});
+
+function scopedCheckoutKey(organizationId: string, callerKey: string) {
+  return `checkout:${organizationId}:${callerKey}`;
+}
+
+function assertNonEmpty(value: string, label: string) {
+  if (!value.trim()) throw new Error(`${label} must not be empty`);
 }

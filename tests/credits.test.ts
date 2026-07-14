@@ -124,6 +124,28 @@ test("coalesces two concurrent reservations with the same idempotency key", asyn
   assert.equal((await service.getWallet({ organizationId: "org_a" })).reserved, 600_000);
 });
 
+test("serializes distinct concurrent reservations so prepaid credits cannot be double spent", async () => {
+  const service = createCreditsService(new MemoryCreditsStore(), {
+    id: sequenceIds(),
+    now: () => 1_000,
+  });
+  await service.ensureStarterGrant({ organizationId: "org_a" });
+  const reserve = (suffix: string) => service.reserveCredits({
+    organizationId: "org_a",
+    operationId: `run_${suffix}`,
+    operation: "ai_chat" as const,
+    amount: 600_000,
+    idempotencyKey: `reserve:run_${suffix}`,
+    expiresAt: 2_000,
+  });
+
+  const results = await Promise.allSettled([reserve("a"), reserve("b")]);
+
+  assert.equal(results.filter((result) => result.status === "fulfilled").length, 1);
+  assert.equal(results.filter((result) => result.status === "rejected").length, 1);
+  assert.equal((await service.getWallet({ organizationId: "org_a" })).available, 400_000);
+});
+
 test("finalizes the measured debit and releases the unused reservation", async () => {
   const service = createCreditsService(new MemoryCreditsStore(), {
     id: sequenceIds(),
@@ -156,6 +178,87 @@ test("finalizes the measured debit and releases the unused reservation", async (
     available: STARTER_CREDITS - 40,
     reserved: 0,
     consumed: 40,
+    updatedAt: 1_000,
+  });
+});
+
+test("charges measured usage above the reservation from remaining prepaid credits", async () => {
+  const service = createCreditsService(new MemoryCreditsStore(), {
+    id: sequenceIds(),
+    now: () => 1_000,
+  });
+  await service.ensureStarterGrant({ organizationId: "org_a" });
+  const { reservation } = await service.reserveCredits({
+    organizationId: "org_a",
+    operationId: "analysis_overage",
+    operation: "analysis",
+    amount: 100,
+    idempotencyKey: "reserve:analysis_overage",
+    expiresAt: 2_000,
+  });
+
+  const result = await service.finalizeReservation({
+    organizationId: "org_a",
+    reservationId: reservation.id,
+    measuredCredits: 150,
+    idempotencyKey: "finalize:analysis_overage",
+  });
+
+  assert.equal(result.finalDebit, 150);
+  assert.equal(result.releasedCredits, 0);
+  assert.equal(result.shortfallCredits, 0);
+  const replay = await service.finalizeReservation({
+    organizationId: "org_a",
+    reservationId: reservation.id,
+    measuredCredits: 150,
+    idempotencyKey: "finalize:analysis_overage",
+  });
+  assert.equal(replay.created, false);
+  assert.equal(replay.releasedCredits, 0);
+  assert.deepEqual(await service.getWallet({ organizationId: "org_a" }), {
+    organizationId: "org_a",
+    granted: STARTER_CREDITS,
+    available: STARTER_CREDITS - 150,
+    reserved: 0,
+    consumed: 150,
+    updatedAt: 1_000,
+  });
+});
+
+test("persists only the usage that cannot be collected from prepaid credits as shortfall", async () => {
+  const service = createCreditsService(new MemoryCreditsStore(), {
+    id: sequenceIds(),
+    now: () => 1_000,
+  });
+  await service.grantCredits({
+    organizationId: "org_a",
+    amount: 120,
+    idempotencyKey: "grant:small_wallet",
+  });
+  const { reservation } = await service.reserveCredits({
+    organizationId: "org_a",
+    operationId: "analysis_shortfall",
+    operation: "analysis",
+    amount: 100,
+    idempotencyKey: "reserve:analysis_shortfall",
+    expiresAt: 2_000,
+  });
+
+  const result = await service.finalizeReservation({
+    organizationId: "org_a",
+    reservationId: reservation.id,
+    measuredCredits: 150,
+    idempotencyKey: "finalize:analysis_shortfall",
+  });
+
+  assert.equal(result.finalDebit, 120);
+  assert.equal(result.shortfallCredits, 30);
+  assert.deepEqual(await service.getWallet({ organizationId: "org_a" }), {
+    organizationId: "org_a",
+    granted: 120,
+    available: 0,
+    reserved: 0,
+    consumed: 120,
     updatedAt: 1_000,
   });
 });

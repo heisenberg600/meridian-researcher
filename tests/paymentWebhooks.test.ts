@@ -156,6 +156,72 @@ test("rejects a signed payment that does not match the persisted checkout sessio
   assert.equal((await eventStore.get("evt_wrong_session"))?.status, "failed");
 });
 
+test("replays a received event after a crash without granting credits twice", async () => {
+  const checkoutStore = new MemoryCheckoutStore();
+  const payments = createPaymentsService(
+    checkoutStore,
+    {
+      async createCheckout() {
+        return { sessionId: "cks_retry", checkoutUrl: "https://checkout.test/cks_retry" };
+      },
+    },
+    {
+      id: () => "intent_retry",
+      returnUrl: "https://app.example.test/billing?checkout=return",
+      productIds: { credits_1m: "prod_1m" },
+    },
+  );
+  await payments.createTopUpCheckout({
+    organizationId: "org_retry",
+    packKey: "credits_1m",
+    idempotencyKey: "checkout:org_retry:1",
+  });
+  const durableCredits = createCreditsService(new MemoryCreditsStore());
+  let attempts = 0;
+  const credits = {
+    async grantCredits(args: Parameters<typeof durableCredits.grantCredits>[0]) {
+      attempts += 1;
+      if (attempts === 1) throw new Error("crash after payment transition");
+      return await durableCredits.grantCredits(args);
+    },
+  };
+  const eventStore = new MemoryWebhookEventStore();
+  const verifier: RawWebhookVerifier = {
+    async verify() {
+      return {
+        eventId: "evt_retry",
+        eventType: "payment.succeeded",
+        paymentId: "pay_retry",
+        checkoutSessionId: "cks_retry",
+        checkoutIntentId: "intent_retry",
+        organizationId: "org_retry",
+      };
+    },
+  };
+  const request = {
+    rawBody: '{"type":"payment.succeeded"}',
+    headers: {
+      "webhook-id": "evt_retry",
+      "webhook-signature": "v1,test-signature",
+      "webhook-timestamp": "1000",
+    },
+  } as const;
+
+  await assert.rejects(
+    processDodoWebhook(request, { verifier, eventStore, payments, credits }),
+    /crash after payment transition/,
+  );
+  assert.equal((await eventStore.get("evt_retry"))?.status, "failed");
+
+  const replay = await processDodoWebhook(request, { verifier, eventStore, payments, credits });
+  assert.equal(replay.status, "processed");
+  assert.equal(
+    (await durableCredits.getWallet({ organizationId: "org_retry" })).available,
+    1_000_000,
+  );
+  assert.equal(attempts, 2);
+});
+
 function sequenceIds() {
   let value = 0;
   return () => `id_${++value}`;

@@ -1,5 +1,11 @@
+import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
+import type { MutationCtx } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
+import { requireOrganizationAccess } from "./lib/auth";
 import {
   ACTIVE_RATE_CARD_VERSION,
+  RATE_CARDS,
   assertWholeCredits,
   calculateBillableCredits,
   type BillableOperation,
@@ -85,6 +91,27 @@ export class InsufficientCreditsError extends Error {
     super(`Insufficient credits: ${available} available, ${requested} requested`);
     this.name = "InsufficientCreditsError";
   }
+}
+
+export function settleReservedCredits(args: {
+  maximumCredits: number;
+  measuredCredits: number;
+  availableCredits: number;
+}) {
+  assertWholeCredits(args.maximumCredits, "maximum credits");
+  assertWholeCredits(args.measuredCredits, "measured credits", true);
+  assertWholeCredits(args.availableCredits, "available credits", true);
+  const reservedDebit = Math.min(args.measuredCredits, args.maximumCredits);
+  const releasedCredits = args.maximumCredits - reservedDebit;
+  const remainingDebit = args.measuredCredits - reservedDebit;
+  const availableDebit = Math.min(remainingDebit, args.availableCredits);
+  const finalDebit = safeAdd(reservedDebit, availableDebit);
+  return {
+    availableDebit,
+    finalDebit,
+    releasedCredits,
+    shortfallCredits: args.measuredCredits - finalDebit,
+  };
 }
 
 export interface CreditsStore {
@@ -332,7 +359,7 @@ export function createCreditsService(store: CreditsStore, options: CreditsServic
             created: false,
             reservation,
             finalDebit: reservation.finalDebit ?? 0,
-            releasedCredits: reservation.amount - (reservation.finalDebit ?? 0),
+            releasedCredits: Math.max(reservation.amount - (reservation.measuredCredits ?? 0), 0),
             shortfallCredits: reservation.shortfallCredits ?? 0,
             debitTransaction: account.transactions.find(
               (candidate) =>
@@ -356,16 +383,20 @@ export function createCreditsService(store: CreditsStore, options: CreditsServic
           throw new Error("Reserved wallet balance is inconsistent");
         }
         const timestamp = now();
-        const finalDebit = Math.min(args.measuredCredits, reservation.amount);
-        const releasedCredits = reservation.amount - finalDebit;
+        const settlement = settleReservedCredits({
+          maximumCredits: reservation.amount,
+          measuredCredits: args.measuredCredits,
+          availableCredits: wallet.available,
+        });
+        const { finalDebit, releasedCredits } = settlement;
         wallet.reserved -= reservation.amount;
-        wallet.available = safeAdd(wallet.available, releasedCredits);
+        wallet.available = safeAdd(wallet.available, releasedCredits) - settlement.availableDebit;
         wallet.consumed = safeAdd(wallet.consumed, finalDebit);
         wallet.updatedAt = timestamp;
         reservation.status = "finalized";
         reservation.finalDebit = finalDebit;
         reservation.measuredCredits = args.measuredCredits;
-        reservation.shortfallCredits = args.measuredCredits - finalDebit;
+        reservation.shortfallCredits = settlement.shortfallCredits;
         reservation.finalizationIdempotencyKey = args.idempotencyKey;
         reservation.updatedAt = timestamp;
 
@@ -573,16 +604,20 @@ export function createCreditsService(store: CreditsStore, options: CreditsServic
           throw new Error("Reserved wallet balance is inconsistent");
         }
         const timestamp = now();
-        const finalDebit = Math.min(charge.credits, reservation.amount);
-        const releasedCredits = reservation.amount - finalDebit;
+        const settlement = settleReservedCredits({
+          maximumCredits: reservation.amount,
+          measuredCredits: charge.credits,
+          availableCredits: wallet.available,
+        });
+        const { finalDebit, releasedCredits } = settlement;
         wallet.reserved -= reservation.amount;
-        wallet.available = safeAdd(wallet.available, releasedCredits);
+        wallet.available = safeAdd(wallet.available, releasedCredits) - settlement.availableDebit;
         wallet.consumed = safeAdd(wallet.consumed, finalDebit);
         wallet.updatedAt = timestamp;
         reservation.status = "finalized";
         reservation.finalDebit = finalDebit;
         reservation.measuredCredits = charge.credits;
-        reservation.shortfallCredits = charge.credits - finalDebit;
+        reservation.shortfallCredits = settlement.shortfallCredits;
         reservation.finalizationIdempotencyKey = `usage:${args.provider}:${args.providerOperationId}`;
         reservation.updatedAt = timestamp;
         const debitTransaction = finalDebit > 0
@@ -679,7 +714,7 @@ function finalizationResult(
     created,
     reservation,
     finalDebit: reservation.finalDebit ?? 0,
-    releasedCredits: reservation.amount - (reservation.finalDebit ?? 0),
+    releasedCredits: Math.max(reservation.amount - (reservation.measuredCredits ?? 0), 0),
     shortfallCredits: reservation.shortfallCredits ?? 0,
     debitTransaction: account.transactions.find(
       (transaction) =>
@@ -694,4 +729,490 @@ function finalizationResult(
         transaction.idempotencyKey === `${idempotencyKey}:release`,
     ),
   };
+}
+
+const billableOperationValidator = v.union(
+  v.literal("ai_chat"),
+  v.literal("source_processing"),
+  v.literal("email_delivery"),
+  v.literal("connected_voice"),
+  v.literal("analysis"),
+  v.literal("report_generation"),
+  v.literal("image_generation"),
+);
+
+export async function ensureStarterGrantForOrganization(
+  ctx: Pick<MutationCtx, "db">,
+  organizationId: Id<"organizations">,
+  timestamp: number,
+) {
+  const idempotencyKey = `starter:${organizationId}`;
+  const existing = await ctx.db
+    .query("creditTransactions")
+    .withIndex("by_idempotency_key", (q) => q.eq("idempotencyKey", idempotencyKey))
+    .unique();
+  if (existing) {
+    if (
+      existing.organizationId !== organizationId ||
+      existing.type !== "grant" ||
+      existing.amount !== STARTER_CREDITS
+    ) {
+      throw new Error("Starter grant idempotency conflict");
+    }
+    return { created: false, transactionId: existing._id };
+  }
+
+  let wallet = await ctx.db
+    .query("creditWallets")
+    .withIndex("by_organization", (q) => q.eq("organizationId", organizationId))
+    .unique();
+  if (!wallet) {
+    const walletId = await ctx.db.insert("creditWallets", {
+      organizationId,
+      granted: 0,
+      available: 0,
+      reserved: 0,
+      consumed: 0,
+      updatedAt: timestamp,
+    });
+    wallet = (await ctx.db.get(walletId))!;
+  }
+  validatePersistedWallet(wallet);
+  const granted = safeAdd(wallet.granted, STARTER_CREDITS);
+  const available = safeAdd(wallet.available, STARTER_CREDITS);
+  await ctx.db.patch(wallet._id, { granted, available, updatedAt: timestamp });
+  const transactionId = await ctx.db.insert("creditTransactions", {
+    organizationId,
+    type: "grant",
+    amount: STARTER_CREDITS,
+    balanceAfter: available,
+    idempotencyKey,
+    rateCardVersion: ACTIVE_RATE_CARD_VERSION,
+    reason: "workspace_starter_grant",
+    createdAt: timestamp,
+  });
+  return { created: true, transactionId };
+}
+
+export const getWallet = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await requireOrganizationAccess(ctx, args.organizationId);
+    const wallet = await ctx.db
+      .query("creditWallets")
+      .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
+      .unique();
+    if (wallet) validatePersistedWallet(wallet);
+    return wallet ?? {
+      organizationId: args.organizationId,
+      granted: 0,
+      available: 0,
+      reserved: 0,
+      consumed: 0,
+      updatedAt: 0,
+    };
+  },
+});
+
+export const usageHistory = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    await requireOrganizationAccess(ctx, args.organizationId);
+    const [transactions, usage] = await Promise.all([
+      ctx.db
+        .query("creditTransactions")
+        .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
+        .order("desc")
+        .take(100),
+      ctx.db
+        .query("usageLedger")
+        .filter((q) => q.eq(q.field("organizationId"), args.organizationId))
+        .order("desc")
+        .take(100),
+    ]);
+    return { transactions, usage };
+  },
+});
+
+export const reserveCredits = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    studyId: v.optional(v.id("studies")),
+    operationId: v.string(),
+    operation: billableOperationValidator,
+    maximumCredits: v.number(),
+    idempotencyKey: v.string(),
+    expiresAt: v.number(),
+    rateCardVersion: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await requireOrganizationAccess(ctx, args.organizationId);
+    assertWholeCredits(args.maximumCredits, "maximum credits");
+    assertNonEmpty(args.operationId, "operation ID");
+    assertNonEmpty(args.idempotencyKey, "idempotency key");
+    const timestamp = Date.now();
+    if (!Number.isSafeInteger(args.expiresAt) || args.expiresAt <= timestamp) {
+      throw new Error("Reservation expiry must be a future safe integer timestamp");
+    }
+    const rateCardVersion = args.rateCardVersion ?? ACTIVE_RATE_CARD_VERSION;
+    if (!RATE_CARDS[rateCardVersion]?.some((rate) => rate.operation === args.operation)) {
+      throw new Error(`No rate configured for ${args.operation} on ${rateCardVersion}`);
+    }
+    await expireReservationsForOrganization(ctx, args.organizationId, timestamp);
+    const storedKey = scopedKey("reservation", args.organizationId, args.idempotencyKey);
+    const existing = await ctx.db
+      .query("creditReservations")
+      .withIndex("by_idempotency_key", (q) => q.eq("idempotencyKey", storedKey))
+      .unique();
+    if (existing) {
+      if (
+        existing.organizationId !== args.organizationId ||
+        existing.operationId !== args.operationId ||
+        existing.operation !== args.operation ||
+        existing.maximumCredits !== args.maximumCredits ||
+        existing.expiresAt !== args.expiresAt ||
+        existing.rateCardVersion !== rateCardVersion
+      ) {
+        throw new Error("Idempotency key was already used with different reservation inputs");
+      }
+      return { created: false, reservationId: existing._id, status: existing.status };
+    }
+    const wallet = await requireWallet(ctx, args.organizationId);
+    if (wallet.available < args.maximumCredits) {
+      throw new InsufficientCreditsError(wallet.available, args.maximumCredits);
+    }
+    const reservationId = await ctx.db.insert("creditReservations", {
+      organizationId: args.organizationId,
+      studyId: args.studyId,
+      operationId: args.operationId,
+      operation: args.operation,
+      maximumCredits: args.maximumCredits,
+      status: "reserved",
+      idempotencyKey: storedKey,
+      rateCardVersion,
+      expiresAt: args.expiresAt,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+    const available = wallet.available - args.maximumCredits;
+    const reserved = safeAdd(wallet.reserved, args.maximumCredits);
+    await ctx.db.patch(wallet._id, { available, reserved, updatedAt: timestamp });
+    await ctx.db.insert("creditTransactions", {
+      organizationId: args.organizationId,
+      studyId: args.studyId,
+      operationId: args.operationId,
+      operation: args.operation,
+      type: "reserve",
+      amount: args.maximumCredits,
+      balanceAfter: available,
+      idempotencyKey: storedKey,
+      rateCardVersion,
+      reservationId,
+      createdAt: timestamp,
+    });
+    return { created: true, reservationId, status: "reserved" as const };
+  },
+});
+
+export const ensureStarterGrant = internalMutation({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) =>
+    await ensureStarterGrantForOrganization(ctx, args.organizationId, Date.now()),
+});
+
+export const reconcileUsage = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    reservationId: v.id("creditReservations"),
+    provider: v.string(),
+    providerOperationId: v.string(),
+    nativeQuantity: v.number(),
+    internalCostMicros: v.number(),
+    model: v.string(),
+    agentRunId: v.optional(v.id("agentRuns")),
+    inputTokens: v.optional(v.number()),
+    outputTokens: v.optional(v.number()),
+    totalTokens: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    assertNonEmpty(args.provider, "provider");
+    assertNonEmpty(args.providerOperationId, "provider operation ID");
+    assertNonEmpty(args.model, "model");
+    assertWholeCredits(args.nativeQuantity, "native quantity", true);
+    assertWholeCredits(args.internalCostMicros, "internal cost micros", true);
+    const finalizationKey = compoundKey("usage", args.provider, args.providerOperationId);
+    const existingUsage = await ctx.db
+      .query("usageLedger")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("provider"), args.provider),
+          q.eq(q.field("providerOperationId"), args.providerOperationId),
+        ),
+      )
+      .unique();
+    if (existingUsage) {
+      if (existingUsage.organizationId !== args.organizationId) {
+        throw new Error("Provider operation was already reconciled for another organization");
+      }
+      return { created: false, usageId: existingUsage._id };
+    }
+    const reservation = await ctx.db.get(args.reservationId);
+    if (!reservation || reservation.organizationId !== args.organizationId) {
+      throw new Error("Credit reservation not found");
+    }
+    if (reservation.status !== "reserved") {
+      throw new Error(`Cannot reconcile a ${reservation.status} reservation`);
+    }
+    const charge = calculateBillableCredits({
+      operation: reservation.operation as BillableOperation,
+      nativeQuantity: args.nativeQuantity,
+      rateCardVersion: reservation.rateCardVersion,
+    });
+    const wallet = await requireWallet(ctx, args.organizationId);
+    if (wallet.reserved < reservation.maximumCredits) {
+      throw new Error("Reserved wallet balance is inconsistent");
+    }
+    const settlement = settleReservedCredits({
+      maximumCredits: reservation.maximumCredits,
+      measuredCredits: charge.credits,
+      availableCredits: wallet.available,
+    });
+    const available = safeAdd(wallet.available, settlement.releasedCredits) - settlement.availableDebit;
+    const reserved = wallet.reserved - reservation.maximumCredits;
+    const consumed = safeAdd(wallet.consumed, settlement.finalDebit);
+    const timestamp = Date.now();
+    await ctx.db.patch(wallet._id, { available, reserved, consumed, updatedAt: timestamp });
+    await ctx.db.patch(reservation._id, {
+      status: "finalized",
+      finalDebit: settlement.finalDebit,
+      measuredCredits: charge.credits,
+      shortfallCredits: settlement.shortfallCredits,
+      finalizationIdempotencyKey: finalizationKey,
+      updatedAt: timestamp,
+    });
+    let debitTransactionId: Id<"creditTransactions"> | undefined;
+    if (settlement.finalDebit > 0) {
+      debitTransactionId = await ctx.db.insert("creditTransactions", {
+        organizationId: args.organizationId,
+        studyId: reservation.studyId,
+        operationId: reservation.operationId,
+        operation: reservation.operation,
+        type: "debit",
+        amount: settlement.finalDebit,
+        balanceAfter: available,
+        idempotencyKey: finalizationKey,
+        rateCardVersion: reservation.rateCardVersion,
+        reservationId: reservation._id,
+        reason: "measured_provider_usage",
+        createdAt: timestamp,
+      });
+    }
+    if (settlement.releasedCredits > 0) {
+      await ctx.db.insert("creditTransactions", {
+        organizationId: args.organizationId,
+        studyId: reservation.studyId,
+        operationId: reservation.operationId,
+        operation: reservation.operation,
+        type: "release",
+        amount: settlement.releasedCredits,
+        balanceAfter: available,
+        idempotencyKey: `${finalizationKey}:release`,
+        rateCardVersion: reservation.rateCardVersion,
+        reservationId: reservation._id,
+        reason: "unused_reservation",
+        createdAt: timestamp,
+      });
+    }
+    if (settlement.shortfallCredits > 0) {
+      await ctx.db.insert("creditTransactions", {
+        organizationId: args.organizationId,
+        studyId: reservation.studyId,
+        operationId: reservation.operationId,
+        operation: reservation.operation,
+        type: "adjustment",
+        amount: settlement.shortfallCredits,
+        balanceAfter: available,
+        idempotencyKey: `${finalizationKey}:shortfall`,
+        rateCardVersion: reservation.rateCardVersion,
+        reservationId: reservation._id,
+        reason: "uncollectible_usage_shortfall",
+        createdAt: timestamp,
+      });
+    }
+    const inputTokens = args.inputTokens ?? 0;
+    const outputTokens = args.outputTokens ?? 0;
+    const totalTokens = args.totalTokens ?? safeAdd(inputTokens, outputTokens);
+    for (const [name, value] of Object.entries({ inputTokens, outputTokens, totalTokens })) {
+      assertWholeCredits(value, name, true);
+    }
+    const usageId = await ctx.db.insert("usageLedger", {
+      organizationId: args.organizationId,
+      studyId: reservation.studyId,
+      agentRunId: args.agentRunId,
+      operation: reservation.operation,
+      model: args.model,
+      inputTokens,
+      outputTokens,
+      totalTokens,
+      provider: args.provider,
+      providerOperationId: args.providerOperationId,
+      nativeQuantity: args.nativeQuantity,
+      nativeUnit: charge.nativeUnit,
+      internalCostMicros: args.internalCostMicros,
+      billedCredits: settlement.finalDebit,
+      creditTransactionId: debitTransactionId,
+      rateCardVersion: reservation.rateCardVersion,
+      finalized: true,
+      createdAt: timestamp,
+    });
+    return {
+      created: true,
+      usageId,
+      finalDebit: settlement.finalDebit,
+      releasedCredits: settlement.releasedCredits,
+      shortfallCredits: settlement.shortfallCredits,
+    };
+  },
+});
+
+export const releaseReservation = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    reservationId: v.id("creditReservations"),
+    idempotencyKey: v.string(),
+    reason: v.string(),
+  },
+  handler: async (ctx, args) => {
+    assertNonEmpty(args.idempotencyKey, "idempotency key");
+    assertNonEmpty(args.reason, "release reason");
+    const reservation = await ctx.db.get(args.reservationId);
+    if (!reservation || reservation.organizationId !== args.organizationId) {
+      throw new Error("Credit reservation not found");
+    }
+    const storedKey = scopedKey("release", args.organizationId, args.idempotencyKey);
+    if (reservation.status === "released" && reservation.releaseIdempotencyKey === storedKey) {
+      return { created: false, releasedCredits: reservation.maximumCredits };
+    }
+    if (reservation.status !== "reserved") {
+      throw new Error(`Cannot release a ${reservation.status} reservation`);
+    }
+    const wallet = await requireWallet(ctx, args.organizationId);
+    if (wallet.reserved < reservation.maximumCredits) {
+      throw new Error("Reserved wallet balance is inconsistent");
+    }
+    const timestamp = Date.now();
+    const available = safeAdd(wallet.available, reservation.maximumCredits);
+    await ctx.db.patch(wallet._id, {
+      available,
+      reserved: wallet.reserved - reservation.maximumCredits,
+      updatedAt: timestamp,
+    });
+    await ctx.db.patch(reservation._id, {
+      status: "released",
+      releaseIdempotencyKey: storedKey,
+      updatedAt: timestamp,
+    });
+    await ctx.db.insert("creditTransactions", {
+      organizationId: args.organizationId,
+      studyId: reservation.studyId,
+      operationId: reservation.operationId,
+      operation: reservation.operation,
+      type: "release",
+      amount: reservation.maximumCredits,
+      balanceAfter: available,
+      idempotencyKey: storedKey,
+      rateCardVersion: reservation.rateCardVersion,
+      reservationId: reservation._id,
+      reason: args.reason,
+      createdAt: timestamp,
+    });
+    return { created: true, releasedCredits: reservation.maximumCredits };
+  },
+});
+
+export const expireReservations = internalMutation({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) =>
+    await expireReservationsForOrganization(ctx, args.organizationId, Date.now()),
+});
+
+async function requireWallet(ctx: Pick<MutationCtx, "db">, organizationId: Id<"organizations">) {
+  const wallet = await ctx.db
+    .query("creditWallets")
+    .withIndex("by_organization", (q) => q.eq("organizationId", organizationId))
+    .unique();
+  if (!wallet) throw new Error("Credit wallet has not been provisioned");
+  validatePersistedWallet(wallet);
+  return wallet;
+}
+
+async function expireReservationsForOrganization(
+  ctx: Pick<MutationCtx, "db">,
+  organizationId: Id<"organizations">,
+  timestamp: number,
+) {
+  const reservations = await ctx.db
+    .query("creditReservations")
+    .withIndex("by_organization", (q) => q.eq("organizationId", organizationId))
+    .collect();
+  const expired = reservations.filter(
+    (reservation) => reservation.status === "reserved" && reservation.expiresAt <= timestamp,
+  );
+  if (expired.length === 0) return { expiredCount: 0, releasedCredits: 0 };
+  const wallet = await requireWallet(ctx, organizationId);
+  let available = wallet.available;
+  let reserved = wallet.reserved;
+  let releasedCredits = 0;
+  for (const reservation of expired) {
+    if (reserved < reservation.maximumCredits) throw new Error("Reserved wallet balance is inconsistent");
+    reserved -= reservation.maximumCredits;
+    available = safeAdd(available, reservation.maximumCredits);
+    releasedCredits = safeAdd(releasedCredits, reservation.maximumCredits);
+    const idempotencyKey = `expire:${reservation._id}:${reservation.expiresAt}`;
+    await ctx.db.patch(reservation._id, {
+      status: "expired",
+      releaseIdempotencyKey: idempotencyKey,
+      updatedAt: timestamp,
+    });
+    await ctx.db.insert("creditTransactions", {
+      organizationId,
+      studyId: reservation.studyId,
+      operationId: reservation.operationId,
+      operation: reservation.operation,
+      type: "release",
+      amount: reservation.maximumCredits,
+      balanceAfter: available,
+      idempotencyKey,
+      rateCardVersion: reservation.rateCardVersion,
+      reservationId: reservation._id,
+      reason: "reservation_expired",
+      createdAt: timestamp,
+    });
+  }
+  await ctx.db.patch(wallet._id, { available, reserved, updatedAt: timestamp });
+  return { expiredCount: expired.length, releasedCredits };
+}
+
+function validatePersistedWallet(wallet: {
+  granted: number;
+  available: number;
+  reserved: number;
+  consumed: number;
+}) {
+  assertWholeCredits(wallet.granted, "wallet granted", true);
+  assertWholeCredits(wallet.available, "wallet available", true);
+  assertWholeCredits(wallet.reserved, "wallet reserved", true);
+  assertWholeCredits(wallet.consumed, "wallet consumed", true);
+}
+
+function assertNonEmpty(value: string, name: string) {
+  if (!value.trim() || value.length > 256) throw new Error(`${name} must be between 1 and 256 characters`);
+}
+
+function scopedKey(prefix: string, organizationId: string, key: string) {
+  return compoundKey(prefix, organizationId, key);
+}
+
+function compoundKey(prefix: string, ...parts: string[]) {
+  return `${prefix}:${parts.map((part) => `${part.length}:${part}`).join(":")}`;
 }

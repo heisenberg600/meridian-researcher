@@ -72,3 +72,38 @@ test("rejects an unsafe checkout URL returned by the payment provider", async ()
     /secure HTTPS URL/,
   );
 });
+
+test("retries a failed checkout intent through the provider with the same idempotency key", async () => {
+  let calls = 0;
+  const requestedKeys: string[] = [];
+  const service = createPaymentsService(
+    new MemoryCheckoutStore(),
+    {
+      async createCheckout(request) {
+        calls += 1;
+        requestedKeys.push(request.idempotencyKey);
+        if (calls === 1) throw new Error("temporary provider failure");
+        return { sessionId: "cks_recovered", checkoutUrl: "https://checkout.test/recovered" };
+      },
+    },
+    {
+      id: () => "intent_recovered",
+      now: () => 1_000,
+      returnUrl: "https://app.example.test/billing?checkout=return",
+      productIds: { credits_1m: "prod_1m" },
+    },
+  );
+  const args = {
+    organizationId: "org_a",
+    packKey: "credits_1m" as const,
+    idempotencyKey: "checkout:recover",
+  };
+
+  await assert.rejects(service.createTopUpCheckout(args), /temporary provider failure/);
+  const recovered = await service.createTopUpCheckout(args);
+
+  assert.equal(recovered.status, "created");
+  assert.equal(recovered.checkout.dodoSessionId, "cks_recovered");
+  assert.equal(calls, 2);
+  assert.deepEqual(requestedKeys, ["checkout:recover", "checkout:recover"]);
+});
