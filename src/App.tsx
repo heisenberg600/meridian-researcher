@@ -1,4 +1,6 @@
 import { SignInButton, useUser } from "@clerk/react";
+import { useQuery } from "convex/react";
+import { api } from "../convex/_generated/api";
 import { InterviewClient } from "./InterviewPrototype";
 import { Landing } from "./Landing";
 import { Portal } from "./Portal";
@@ -70,12 +72,23 @@ function PortalGate() {
   );
 }
 
+function ParticipantInterviewRoute({ token }: { token: string }) {
+  const invite = useQuery(api.participantInvites.getByToken, { token });
+  if (invite === undefined) {
+    return <main className="flex min-h-screen items-center justify-center bg-[#FAF9F6] text-sm text-[#706c63]">Loading invitation...</main>;
+  }
+  if (!invite) {
+    return <InvalidInvite />;
+  }
+  return <InterviewClient invite={invite} />;
+}
+
 export function App() {
   const pathname = usePathname();
   if (pathname.startsWith("/interview/")) {
     const inviteId = decodeURIComponent(pathname.split("/")[2] || "demo");
     const invite = getInterviewInvite(inviteId);
-    return invite ? <InterviewClient invite={invite} /> : <InvalidInvite />;
+    return invite ? <InterviewClient invite={invite} /> : <ParticipantInterviewRoute token={inviteId} />;
   }
 
   return pathname.startsWith("/portal") ? <PortalGate /> : <Landing />;

@@ -192,7 +192,24 @@ export default defineSchema({
     studyId: v.id("studies"),
     studyPlanVersionId: v.id("studyPlanVersions"),
     version: v.number(),
-    brief: v.any(),
+    brief: v.object({
+      title: v.string(),
+      researchObjective: v.string(),
+      respondentProfile: v.string(),
+      estimatedMinutes: v.number(),
+      openingScript: v.string(),
+      topics: v.array(
+        v.object({
+          id: v.string(),
+          title: v.string(),
+          objective: v.string(),
+          questions: v.array(v.string()),
+          probes: v.array(v.string()),
+        }),
+      ),
+      closingScript: v.string(),
+      guardrails: v.array(v.string()),
+    }),
     status: v.union(v.literal("draft"), v.literal("awaiting_approval"), v.literal("approved"), v.literal("superseded")),
     createdByAgentRunId: v.optional(v.id("agentRuns")),
     approvedBy: v.optional(v.id("users")),
@@ -224,12 +241,26 @@ export default defineSchema({
       v.literal("archived"),
     ),
     notes: v.optional(v.string()),
+    inviteToken: v.optional(v.string()),
+    invitedAt: v.optional(v.number()),
+    lastInviteEmailId: v.optional(v.string()),
+    emailOutreachStatus: v.optional(
+      v.union(v.literal("sent"), v.literal("failed")),
+    ),
+    emailOutreachError: v.optional(v.string()),
+    callOutreachStatus: v.optional(
+      v.union(v.literal("initiated"), v.literal("failed")),
+    ),
+    callOutreachError: v.optional(v.string()),
+    elevenLabsConversationId: v.optional(v.string()),
+    telephonyCallSid: v.optional(v.string()),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_study", ["studyId"])
-    .index("by_study_status", ["studyId", "status"]),
+    .index("by_study_status", ["studyId", "status"])
+    .index("by_invite_token", ["inviteToken"]),
 
   interviewSessions: defineTable({
     inviteId: v.string(),

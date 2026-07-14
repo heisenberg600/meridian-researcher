@@ -1,8 +1,9 @@
 "use client";
 
 import { UserButton, useUser } from "@clerk/react";
-import { useMutation, useQuery } from "convex/react";
-import { useEffect, useMemo, useState } from "react";
+import { useAction, useMutation, useQuery } from "convex/react";
+import { Component, useEffect, useMemo, useState } from "react";
+import type { ErrorInfo, ReactNode } from "react";
 import {
   BrainIcon,
   ArchiveIcon,
@@ -12,9 +13,12 @@ import {
   FileTextIcon,
   Globe2Icon,
   HistoryIcon,
+  ListChecksIcon,
   LoaderCircleIcon,
+  MailIcon,
   MessageSquareIcon,
   PencilIcon,
+  PhoneCallIcon,
   PlusIcon,
   Trash2Icon,
   UserPlusIcon,
@@ -43,6 +47,7 @@ type StudyTab =
   | "overview"
   | "chat"
   | "plan"
+  | "interview-guide"
   | "participants"
   | "calls"
   | "feedback"
@@ -63,6 +68,7 @@ const studyTabs: Array<{ id: StudyTab; label: string }> = [
   { id: "overview", label: "Overview" },
   { id: "chat", label: "Chat" },
   { id: "plan", label: "Plan" },
+  { id: "interview-guide", label: "Interview guide" },
   { id: "participants", label: "Participants" },
   { id: "calls", label: "Calls" },
   { id: "feedback", label: "Feedback" },
@@ -712,6 +718,11 @@ function StudyDetail({
         {studyTab === "plan" ? (
           <StudyPlan selectedStudy={selectedStudy} onOpenChat={() => openStudyTab("chat")} />
         ) : null}
+        {studyTab === "interview-guide" ? (
+          <InterviewGuideErrorBoundary>
+            <InterviewGuide selectedStudy={selectedStudy} />
+          </InterviewGuideErrorBoundary>
+        ) : null}
         {studyTab === "participants" ? <StudyParticipants selectedStudy={selectedStudy} /> : null}
         {studyTab === "calls" ? <CallsSkeleton /> : null}
         {studyTab === "feedback" ? <FeedbackSkeleton /> : null}
@@ -1187,6 +1198,222 @@ function StudyPlan({
   );
 }
 
+class InterviewGuideErrorBoundary extends Component<
+  { children: ReactNode },
+  { error: Error | null }
+> {
+  state = { error: null as Error | null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("Interview guide failed to render", error, info);
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="border border-[var(--status-danger)] bg-[var(--surface-card)] p-6">
+          <h1 className="[font:var(--text-heading-sm)] text-[var(--text-heading)]">
+            Interview guide could not load
+          </h1>
+          <p className="mt-2 [font:var(--text-body-sm)] text-[var(--text-secondary)]">
+            {this.state.error.message}
+          </p>
+          <Button type="button" variant="outline" className="mt-4" onClick={() => this.setState({ error: null })}>
+            Try again
+          </Button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function InterviewGuide({ selectedStudy }: { selectedStudy: Doc<"studies"> }) {
+  const currentGuide = useQuery(api.interviewBriefs.currentForStudy, { studyId: selectedStudy._id });
+  const versions = useQuery(api.interviewBriefs.listVersions, { studyId: selectedStudy._id });
+  const generateGuide = useAction(api.interviewBriefs.generateFromPlan);
+  const approveGuide = useMutation(api.interviewBriefs.approve);
+  const [selectedVersionId, setSelectedVersionId] = useState<Id<"interviewBriefVersions"> | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
+  const [guideError, setGuideError] = useState<string | null>(null);
+  const displayedGuide = useMemo(
+    () =>
+      (selectedVersionId
+        ? versions?.find((version) => version._id === selectedVersionId)
+        : currentGuide) ?? null,
+    [currentGuide, selectedVersionId, versions],
+  );
+
+  async function handleGenerate() {
+    setIsGenerating(true);
+    setGuideError(null);
+    try {
+      await generateGuide({ studyId: selectedStudy._id });
+      setSelectedVersionId(null);
+    } catch (cause) {
+      setGuideError(cause instanceof Error ? cause.message : "Could not generate interview guide");
+    } finally {
+      setIsGenerating(false);
+    }
+  }
+
+  async function handleApprove() {
+    if (!currentGuide) return;
+    setIsApproving(true);
+    setGuideError(null);
+    try {
+      await approveGuide({ briefId: currentGuide._id });
+    } catch (cause) {
+      setGuideError(cause instanceof Error ? cause.message : "Could not approve interview guide");
+    } finally {
+      setIsApproving(false);
+    }
+  }
+
+  if (currentGuide === undefined || versions === undefined) {
+    return <p className="[font:var(--text-body)] text-[var(--text-muted)]">Loading interview guide...</p>;
+  }
+
+  if (!currentGuide) {
+    return (
+      <div className="flex min-h-[520px] items-center justify-center border border-dashed border-[var(--border-strong)] bg-[var(--surface-card)] px-8 text-center">
+        <div className="max-w-md">
+          <ListChecksIcon className="mx-auto size-6 text-[var(--text-muted)]" />
+          <h1 className="mt-4 [font:var(--text-heading-sm)] text-[var(--text-heading)]">
+            Build the interview guide
+          </h1>
+          <p className="mt-2 [font:var(--text-body)] text-[var(--text-secondary)]">
+            Meridian will turn the current Study Plan into one adaptive guide for form and voice interviews.
+          </p>
+          {guideError ? (
+            <p className="mt-3 [font:var(--text-body-sm)] text-[var(--status-danger)]">{guideError}</p>
+          ) : null}
+          <Button type="button" onClick={() => void handleGenerate()} disabled={isGenerating} className="mt-5">
+            {isGenerating ? <LoaderCircleIcon className="size-4 animate-spin" /> : <ListChecksIcon className="size-4" />}
+            {isGenerating ? "Generating..." : "Generate from Study Plan"}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const brief = displayedGuide?.brief;
+  return (
+    <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_260px]">
+      <article className="min-w-0 border border-[var(--border-default)] bg-[var(--surface-card)]">
+        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--border-default)] px-7 py-5">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="[font:var(--text-heading-sm)] text-[var(--text-heading)]">Interview guide</h1>
+              {displayedGuide ? <Badge tone="info">Version {displayedGuide.version}</Badge> : null}
+              {displayedGuide ? <Badge>{formatStatus(displayedGuide.status)}</Badge> : null}
+            </div>
+            {brief ? (
+              <p className="mt-2 [font:var(--text-body-sm)] text-[var(--text-muted)]">
+                {brief.estimatedMinutes} minutes · {brief.respondentProfile}
+              </p>
+            ) : null}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" onClick={() => void handleGenerate()} disabled={isGenerating}>
+              {isGenerating ? <LoaderCircleIcon className="size-4 animate-spin" /> : <PlusIcon className="size-4" />}
+              New version
+            </Button>
+            {currentGuide.status !== "approved" && displayedGuide?._id === currentGuide._id ? (
+              <Button type="button" onClick={() => void handleApprove()} disabled={isApproving}>
+                <CheckCircle2Icon className="size-4" />
+                {isApproving ? "Approving..." : "Approve guide"}
+              </Button>
+            ) : null}
+          </div>
+        </div>
+
+        {guideError ? (
+          <p className="border-b border-[var(--border-default)] px-7 py-3 [font:var(--text-body-sm)] text-[var(--status-danger)]">
+            {guideError}
+          </p>
+        ) : null}
+        {brief ? (
+          <div className="mx-auto max-w-3xl space-y-8 px-7 py-8">
+            <section>
+              <p className="[font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--text-muted)]">Research objective</p>
+              <h2 className="mt-2 [font:var(--text-heading-sm)] text-[var(--text-heading)]">{brief.title}</h2>
+              <p className="mt-2 [font:var(--text-body)] text-[var(--text-secondary)]">{brief.researchObjective}</p>
+            </section>
+            <GuideScript label="Opening" text={brief.openingScript} />
+            <div className="space-y-6">
+              {brief.topics.map((topic, index) => (
+                <section key={topic.id} className="border-t border-[var(--border-default)] pt-6">
+                  <p className="[font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--text-muted)]">Topic {index + 1}</p>
+                  <h2 className="mt-1 [font:var(--text-heading-sm)] text-[var(--text-heading)]">{topic.title}</h2>
+                  <p className="mt-1 [font:var(--text-body-sm)] text-[var(--text-muted)]">{topic.objective}</p>
+                  <ol className="mt-4 space-y-3">
+                    {topic.questions.map((question, questionIndex) => (
+                      <li key={`${topic.id}-${questionIndex}`} className="flex gap-3 [font:var(--text-body)] text-[var(--text-heading)]">
+                        <span className="text-[var(--text-muted)]">{questionIndex + 1}.</span>
+                        <span>{question}</span>
+                      </li>
+                    ))}
+                  </ol>
+                  {topic.probes.length > 0 ? (
+                    <div className="mt-4 bg-[var(--bg-sunken)] px-4 py-3">
+                      <p className="[font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--text-muted)]">Optional probes</p>
+                      <p className="mt-2 [font:var(--text-body-sm)] text-[var(--text-secondary)]">{topic.probes.join(" · ")}</p>
+                    </div>
+                  ) : null}
+                </section>
+              ))}
+            </div>
+            <GuideScript label="Closing" text={brief.closingScript} />
+            {brief.guardrails.length > 0 ? (
+              <section className="border-t border-[var(--border-default)] pt-6">
+                <h2 className="[font:var(--text-body)] font-semibold text-[var(--text-heading)]">Interviewer guardrails</h2>
+                <ul className="mt-3 space-y-2 [font:var(--text-body-sm)] text-[var(--text-secondary)]">
+                  {brief.guardrails.map((guardrail) => <li key={guardrail}>• {guardrail}</li>)}
+                </ul>
+              </section>
+            ) : null}
+          </div>
+        ) : null}
+      </article>
+
+      <aside className="border border-[var(--border-default)] bg-[var(--surface-card)]">
+        <div className="border-b border-[var(--border-default)] px-4 py-3">
+          <h2 className="[font:var(--text-body-sm)] font-semibold text-[var(--text-heading)]">Version history</h2>
+        </div>
+        <div className="p-2">
+          {versions.map((version) => {
+            const active = (selectedVersionId ?? currentGuide._id) === version._id;
+            return (
+              <button key={version._id} type="button" onClick={() => setSelectedVersionId(version._id)} className={cx("w-full px-3 py-3 text-left transition-colors", active ? "bg-[var(--accent-softer)]" : "hover:bg-[var(--bg-sunken)]")}>
+                <span className="flex items-center justify-between gap-3">
+                  <span className="[font:var(--text-body-sm)] font-semibold text-[var(--text-heading)]">Version {version.version}</span>
+                  {version._id === currentGuide._id ? <span className="[font:var(--text-caption)] text-[var(--accent-active)]">Current</span> : null}
+                </span>
+                <span className="mt-1 block [font:var(--text-caption)] text-[var(--text-muted)]">{formatDate(version.createdAt)} · {formatStatus(version.status)}</span>
+              </button>
+            );
+          })}
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function GuideScript({ label, text }: { label: string; text: string }) {
+  return (
+    <section className="border-l-2 border-[var(--accent-active)] pl-4">
+      <p className="[font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--text-muted)]">{label}</p>
+      <p className="mt-2 [font:var(--text-body)] text-[var(--text-secondary)]">{text}</p>
+    </section>
+  );
+}
+
 type ParticipantFormState = {
   name: string;
   email: string;
@@ -1212,9 +1439,13 @@ function StudyParticipants({ selectedStudy }: { selectedStudy: Doc<"studies"> })
   const createParticipant = useMutation(api.studyParticipants.create);
   const updateParticipant = useMutation(api.studyParticipants.update);
   const archiveParticipant = useMutation(api.studyParticipants.archive);
+  const sendParticipantEmail = useAction(api.participantInvites.sendEmail);
+  const callParticipant = useAction(api.participantInvites.sendCall);
   const [form, setForm] = useState<ParticipantFormState>(emptyParticipantForm);
   const [editingId, setEditingId] = useState<Id<"studyParticipants"> | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [sendingInviteId, setSendingInviteId] = useState<Id<"studyParticipants"> | null>(null);
+  const [outreachChannel, setOutreachChannel] = useState<"email" | "call" | null>(null);
   const [participantError, setParticipantError] = useState<string | null>(null);
 
   const setField = <Key extends keyof ParticipantFormState>(
@@ -1260,6 +1491,28 @@ function StudyParticipants({ selectedStudy }: { selectedStudy: Doc<"studies"> })
       preferredMode: participant.preferredMode,
       notes: participant.notes ?? "",
     });
+  }
+
+  async function handleOutreach(
+    participant: Doc<"studyParticipants">,
+    channel: "email" | "call",
+  ) {
+    setSendingInviteId(participant._id);
+    setOutreachChannel(channel);
+    setParticipantError(null);
+    try {
+      if (channel === "email") {
+        await sendParticipantEmail({ participantId: participant._id });
+      } else {
+        const result = await callParticipant({ participantId: participant._id });
+        if (result.status === "failed") throw new Error(result.error);
+      }
+    } catch (cause) {
+      setParticipantError(cause instanceof Error ? cause.message : `Could not start ${channel} outreach`);
+    } finally {
+      setSendingInviteId(null);
+      setOutreachChannel(null);
+    }
   }
 
   return (
@@ -1357,7 +1610,7 @@ function StudyParticipants({ selectedStudy }: { selectedStudy: Doc<"studies"> })
         </Card>
 
         <div className="overflow-hidden border border-[var(--border-default)] bg-[var(--surface-card)]">
-          <div className="grid grid-cols-[minmax(160px,1.2fr)_minmax(140px,1fr)_110px_96px] gap-4 border-b border-[var(--border-default)] bg-[var(--bg-sunken)] px-4 py-2.5 [font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--text-muted)]">
+          <div className="grid grid-cols-[minmax(160px,1.2fr)_minmax(140px,1fr)_100px_220px] gap-4 border-b border-[var(--border-default)] bg-[var(--bg-sunken)] px-4 py-2.5 [font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--text-muted)]">
             <span>Participant</span>
             <span>Segment</span>
             <span>Mode</span>
@@ -1381,7 +1634,7 @@ function StudyParticipants({ selectedStudy }: { selectedStudy: Doc<"studies"> })
             participants.map((participant) => (
               <div
                 key={participant._id}
-                className="grid grid-cols-[minmax(160px,1.2fr)_minmax(140px,1fr)_110px_96px] items-center gap-4 border-b border-[var(--border-default)] px-4 py-3 last:border-b-0"
+                className="grid grid-cols-[minmax(160px,1.2fr)_minmax(140px,1fr)_100px_220px] items-center gap-4 border-b border-[var(--border-default)] px-4 py-3 last:border-b-0"
               >
                 <div className="min-w-0">
                   <p className="truncate [font:var(--text-body-sm)] font-semibold text-[var(--text-heading)]">
@@ -1401,6 +1654,38 @@ function StudyParticipants({ selectedStudy }: { selectedStudy: Doc<"studies"> })
                   {participant.preferredMode === "either" ? "Either" : participant.preferredMode}
                 </span>
                 <div className="flex justify-end gap-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={!participant.email || sendingInviteId === participant._id}
+                    title={participant.email ? "Send interview email" : "Add an email first"}
+                    aria-label={`Email ${participant.name}`}
+                    onClick={() => void handleOutreach(participant, "email")}
+                  >
+                    {sendingInviteId === participant._id && outreachChannel === "email" ? (
+                      <LoaderCircleIcon className="size-4 animate-spin" />
+                    ) : (
+                      <MailIcon className="size-4" />
+                    )}
+                    Email
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={!participant.phone || sendingInviteId === participant._id}
+                    title={participant.phone ? "Start ElevenLabs call" : "Add a phone first"}
+                    aria-label={`Call ${participant.name}`}
+                    onClick={() => void handleOutreach(participant, "call")}
+                  >
+                    {sendingInviteId === participant._id && outreachChannel === "call" ? (
+                      <LoaderCircleIcon className="size-4 animate-spin" />
+                    ) : (
+                      <PhoneCallIcon className="size-4" />
+                    )}
+                    Call
+                  </Button>
                   <Button
                     type="button"
                     size="icon"
