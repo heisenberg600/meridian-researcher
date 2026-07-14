@@ -46,12 +46,12 @@ export function ApprovalCard({
             <p className="mt-4 text-xs font-semibold text-[var(--ink)]">
               {status === "approved" ? "Approved" : "Returned"}{resolvedBy ? ` by ${resolvedBy}` : ""}
             </p>
-          ) : (
+          ) : onApprove || onRequestChanges ? (
             <div className="mt-5 flex flex-wrap gap-2">
-              <Button type="button" onClick={onApprove}>Approve</Button>
-              <Button type="button" variant="outline" onClick={onRequestChanges}>Request changes</Button>
+              {onApprove ? <Button type="button" onClick={onApprove}>Approve</Button> : null}
+              {onRequestChanges ? <Button type="button" variant="outline" onClick={onRequestChanges}>Request changes</Button> : null}
             </div>
-          )}
+          ) : null}
         </div>
       </div>
     </section>

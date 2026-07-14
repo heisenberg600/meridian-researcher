@@ -12,7 +12,7 @@
   --ink-strong: #181713;
   --ink: #3b3932;
   --ink-muted: #625e54;
-  --ink-faint: #7d776b;
+  --ink-faint: #716c62;
   --ink-inverse: #faf8f3;
 
   /* Meridian terracotta */
@@ -21,6 +21,11 @@
   --clay-deep: #793520;
   --clay-soft: #f5e2da;
   --clay-wash: #fbf0eb;
+
+  --clay-50: var(--clay-wash);
+  --clay-100: var(--clay-soft);
+  --clay-600: var(--clay);
+  --clay-700: var(--clay-strong);
 
   /* Stable palette aliases used while existing Portal surfaces migrate. */
   --ivory-50: var(--paper-raised);
@@ -40,12 +45,14 @@
   --success: #39714d;
   --success-soft: #e3eee5;
   --success-line: #b9d2c0;
-  --warning: #966b1e;
+  --warning: #8d6013;
   --warning-soft: #f6ecd8;
   --warning-line: #e4cf9f;
   --danger: #a83e32;
   --danger-soft: #f7e3df;
   --danger-line: #e5b9b1;
+  --red-100: var(--danger-soft);
+  --red-600: var(--danger);
   --info: #46607a;
   --info-soft: #e4eaf0;
 
@@ -78,7 +85,9 @@
   --shadow-paper: 0 1px 2px rgba(24, 23, 19, 0.05);
   --shadow-raised: 0 12px 30px rgba(24, 23, 19, 0.11), 0 2px 6px rgba(24, 23, 19, 0.05);
   --shadow-md: 0 4px 12px rgba(24, 23, 19, 0.08), 0 2px 4px rgba(24, 23, 19, 0.04);
-  --focus-ring: 0 0 0 3px rgba(189, 89, 61, 0.27);
+  --shadow-sm: var(--shadow-paper);
+  --shadow-lg: var(--shadow-raised);
+  --focus-ring: 0 0 0 3px #93432d;
   --duration-fast: 140ms;
   --duration-base: 190ms;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);

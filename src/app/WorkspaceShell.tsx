@@ -58,14 +58,14 @@ export function WorkspaceShell({
       </aside>
 
       <div className="min-w-0">
-        <header className="sticky top-0 z-40 flex min-h-16 items-center justify-between border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--canvas)_94%,transparent)] px-4 backdrop-blur lg:hidden">
+        <header className="sticky top-0 z-40 flex min-h-16 items-center justify-between border-b border-[var(--line)] bg-[var(--canvas)] px-4 [padding-left:max(1rem,env(safe-area-inset-left))] [padding-right:max(1rem,env(safe-area-inset-right))] [padding-top:env(safe-area-inset-top)] lg:hidden">
           <WorkspaceIdentity compact workspaceName={workspaceName} />
           <details className="group relative">
             <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-[var(--radius-control)] border border-[var(--line-strong)] bg-[var(--paper-raised)] px-3 text-sm font-semibold text-[var(--ink-strong)] outline-none hover:bg-[var(--paper-soft)] focus-visible:shadow-[var(--focus-ring)] [&::-webkit-details-marker]:hidden">
               <MenuIcon aria-hidden="true" className="size-4" />
               Menu
             </summary>
-            <div className="absolute right-0 mt-2 w-[min(20rem,calc(100vw-2rem))] border border-[var(--line)] bg-[var(--paper-raised)] p-2 shadow-[var(--shadow-raised)]">
+            <div className="absolute right-0 mt-2 max-h-[calc(100dvh_-_5rem_-_env(safe-area-inset-top))] w-[min(20rem,calc(100vw-2rem))] overflow-y-auto overscroll-contain border border-[var(--line)] bg-[var(--paper-raised)] p-2 shadow-[var(--shadow-raised)]">
               <WorkspaceNavigation currentPath={currentPath} mobile />
               <UserSummary mobile user={user} />
             </div>

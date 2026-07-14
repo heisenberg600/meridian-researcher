@@ -66,7 +66,7 @@ export function StudyShell({ children, currentPath, nextAction, study }: StudySh
         </div>
 
         <nav aria-label="Study" className="overflow-x-auto px-4 sm:px-6 lg:px-8">
-          <ol aria-label="Study progress" className="mx-auto flex min-w-max max-w-[96rem] items-stretch gap-1">
+          <ul aria-label="Study destinations" className="mx-auto flex min-w-max max-w-[96rem] items-stretch gap-1">
             {navigation.map((item, index) => {
               const active = isShellPathActive(currentPath, item.href);
               return (
@@ -81,15 +81,17 @@ export function StudyShell({ children, currentPath, nextAction, study }: StudySh
                         : "border-transparent text-[var(--ink-faint)] hover:border-[var(--line-strong)] hover:text-[var(--ink)]",
                     )}
                   >
-                    <span aria-hidden="true" className={cn("font-[var(--font-data)] text-[0.625rem]", active && "text-[var(--clay-strong)]")}>
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
+                    {item.id !== "memory" ? (
+                      <span aria-hidden="true" className={cn("font-[var(--font-data)] text-[0.625rem]", active && "text-[var(--clay-strong)]")}>
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                    ) : null}
                     {item.label}
                   </a>
                 </li>
               );
             })}
-          </ol>
+          </ul>
         </nav>
       </header>
 

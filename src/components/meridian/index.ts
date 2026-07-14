@@ -5,6 +5,7 @@ export * from "./Button";
 export * from "./Card";
 export * from "./Dialog";
 export * from "./EmptyState";
+export * from "./ErrorState";
 export * from "./EvidenceLink";
 export * from "./IconButton";
 export * from "./MemoryEditor";
@@ -13,6 +14,7 @@ export * from "./SheetGrid";
 export * from "./SourceRow";
 export * from "./SectionHeader";
 export * from "./Tabs";
+export * from "./Toast";
 export * from "./ToastRegion";
 
 export { Input as TextInput } from "@/components/ui/input";

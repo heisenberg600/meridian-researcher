@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -27,6 +27,10 @@ test("workspace shell renders semantic responsive navigation and a skip target",
   assert.match(html, /<main[^>]+id="main-content"[^>]+tabindex="-1"/);
   assert.match(html, /Atlas Labs/);
   assert.match(html, /Rhea Shah/);
+  assert.match(html, /safe-area-inset-top/);
+  assert.match(html, /max-h-\[calc\(100dvh/);
+  assert.match(html, /overflow-y-auto/);
+  assert.doesNotMatch(html, /backdrop-blur/);
   assert.doesNotMatch(html, />Management</);
   assert.doesNotMatch(html, />Evals</);
   assert.doesNotMatch(html, />Observability</);

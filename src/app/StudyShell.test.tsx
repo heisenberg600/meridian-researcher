@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -34,5 +34,6 @@ test("study shell describes lifecycle context and the active research destinatio
   assert.match(html, /Onboarding friction/);
   assert.match(html, /Analyzing/);
   assert.match(html, /Review findings/);
-  assert.match(html, /aria-label="Study progress"/);
+  assert.match(html, /aria-label="Study destinations"/);
+  assert.doesNotMatch(html, /08<\/span>\s*Memory/);
 });

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -21,4 +21,16 @@ test("evidence link names the source and locator", async () => {
   assert.match(html, /aria-label="View evidence from Priya Nair at 12:48"/);
   assert.match(html, /Priya Nair/);
   assert.match(html, /12:48/);
+});
+
+test("evidence link does not render a false interaction without a destination", async () => {
+  const { EvidenceLink } = await import("./EvidenceLink");
+  const html = renderToStaticMarkup(
+    createElement(EvidenceLink, {
+      href: " ",
+      label: "Missing source",
+    }),
+  );
+
+  assert.equal(html, "");
 });

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 
 test("workspace navigation exposes every customer workspace destination", async () => {
   const module = await import("./shellNavigation").catch(() => null);

@@ -1,5 +1,6 @@
 @import "tailwindcss";
-@import "../docs/ui-estimates/console-feature-pages/_ds/meridian-design-system-c43e081f-cf01-4e0e-8a12-54537493f16b/styles.css";
+@import "./styles/tokens.css";
+@import "./styles/base.css";
 
 .font-display {
   font-family: var(--font-serif-display);
@@ -9,50 +10,11 @@
   font-family: var(--font-mono);
 }
 
-:root {
-  /* shadcn semantic contract, backed by the Meridian token system */
-  --background: var(--bg-page);
-  --foreground: var(--text-body);
-  --card: var(--surface-card);
-  --card-foreground: var(--text-body);
-  --popover: var(--surface-overlay);
-  --popover-foreground: var(--text-body);
-  --primary: var(--accent);
-  --primary-foreground: #ffffff;
-  --secondary: var(--surface-card);
-  --secondary-foreground: var(--text-body);
-  --muted: var(--bg-sunken);
-  --muted-foreground: var(--text-muted);
-  --destructive: var(--status-danger);
-  --border: var(--border-default);
-  --input: var(--border-default);
-  --ring: var(--border-focus);
-  --red-700: color-mix(in srgb, var(--status-danger) 86%, black);
-  --red-800: color-mix(in srgb, var(--status-danger) 72%, black);
-
-  color: var(--ink-700);
-  background: var(--bg-page);
-  font-family: var(--font-sans);
-}
-
-body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
-  background: var(--bg-page);
-}
-
 .landing-paper {
   background-color: #faf9f6;
   background-image: url("/landing/paper-texture.webp");
   background-repeat: repeat;
   background-size: 512px 512px;
-}
-
-button,
-input,
-textarea {
-  font: inherit;
 }
 
 .meridian-markdown {
