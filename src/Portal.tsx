@@ -1436,13 +1436,9 @@ function StudyParticipants({ selectedStudy }: { selectedStudy: Doc<"studies"> })
   const createParticipant = useMutation(api.studyParticipants.create);
   const updateParticipant = useMutation(api.studyParticipants.update);
   const archiveParticipant = useMutation(api.studyParticipants.archive);
-  const sendParticipantEmail = useAction(api.participantInvites.sendEmail);
-  const callParticipant = useAction(api.participantInvites.sendCall);
   const [form, setForm] = useState<ParticipantFormState>(emptyParticipantForm);
   const [editingId, setEditingId] = useState<Id<"studyParticipants"> | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [sendingInviteId, setSendingInviteId] = useState<Id<"studyParticipants"> | null>(null);
-  const [outreachChannel, setOutreachChannel] = useState<"email" | "call" | null>(null);
   const [participantError, setParticipantError] = useState<string | null>(null);
 
   const setField = <Key extends keyof ParticipantFormState>(
@@ -1488,28 +1484,6 @@ function StudyParticipants({ selectedStudy }: { selectedStudy: Doc<"studies"> })
       preferredMode: participant.preferredMode,
       notes: participant.notes ?? "",
     });
-  }
-
-  async function handleOutreach(
-    participant: Doc<"studyParticipants">,
-    channel: "email" | "call",
-  ) {
-    setSendingInviteId(participant._id);
-    setOutreachChannel(channel);
-    setParticipantError(null);
-    try {
-      if (channel === "email") {
-        await sendParticipantEmail({ participantId: participant._id });
-      } else {
-        const result = await callParticipant({ participantId: participant._id });
-        if (result.status === "failed") throw new Error(result.error);
-      }
-    } catch (cause) {
-      setParticipantError(cause instanceof Error ? cause.message : `Could not start ${channel} outreach`);
-    } finally {
-      setSendingInviteId(null);
-      setOutreachChannel(null);
-    }
   }
 
   return (
@@ -1655,32 +1629,22 @@ function StudyParticipants({ selectedStudy }: { selectedStudy: Doc<"studies"> })
                     type="button"
                     size="sm"
                     variant="outline"
-                    disabled={!participant.email || sendingInviteId === participant._id}
-                    title={participant.email ? "Send interview email" : "Add an email first"}
+                    disabled
+                    title="Approve and launch outreach from Fieldwork"
                     aria-label={`Email ${participant.name}`}
-                    onClick={() => void handleOutreach(participant, "email")}
                   >
-                    {sendingInviteId === participant._id && outreachChannel === "email" ? (
-                      <LoaderCircleIcon className="size-4 animate-spin" />
-                    ) : (
-                      <MailIcon className="size-4" />
-                    )}
+                    <MailIcon className="size-4" />
                     Email
                   </Button>
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
-                    disabled={!participant.phone || sendingInviteId === participant._id}
-                    title={participant.phone ? "Start ElevenLabs call" : "Add a phone first"}
+                    disabled
+                    title="Approve and launch outreach from Fieldwork"
                     aria-label={`Call ${participant.name}`}
-                    onClick={() => void handleOutreach(participant, "call")}
                   >
-                    {sendingInviteId === participant._id && outreachChannel === "call" ? (
-                      <LoaderCircleIcon className="size-4 animate-spin" />
-                    ) : (
-                      <PhoneCallIcon className="size-4" />
-                    )}
+                    <PhoneCallIcon className="size-4" />
                     Call
                   </Button>
                   <Button

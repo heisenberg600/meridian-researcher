@@ -35,3 +35,23 @@ export function assertOutreachLaunch(input: {
     throw new Error("This outreach batch must be approved before launch");
   }
 }
+
+export function assertOutreachDelivery(input: {
+  outreachStatus: string;
+  participantIncluded: boolean;
+  questionnaireMatches: boolean;
+  participantBatchMatches: boolean;
+  channel: OutreachChannel;
+  channels: readonly OutreachChannel[];
+}) {
+  if (input.outreachStatus !== "running") {
+    throw new Error("Outreach must be approved and launched before provider delivery");
+  }
+  if (!input.participantIncluded) throw new Error("Participant is not in this outreach batch");
+  if (!input.questionnaireMatches || !input.participantBatchMatches) {
+    throw new Error("The approved outreach snapshot is stale");
+  }
+  if (!input.channels.includes(input.channel)) {
+    throw new Error("This delivery channel was not approved");
+  }
+}

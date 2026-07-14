@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { assertOutreachDraft, assertOutreachLaunch } from "../convex/lib/outreach";
+import {
+  assertOutreachDelivery,
+  assertOutreachDraft,
+  assertOutreachLaunch,
+} from "../convex/lib/outreach";
 import * as outreachBatches from "../convex/outreachBatches";
 
 const ready = {
@@ -50,4 +54,28 @@ test("outreach exposes an explicit draft, approval, and launch boundary", () => 
   assert.ok("submitForApproval" in outreachBatches);
   assert.ok("approve" in outreachBatches);
   assert.ok("launch" in outreachBatches);
+});
+
+test("provider delivery cannot bypass a running approved outreach snapshot", () => {
+  const running = {
+    outreachStatus: "running",
+    participantIncluded: true,
+    questionnaireMatches: true,
+    participantBatchMatches: true,
+    channel: "email" as const,
+    channels: ["email", "voice"] as const,
+  };
+  assert.doesNotThrow(() => assertOutreachDelivery(running));
+  assert.throws(
+    () => assertOutreachDelivery({ ...running, outreachStatus: "approved" }),
+    /launched/i,
+  );
+  assert.throws(
+    () => assertOutreachDelivery({ ...running, participantIncluded: false }),
+    /participant/i,
+  );
+  assert.throws(
+    () => assertOutreachDelivery({ ...running, channel: "voice", channels: ["email"] }),
+    /channel/i,
+  );
 });
