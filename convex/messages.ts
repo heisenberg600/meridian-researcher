@@ -90,7 +90,7 @@ export const sendUserMessage = mutation({
       studyId: study._id,
       chatSessionId: chatSession._id,
       status: "queued",
-      activeSkillNames: ["research-strategy"],
+      activeSkillNames: chatSession.activeSkillNames ?? ["research-strategy"],
       startedBy: user._id,
       startedAt: now,
     });

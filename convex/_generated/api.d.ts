@@ -9,6 +9,7 @@
  */
 
 import type * as agentRuns from "../agentRuns.js";
+import type * as agentSkills from "../agentSkills.js";
 import type * as agentToolEvents from "../agentToolEvents.js";
 import type * as chatSessions from "../chatSessions.js";
 import type * as interviews from "../interviews.js";
@@ -16,6 +17,7 @@ import type * as meridian from "../meridian.js";
 import type * as meridianData from "../meridianData.js";
 import type * as messages from "../messages.js";
 import type * as organizationMemories from "../organizationMemories.js";
+import type * as sandboxE2E from "../sandboxE2E.js";
 import type * as studies from "../studies.js";
 import type * as studyParticipants from "../studyParticipants.js";
 import type * as studyPlans from "../studyPlans.js";
@@ -29,6 +31,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   agentRuns: typeof agentRuns;
+  agentSkills: typeof agentSkills;
   agentToolEvents: typeof agentToolEvents;
   chatSessions: typeof chatSessions;
   interviews: typeof interviews;
@@ -36,6 +39,7 @@ declare const fullApi: ApiFromModules<{
   meridianData: typeof meridianData;
   messages: typeof messages;
   organizationMemories: typeof organizationMemories;
+  sandboxE2E: typeof sandboxE2E;
   studies: typeof studies;
   studyParticipants: typeof studyParticipants;
   studyPlans: typeof studyPlans;

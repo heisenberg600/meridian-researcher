@@ -3,6 +3,7 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { aiSdkTelemetry, Laminar, observe } from "@lmnr-ai/lmnr";
 import { stepCountIs, streamText, tool, type ModelMessage } from "ai";
+import { Bash } from "just-bash";
 import { z } from "zod";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -13,6 +14,12 @@ const DEFAULT_MODEL = "google/gemini-3.1-flash-lite";
 const AI_GATEWAY_BASE_URL = "https://ai-gateway.vercel.sh/v1";
 const LINKUP_SEARCH_URL = "https://api.linkup.so/v1/search";
 const TEXT_FLUSH_INTERVAL_MS = 250;
+const WORKSPACE_ROOT = "/workspace";
+const SKILLS_ROOT = `${WORKSPACE_ROOT}/.agents/skills`;
+const SNAPSHOT_ARCHIVE = "/tmp/meridian-workspace.tgz";
+const SANDBOX_COMMAND_TIMEOUT_MS = 20_000;
+const SANDBOX_MAX_OUTPUT_CHARS = 30_000;
+const SANDBOX_MAX_COMPRESSED_BYTES = 5 * 1024 * 1024;
 let laminarInitialized = false;
 
 const memoryCategorySchema = z.enum([
@@ -137,6 +144,7 @@ async function executeMeridianRun(
       return;
     }
 
+    let sandbox: MeridianSandbox | undefined;
     try {
       const provider = createOpenAICompatible({
         name: "vercel-ai-gateway",
@@ -144,6 +152,8 @@ async function executeMeridianRun(
         apiKey,
         includeUsage: true,
       });
+      const workspaceSnapshot = await loadWorkspaceSnapshot(ctx, context.run.chatSessionId);
+      sandbox = new MeridianSandbox(context.activeSkills, workspaceSnapshot);
       const tools = buildMeridianTools({
         ctx,
         organizationId: context.run.organizationId,
@@ -151,6 +161,7 @@ async function executeMeridianRun(
         chatSessionId: context.run.chatSessionId,
         agentRunId: args.agentRunId,
         assistantMessageId: args.assistantMessageId,
+        sandbox,
       });
 
       const result = streamText({
@@ -197,6 +208,12 @@ async function executeMeridianRun(
       const outputTokens = usage.outputTokens ?? 0;
       const totalTokens = usage.totalTokens ?? inputTokens + outputTokens;
 
+      await checkpointWorkspace(ctx, {
+        sandbox,
+        organizationId: context.run.organizationId,
+        studyId: context.run.studyId,
+        chatSessionId: context.run.chatSessionId,
+      });
       await ctx.runMutation(internal.messages.finalizeAssistantMessage, {
         messageId: args.assistantMessageId,
         status: "complete",
@@ -225,6 +242,18 @@ async function executeMeridianRun(
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Meridian failed to respond.";
+      try {
+        if (sandbox) {
+          await checkpointWorkspace(ctx, {
+            sandbox,
+            organizationId: context.run.organizationId,
+            studyId: context.run.studyId,
+            chatSessionId: context.run.chatSessionId,
+          });
+        }
+      } catch {
+        // Preserve the original agent failure; checkpointing is best-effort on failures.
+      }
       await ctx.runMutation(internal.messages.finalizeAssistantMessage, {
         messageId: args.assistantMessageId,
         status: "error",
@@ -268,6 +297,13 @@ type MeridianRunContext = {
   chatSession: Doc<"chatSessions">;
   messages: Doc<"messages">[];
   memories: Doc<"organizationMemories">[];
+  activeSkills: Array<{
+    name: string;
+    description: string;
+    content: string;
+    version: number;
+    scope: string;
+  }>;
   currentPlan: Doc<"studyPlanVersions"> | null;
 };
 
@@ -282,6 +318,7 @@ function buildSystemInstructions(context: MeridianRunContext) {
     (message) => message.role === "user" && message.status === "complete",
   ).length;
   const isInitialStudyIntake = completedUserMessageCount === 0;
+  const skillsCatalog = formatActiveSkills(context.activeSkills);
   const currentPlan = context.currentPlan
     ? [
         `Current Study Plan: version ${context.currentPlan.version} (${context.currentPlan.status})`,
@@ -302,6 +339,8 @@ function buildSystemInstructions(context: MeridianRunContext) {
     "Do not claim fieldwork has happened unless evidence exists.",
     "Do not contact participants or imply outreach has started.",
     "Do not mark the Study Plan ready for review until the user's goal, audience, decision stakes, and material constraints are clear enough. A partial draft may be saved earlier when it helps the user inspect progress.",
+    `Use the sandbox tools for scratch files, calculations, small tables, and user-requested workspace checks. Active skill files are mounted under ${SKILLS_ROOT}. Treat sandbox output as private working context unless the user asks to see it.`,
+    "When the user asks to read, inspect, verify, or reuse a workspace file, call sandbox_read_file or sandbox_bash instead of relying on chat history.",
     isInitialStudyIntake
       ? "This is the first assistant turn for a newly created study. Open with one short acknowledgement of the business decision, then ask 4-6 prioritized probing questions. Group them for easy answering. Do not mention implementation details or tools."
       : "If enough context is available, update the Study Plan with update_study_plan. Otherwise ask the next few highest-value questions. If a partial plan already exists, keep it synchronized when the user supplies meaningful corrections or additions.",
@@ -313,6 +352,9 @@ function buildSystemInstructions(context: MeridianRunContext) {
     "Use remember_organization_context only for durable organization-level facts, preferences, constraints, product context, customer context, or research standards that will help future studies.",
     "Do not store secrets, credentials, health data, payment data, or incidental one-off chat details.",
     "Use forget_organization_memory when the user corrects or invalidates a prior memory.",
+    "",
+    "Active skills:",
+    skillsCatalog || "- No active skills were resolved.",
     "",
     currentPlan,
     "",
@@ -329,8 +371,51 @@ function buildMeridianTools(args: {
   chatSessionId: Id<"chatSessions">;
   agentRunId: Id<"agentRuns">;
   assistantMessageId: Id<"messages">;
+  sandbox: MeridianSandbox;
 }) {
   return {
+    sandbox_bash: tool({
+      description:
+        "Run a bounded bash command in Meridian's private /workspace sandbox. Use this for scratch notes, calculations, text processing, and creating files. Network access is not available.",
+      inputSchema: z.object({
+        command: z.string().min(1).max(4000).describe("The bash command to run under /workspace."),
+      }),
+      execute: async (input) => {
+        const startedAt = Date.now();
+        try {
+          const output = await args.sandbox.execute(input.command);
+          await recordTool(args, "sandbox_bash", input, output, startedAt);
+          return output;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Sandbox command failed";
+          await recordTool(args, "sandbox_bash", input, undefined, startedAt, message);
+          return { exitCode: 1, stdout: "", stderr: message };
+        }
+      },
+    }),
+    sandbox_read_file: tool({
+      description:
+        "Read a UTF-8 text file from Meridian's private /workspace sandbox after creating it with sandbox_bash.",
+      inputSchema: z.object({
+        path: z
+          .string()
+          .min(1)
+          .max(500)
+          .describe("Workspace-relative path, for example result.txt or notes/summary.md."),
+      }),
+      execute: async (input) => {
+        const startedAt = Date.now();
+        try {
+          const output = await args.sandbox.readFile(input.path);
+          await recordTool(args, "sandbox_read_file", input, output, startedAt);
+          return output;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Sandbox read failed";
+          await recordTool(args, "sandbox_read_file", input, undefined, startedAt, message);
+          return { path: input.path, content: "", error: message };
+        }
+      },
+    }),
     web_search: tool({
       description:
         "Search the public web with Linkup for current company, product, customer, competitor, market, or research context. Returns source titles, URLs, and excerpts that must be cited in the response.",
@@ -505,6 +590,213 @@ function buildMeridianTools(args: {
       },
     }),
   };
+}
+
+class MeridianSandbox {
+  private readonly bash = new Bash({
+    cwd: WORKSPACE_ROOT,
+    executionLimits: {
+      maxCallDepth: 50,
+      maxCommandCount: 2_000,
+      maxLoopIterations: 2_000,
+      maxAwkIterations: 10_000,
+      maxSedIterations: 10_000,
+      maxJqIterations: 10_000,
+      maxOutputSize: SANDBOX_MAX_OUTPUT_CHARS,
+    },
+  });
+  private initialized = false;
+  private dirty = false;
+
+  constructor(
+    private readonly activeSkills: MeridianRunContext["activeSkills"],
+    private readonly snapshot: Uint8Array | null,
+  ) {}
+
+  private async ensureInitialized() {
+    if (this.initialized) return;
+    await this.bash.fs.mkdir(WORKSPACE_ROOT, { recursive: true });
+    await this.bash.fs.mkdir("/tmp", { recursive: true });
+    if (this.snapshot) {
+      await this.bash.fs.writeFile(SNAPSHOT_ARCHIVE, this.snapshot);
+      const restored = await this.bash.exec(`tar -xzf ${SNAPSHOT_ARCHIVE} -C ${WORKSPACE_ROOT}`);
+      await this.bash.fs.rm(SNAPSHOT_ARCHIVE, { force: true });
+      if (restored.exitCode !== 0) {
+        throw new Error(`Failed to restore workspace snapshot: ${restored.stderr}`);
+      }
+    }
+    await this.bash.fs.rm(SKILLS_ROOT, { recursive: true, force: true });
+    await this.bash.fs.mkdir(SKILLS_ROOT, { recursive: true });
+    for (const skill of this.activeSkills) {
+      const skillName = normalizeSkillName(skill.name);
+      const directory = `${SKILLS_ROOT}/${skillName}`;
+      await this.bash.fs.mkdir(directory, { recursive: true });
+      await this.bash.fs.writeFile(`${directory}/SKILL.md`, skill.content);
+    }
+    this.initialized = true;
+  }
+
+  async execute(command: string) {
+    await this.ensureInitialized();
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), SANDBOX_COMMAND_TIMEOUT_MS);
+    try {
+      const result = await this.bash.exec(command, {
+        cwd: WORKSPACE_ROOT,
+        signal: controller.signal,
+      });
+      this.dirty = true;
+      return {
+        exitCode: result.exitCode,
+        stdout: truncateSandboxOutput(result.stdout),
+        stderr: truncateSandboxOutput(result.stderr),
+      };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async readFile(path: string) {
+    await this.ensureInitialized();
+    const normalizedPath = normalizeWorkspacePath(path);
+    const content = await this.bash.fs.readFile(normalizedPath);
+    return {
+      path: normalizedPath,
+      content: truncateSandboxOutput(content),
+    };
+  }
+
+  async snapshotArchive() {
+    await this.ensureInitialized();
+    if (!this.dirty) return null;
+
+    await this.bash.fs.mkdir("/tmp", { recursive: true });
+    await this.bash.fs.rm(SNAPSHOT_ARCHIVE, { force: true });
+    const archived = await this.bash.exec(`tar -czf ${SNAPSHOT_ARCHIVE} .`, {
+      cwd: WORKSPACE_ROOT,
+    });
+    if (archived.exitCode !== 0) {
+      throw new Error(`Failed to archive workspace snapshot: ${archived.stderr}`);
+    }
+    const archive = await this.bash.fs.readFileBuffer(SNAPSHOT_ARCHIVE);
+    await this.bash.fs.rm(SNAPSHOT_ARCHIVE, { force: true });
+    if (archive.byteLength > SANDBOX_MAX_COMPRESSED_BYTES) {
+      throw new Error(
+        `Workspace snapshot exceeds ${SANDBOX_MAX_COMPRESSED_BYTES} compressed bytes`,
+      );
+    }
+    this.dirty = false;
+    return archive;
+  }
+}
+
+function normalizeWorkspacePath(path: string) {
+  const trimmed = path.trim();
+  if (!trimmed || trimmed.includes("\0")) throw new Error("Invalid workspace path");
+
+  const absolutePath = trimmed.startsWith("/") ? trimmed : `${WORKSPACE_ROOT}/${trimmed}`;
+  const parts = absolutePath.split("/").filter(Boolean);
+  if (parts[0] !== "workspace" || parts.includes("..")) {
+    throw new Error("Path must stay inside /workspace");
+  }
+  return `/${parts.join("/")}`;
+}
+
+function normalizeSkillName(name: string) {
+  const normalized = name.trim().toLowerCase();
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(normalized)) {
+    throw new Error(`Invalid skill name: ${name}`);
+  }
+  return normalized;
+}
+
+function truncateSandboxOutput(value: string) {
+  if (value.length <= SANDBOX_MAX_OUTPUT_CHARS) return value;
+  return `${value.slice(0, SANDBOX_MAX_OUTPUT_CHARS)}\n[truncated]`;
+}
+
+function formatActiveSkills(skills: MeridianRunContext["activeSkills"]) {
+  return skills
+    .map(
+      (skill) =>
+        [
+          `<skill name="${escapeXml(skill.name)}" version="${skill.version}" scope="${escapeXml(skill.scope)}">`,
+          `<description>${escapeXml(skill.description)}</description>`,
+          `<sandboxPath>${SKILLS_ROOT}/${escapeXml(skill.name)}/SKILL.md</sandboxPath>`,
+          `<instructions>${escapeXml(skill.content)}</instructions>`,
+          "</skill>",
+        ].join("\n"),
+    )
+    .join("\n");
+}
+
+function escapeXml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+async function loadWorkspaceSnapshot(
+  ctx: ActionCtx,
+  chatSessionId: Id<"chatSessions">,
+): Promise<Uint8Array | null> {
+  const snapshot = await ctx.runQuery(internal.meridianData.latestWorkspaceSnapshot, {
+    chatSessionId,
+  });
+  if (!snapshot) return null;
+
+  const blob = await ctx.storage.get(snapshot.storageId);
+  if (!blob) return null;
+  return new Uint8Array(await blob.arrayBuffer());
+}
+
+async function checkpointWorkspace(
+  ctx: ActionCtx,
+  args: {
+    sandbox: MeridianSandbox;
+    organizationId: Id<"organizations">;
+    studyId: Id<"studies">;
+    chatSessionId: Id<"chatSessions">;
+  },
+) {
+  const archive = await args.sandbox.snapshotArchive();
+  if (!archive) return;
+
+  const storageId = await ctx.storage.store(
+    new Blob([arrayBufferFromUint8Array(archive)], { type: "application/gzip" }),
+  );
+  await ctx.runMutation(internal.meridianData.recordWorkspaceSnapshot, {
+    organizationId: args.organizationId,
+    studyId: args.studyId,
+    chatSessionId: args.chatSessionId,
+    storageId,
+    compressedSizeBytes: archive.byteLength,
+  });
+}
+
+function arrayBufferFromUint8Array(value: Uint8Array) {
+  return value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength) as ArrayBuffer;
+}
+
+async function recordTool(
+  args: {
+    ctx: ActionCtx;
+    organizationId: Id<"organizations">;
+    studyId: Id<"studies">;
+    chatSessionId: Id<"chatSessions">;
+    agentRunId: Id<"agentRuns">;
+  },
+  toolName: string,
+  input: unknown,
+  output: unknown,
+  startedAt: number,
+  error?: string,
+) {
+  const toolEventId = await startTool(args, toolName, input, startedAt);
+  await finishTool(args, toolEventId, output, error);
 }
 
 async function startTool(

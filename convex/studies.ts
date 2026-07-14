@@ -77,6 +77,7 @@ export const create = mutation({
       title: "Strategy discussion",
       purpose: "strategy",
       status: "active",
+      activeSkillNames: ["research-strategy"],
       createdBy: user._id,
       createdAt: now,
       updatedAt: now,
