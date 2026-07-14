@@ -10,7 +10,7 @@
     "convex:deploy": "convex deploy",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "deploy:cloudflare": "pnpm run build && wrangler pages deploy dist --project-name meridian --force",
+    "deploy:cloudflare": "pnpm run build && wrangler pages deploy dist --project-name hermes-researcher --branch main --force",
     "lint": "eslint",
     "elevenlabs:provision": "node scripts/provision-elevenlabs-agent.mjs --set-convex-env"
   },
