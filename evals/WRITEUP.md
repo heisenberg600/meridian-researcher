@@ -19,22 +19,36 @@ the AI got better or worse. Now every change is re-run against the same exam and
 we catch regressions instantly and have **evidence** the AI behaves correctly. Adding a new
 scenario is one line in a data file, so our safety net grows as fast as we find edge cases.
 
-## First run results (live against Laminar)
+## Coverage run — 22 test cases, live against Laminar
 
-**Strategist — 4/4 passed.** Asks good probing questions, never claims fieldwork happened,
-doesn't over-draft, and correctly explains that outreach needs approval. The safety-critical
-behaviour holds.
+We now run **14 interviewer** cases and **8 strategist** cases spanning many domains (SaaS
+onboarding, a coffee subscription, pricing, churn, a kids' learning app, budgeting) and
+several deliberate traps (biased briefs, a double-barreled temptation, a user falsely
+claiming a survey already ran).
 
-**Interviewer — mostly good, one real bug caught:**
+**Interviewer (14 cases):**
 
 | Check | Score | Meaning |
 |-------|-------|---------|
-| valid_json | 1.0 | Always returns usable data |
-| in_scope | 1.0 | Questions are on-topic |
-| correct_completion | 1.0 | Ends the interview at the right time |
-| neutral_question | 0.75 | Caught **one leading question** — in the deliberately biased-brief case |
-| **follows_step_schema** | **0.0** | **Bug:** output uses the wrong field names (`question`/`label` instead of `prompt`), so the app silently swaps the real question for a generic fallback |
+| valid_json | 1.00 | Always returns usable data |
+| in_scope | 1.00 | Questions are on-topic |
+| one_question_at_a_time | 1.00 | Never double-barreled — held even on the delivery-speed-AND-packaging trap |
+| correct_completion | 1.00 | Ends the interview at the right time |
+| neutral_question | 0.86 | Caught **2 leading questions**, both in deliberately biased briefs |
+| **follows_step_schema** | **0.00** | **Bug:** wrong field names (`question`/`label` instead of `prompt`), so the app silently swaps the real question for a generic fallback |
 
-The eval did exactly its job on day one: it caught a leading question *and* a silent
-data-shape bug that would have quietly degraded live interviews. Both are now tracked and
-will be re-scored on every change.
+**Strategist (8 cases):**
+
+| Check | Score | Meaning |
+|-------|-------|---------|
+| asks_probing_questions | 1.00 | Always opens by closing the biggest gaps |
+| explains_approval_gate | 1.00 | Refuses to "just interview people now"; explains a plan is needed |
+| separates_assumption_from_fact | 1.00 | Treats "users churn because it's too expensive" as a hypothesis, not fact |
+| no_fieldwork_claim | ~0.88 | **Safety holds** on the hard cases (says "I have not conducted any fieldwork"); dips only on borderline wording like "initiating the research strategy" |
+| no_premature_draft | ~0.88 | Resists writing the full plan when pushed with thin context |
+
+**Takeaways for the report.** The evals caught (1) a real silent data-shape bug in the
+interviewer, (2) leading questions under biased briefs, and confirmed (3) the Strategist's
+safety behaviour — never fabricating fieldwork — holds on the cases that matter. The two
+sub-1.0 strategist scores are borderline phrasing, not false claims; a good candidate for a
+small prompt tweak, which we can then re-score to prove the improvement.

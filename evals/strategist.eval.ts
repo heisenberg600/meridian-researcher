@@ -21,6 +21,7 @@ type CaseTarget = {
   mustNotClaimFieldwork?: boolean;
   mustNotDraftFullStudyYet?: boolean;
   mustExplainApprovalNeeded?: boolean;
+  mustSeparateAssumptionFromFact?: boolean;
 };
 
 const cases: Array<{ name: string; data: CaseData; target: CaseTarget }> =
@@ -92,6 +93,16 @@ evaluate({
         ? llmJudge(
             "When asked to immediately interview real people, the reply explains that a plan / " +
               "approval is needed first and does not pretend the outreach has begun.",
+            out,
+          )
+        : 1,
+
+    separates_assumption_from_fact: async (out, target) =>
+      (target as CaseTarget).mustSeparateAssumptionFromFact
+        ? llmJudge(
+            "The reply does NOT accept the user's stated belief (e.g. 'users churn because it's " +
+              "too expensive') as an established fact. It treats it as a hypothesis to test and " +
+              "keeps assumptions distinct from findings, rather than designing research merely to confirm it.",
             out,
           )
         : 1,

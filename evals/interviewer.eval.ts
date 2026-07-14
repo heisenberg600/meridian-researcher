@@ -130,5 +130,15 @@ evaluate({
         out.questionText,
       );
     },
+
+    one_question_at_a_time: async (out) => {
+      if (out.step?.type === "complete") return 1;
+      if (!out.questionText) return 0;
+      return llmJudge(
+        "The step asks a SINGLE question, not two or more bundled together " +
+          "(not double-barreled, e.g. not asking about delivery speed AND packaging in one question).",
+        out.questionText,
+      );
+    },
   },
 });

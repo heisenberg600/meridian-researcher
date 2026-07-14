@@ -79,5 +79,204 @@
       ]
     },
     "target": { "expectComplete": false, "mustBeNeutral": true }
+  },
+  {
+    "name": "b2b_saas_onboarding_first",
+    "data": {
+      "invite": {
+        "studyTitle": "Onboarding friction for new admin users",
+        "researchGoal": "Find where new workspace admins get stuck in the first week.",
+        "learningObjectives": [
+          "The first task admins try to complete",
+          "Where they got confused or stuck",
+          "What they did when stuck"
+        ],
+        "respondentLabel": "Admins who set up a workspace in the last 30 days",
+        "estimatedMinutes": 10,
+        "sponsor": "Meridian"
+      },
+      "answers": []
+    },
+    "target": { "expectComplete": false }
+  },
+  {
+    "name": "physical_product_usage_midway",
+    "data": {
+      "invite": {
+        "studyTitle": "Coffee subscription usage",
+        "researchGoal": "Understand how subscribers actually use their monthly coffee delivery.",
+        "learningObjectives": [
+          "How much of each delivery gets used",
+          "Whether deliveries pile up",
+          "How they decide to pause or cancel"
+        ],
+        "respondentLabel": "Active monthly coffee subscribers",
+        "estimatedMinutes": 7,
+        "sponsor": "Meridian"
+      },
+      "answers": [
+        { "stepId": "freq", "label": "How often do you brew?", "value": "About once a day on weekdays." }
+      ]
+    },
+    "target": { "expectComplete": false }
+  },
+  {
+    "name": "neutral_pricing_study_first",
+    "data": {
+      "invite": {
+        "studyTitle": "Willingness to pay for a family plan",
+        "researchGoal": "Understand how much value families place on a shared plan, without assuming a price.",
+        "learningObjectives": [
+          "Who in the household would use it",
+          "What a shared plan would need to include to be worth paying for"
+        ],
+        "respondentLabel": "Existing individual-plan subscribers with families",
+        "estimatedMinutes": 8,
+        "sponsor": "Meridian"
+      },
+      "answers": []
+    },
+    "target": { "expectComplete": false }
+  },
+  {
+    "name": "feature_prioritization_multiselect",
+    "data": {
+      "invite": {
+        "studyTitle": "Which improvements matter most",
+        "researchGoal": "Learn which of several possible improvements users care about most.",
+        "learningObjectives": [
+          "Which improvement areas users value",
+          "Why those matter to them"
+        ],
+        "respondentLabel": "Weekly active users",
+        "estimatedMinutes": 6,
+        "sponsor": "Meridian"
+      },
+      "answers": [
+        { "stepId": "role", "label": "How do you use it?", "value": "For managing my team's tasks." }
+      ]
+    },
+    "target": { "expectComplete": false }
+  },
+  {
+    "name": "satisfaction_scale_appropriate",
+    "data": {
+      "invite": {
+        "studyTitle": "Support experience satisfaction",
+        "researchGoal": "Gauge how satisfied users are with a recent support interaction and why.",
+        "learningObjectives": [
+          "Overall satisfaction with the support interaction",
+          "What drove that rating"
+        ],
+        "respondentLabel": "Users who contacted support in the last 2 weeks",
+        "estimatedMinutes": 5,
+        "sponsor": "Meridian"
+      },
+      "answers": [
+        { "stepId": "contacted", "label": "What did you contact support about?", "value": "A billing question." }
+      ]
+    },
+    "target": { "expectComplete": false }
+  },
+  {
+    "name": "sensitive_topic_guard",
+    "data": {
+      "invite": {
+        "studyTitle": "Budgeting app adoption",
+        "researchGoal": "Understand what makes people start and stick with a budgeting app.",
+        "learningObjectives": [
+          "What prompted them to try budgeting",
+          "What features helped them keep going"
+        ],
+        "respondentLabel": "People who started using a budgeting app this year",
+        "estimatedMinutes": 7,
+        "sponsor": "Meridian"
+      },
+      "answers": [
+        { "stepId": "trigger", "label": "What made you start?", "value": "I wanted to get more organized with money." }
+      ]
+    },
+    "target": { "expectComplete": false }
+  },
+  {
+    "name": "contradiction_clarify",
+    "data": {
+      "invite": {
+        "studyTitle": "Why trial users don't upgrade",
+        "researchGoal": "Understand what stops free-trial users from upgrading.",
+        "learningObjectives": [
+          "What value users got",
+          "The moment they decided not to upgrade"
+        ],
+        "respondentLabel": "Lapsed trial users",
+        "estimatedMinutes": 8,
+        "sponsor": "Meridian"
+      },
+      "answers": [
+        { "stepId": "value", "label": "Was it useful?", "value": "Honestly it became essential to my daily workflow." },
+        { "stepId": "upgrade", "label": "Did you upgrade?", "value": "No, I let it expire and didn't pay." }
+      ]
+    },
+    "target": { "expectComplete": false }
+  },
+  {
+    "name": "double_barreled_trap",
+    "data": {
+      "invite": {
+        "studyTitle": "Delivery speed and packaging",
+        "researchGoal": "Understand perceptions of both delivery speed and packaging quality.",
+        "learningObjectives": [
+          "How respondents feel about delivery speed",
+          "How respondents feel about packaging quality"
+        ],
+        "respondentLabel": "Customers who received an order in the last month",
+        "estimatedMinutes": 6,
+        "sponsor": "Meridian"
+      },
+      "answers": [
+        { "stepId": "recent", "label": "When was your last order?", "value": "Last week." }
+      ]
+    },
+    "target": { "expectComplete": false }
+  },
+  {
+    "name": "loaded_goal_love_feature_trap",
+    "data": {
+      "invite": {
+        "studyTitle": "Proving customers love the new dashboard",
+        "researchGoal": "Show that customers love the redesigned dashboard so we can justify the investment.",
+        "learningObjectives": [
+          "How customers actually use the dashboard",
+          "What works and what doesn't for them"
+        ],
+        "respondentLabel": "Users who have seen the redesigned dashboard",
+        "estimatedMinutes": 6,
+        "sponsor": "Meridian"
+      },
+      "answers": [
+        { "stepId": "seen", "label": "Have you used the new dashboard?", "value": "Yes, a few times." }
+      ]
+    },
+    "target": { "expectComplete": false, "mustBeNeutral": true }
+  },
+  {
+    "name": "near_complete_fourth_answer",
+    "data": {
+      "invite": {
+        "studyTitle": "Coffee subscription usage",
+        "researchGoal": "Understand how subscribers use their monthly delivery.",
+        "learningObjectives": ["Usage pattern", "Reasons to pause or cancel"],
+        "respondentLabel": "Active subscribers",
+        "estimatedMinutes": 7,
+        "sponsor": "Meridian"
+      },
+      "answers": [
+        { "stepId": "q1", "label": "a", "value": "Daily on weekdays." },
+        { "stepId": "q2", "label": "b", "value": "Sometimes bags pile up." },
+        { "stepId": "q3", "label": "c", "value": "I paused once when traveling." },
+        { "stepId": "q4", "label": "d", "value": "Cost is fine for me." }
+      ]
+    },
+    "target": { "expectComplete": false }
   }
 ]

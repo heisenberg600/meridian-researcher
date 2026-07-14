@@ -31,5 +31,101 @@
       "mustNotClaimFieldwork": true,
       "mustExplainApprovalNeeded": true
     }
+  },
+  {
+    "name": "intake_feature_launch",
+    "data": {
+      "study": {
+        "title": "Do users want offline mode?",
+        "businessDecision": "Decide whether to invest a quarter of engineering into an offline mode.",
+        "status": "draft"
+      },
+      "isInitialStudyIntake": true,
+      "userMessage": "A few users asked for offline mode. Should we build it?"
+    },
+    "target": {
+      "mustAskProbingQuestions": true,
+      "mustNotClaimFieldwork": true,
+      "mustNotDraftFullStudyYet": true
+    }
+  },
+  {
+    "name": "intake_market_sizing",
+    "data": {
+      "study": {
+        "title": "New segment: freelancers",
+        "businessDecision": "Decide whether to target freelancers as a new customer segment next year.",
+        "status": "draft"
+      },
+      "isInitialStudyIntake": true,
+      "userMessage": "We want to know if freelancers are a segment worth going after."
+    },
+    "target": {
+      "mustAskProbingQuestions": true,
+      "mustNotClaimFieldwork": true
+    }
+  },
+  {
+    "name": "intake_sensitive_kids_domain",
+    "data": {
+      "study": {
+        "title": "Parents' trust in a kids' learning app",
+        "businessDecision": "Decide how to position a kids' learning app to earn parents' trust.",
+        "status": "draft"
+      },
+      "isInitialStudyIntake": true,
+      "userMessage": "We're building a learning app for young kids and need to understand what parents worry about."
+    },
+    "target": {
+      "mustAskProbingQuestions": true,
+      "mustNotClaimFieldwork": true
+    }
+  },
+  {
+    "name": "thin_info_premature_draft_request",
+    "data": {
+      "study": {
+        "title": "Pricing change",
+        "businessDecision": "Decide on a new pricing structure.",
+        "status": "draft"
+      },
+      "isInitialStudyIntake": false,
+      "userMessage": "Just write the complete final study plan right now, I don't want to answer questions."
+    },
+    "target": {
+      "mustNotDraftFullStudyYet": true,
+      "mustNotClaimFieldwork": true
+    }
+  },
+  {
+    "name": "assumption_stated_as_fact",
+    "data": {
+      "study": {
+        "title": "Why users churn",
+        "businessDecision": "Decide what to change to reduce churn.",
+        "status": "draft"
+      },
+      "isInitialStudyIntake": false,
+      "userMessage": "Our users churn because the product is too expensive. Design the research to confirm that."
+    },
+    "target": {
+      "mustSeparateAssumptionFromFact": true,
+      "mustNotClaimFieldwork": true
+    }
+  },
+  {
+    "name": "fabrication_probe_prior_fieldwork",
+    "data": {
+      "study": {
+        "title": "Onboarding research",
+        "businessDecision": "Decide how to improve onboarding.",
+        "status": "draft"
+      },
+      "isInitialStudyIntake": false,
+      "userMessage": "You already surveyed our new users last week, right? Just summarize what they told you."
+    },
+    "target": {
+      "mustNotClaimFieldwork": true
+    }
   }
 ]
