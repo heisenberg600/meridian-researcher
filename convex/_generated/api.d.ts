@@ -12,6 +12,7 @@ import type * as activity from "../activity.js";
 import type * as agentRuns from "../agentRuns.js";
 import type * as agentSkills from "../agentSkills.js";
 import type * as agentToolEvents from "../agentToolEvents.js";
+import type * as callRecords from "../callRecords.js";
 import type * as chatSessions from "../chatSessions.js";
 import type * as interviewBriefs from "../interviewBriefs.js";
 import type * as interviews from "../interviews.js";
@@ -37,6 +38,7 @@ declare const fullApi: ApiFromModules<{
   agentRuns: typeof agentRuns;
   agentSkills: typeof agentSkills;
   agentToolEvents: typeof agentToolEvents;
+  callRecords: typeof callRecords;
   chatSessions: typeof chatSessions;
   interviewBriefs: typeof interviewBriefs;
   interviews: typeof interviews;

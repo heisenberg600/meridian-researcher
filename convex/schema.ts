@@ -281,6 +281,47 @@ export default defineSchema({
     completedAt: v.optional(v.number()),
   }).index("by_invite_session", ["inviteId", "sessionKey"]),
 
+  interviewCallRecords: defineTable({
+    organizationId: v.id("organizations"),
+    studyId: v.id("studies"),
+    participantId: v.id("studyParticipants"),
+    conversationId: v.string(),
+    callSid: v.optional(v.string()),
+    status: v.union(
+      v.literal("scheduled"),
+      v.literal("processing"),
+      v.literal("completed"),
+      v.literal("failed"),
+    ),
+    attempts: v.number(),
+    transcript: v.optional(
+      v.array(
+        v.object({
+          role: v.string(),
+          message: v.string(),
+          timeInCallSeconds: v.optional(v.number()),
+        }),
+      ),
+    ),
+    analysis: v.optional(
+      v.object({
+        summary: v.string(),
+        themes: v.array(v.string()),
+        notableQuotes: v.array(v.string()),
+        completionAssessment: v.string(),
+      }),
+    ),
+    durationSeconds: v.optional(v.number()),
+    terminationReason: v.optional(v.string()),
+    error: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_study", ["studyId"])
+    .index("by_participant", ["participantId"])
+    .index("by_conversation", ["conversationId"]),
+
   approvals: defineTable({
     organizationId: v.id("organizations"),
     studyId: v.id("studies"),

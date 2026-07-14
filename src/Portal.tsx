@@ -724,7 +724,7 @@ function StudyDetail({
           </InterviewGuideErrorBoundary>
         ) : null}
         {studyTab === "participants" ? <StudyParticipants selectedStudy={selectedStudy} /> : null}
-        {studyTab === "calls" ? <CallsSkeleton /> : null}
+        {studyTab === "calls" ? <StudyCalls selectedStudy={selectedStudy} /> : null}
         {studyTab === "feedback" ? <FeedbackSkeleton /> : null}
         {studyTab === "artifacts" ? <ArtifactsSkeleton /> : null}
       </div>
@@ -1716,13 +1716,80 @@ function StudyParticipants({ selectedStudy }: { selectedStudy: Doc<"studies"> })
   );
 }
 
-function CallsSkeleton() {
+function StudyCalls({ selectedStudy }: { selectedStudy: Doc<"studies"> }) {
+  const calls = useQuery(api.callRecords.listForStudy, { studyId: selectedStudy._id });
   return (
-    <SkeletonGrid
-      title="Calls"
-      description="Interview operations will appear here once participants are invited and calls are connected."
-      items={["Scheduled calls", "Live sessions", "Transcripts", "Costs"]}
-    />
+    <div>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="[font:var(--text-heading-sm)] text-[var(--text-heading)]">Calls</h1>
+          <p className="mt-1 [font:var(--text-body-sm)] text-[var(--text-secondary)]">
+            ElevenLabs transcripts are pulled and analyzed five minutes after each call starts.
+          </p>
+        </div>
+        <Badge tone="info">{calls?.length ?? 0} calls</Badge>
+      </div>
+
+      <div className="mt-6 space-y-4">
+        {calls === undefined ? (
+          <p className="[font:var(--text-body)] text-[var(--text-muted)]">Loading calls...</p>
+        ) : calls.length === 0 ? (
+          <div className="border border-dashed border-[var(--border-strong)] bg-[var(--surface-card)] p-10 text-center">
+            <PhoneCallIcon className="mx-auto size-5 text-[var(--text-muted)]" />
+            <h2 className="mt-3 [font:var(--text-body)] font-semibold text-[var(--text-heading)]">No calls yet</h2>
+            <p className="mt-1 [font:var(--text-body-sm)] text-[var(--text-muted)]">Start a call from the Participants tab.</p>
+          </div>
+        ) : calls.map((call) => (
+          <article key={call._id} className="border border-[var(--border-default)] bg-[var(--surface-card)]">
+            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--border-default)] px-5 py-4">
+              <div>
+                <h2 className="[font:var(--text-body)] font-semibold text-[var(--text-heading)]">
+                  {call.participant?.name ?? "Participant call"}
+                </h2>
+                <p className="mt-1 [font:var(--text-caption)] text-[var(--text-muted)]">
+                  {formatDate(call.createdAt)}
+                  {call.durationSeconds ? ` · ${Math.ceil(call.durationSeconds / 60)} min` : ""}
+                  {call.terminationReason ? ` · ${call.terminationReason}` : ""}
+                </p>
+              </div>
+              <Badge tone={call.status === "completed" ? "success" : call.status === "failed" ? "danger" : "info"}>
+                {formatStatus(call.status)}
+              </Badge>
+            </div>
+            {call.status === "scheduled" || call.status === "processing" ? (
+              <div className="flex items-center gap-3 px-5 py-5 [font:var(--text-body-sm)] text-[var(--text-secondary)]">
+                <LoaderCircleIcon className="size-4 animate-spin" />
+                Transcript ingestion scheduled{call.attempts ? ` · retry ${call.attempts}` : ""}
+              </div>
+            ) : call.status === "failed" ? (
+              <p className="px-5 py-5 [font:var(--text-body-sm)] text-[var(--status-danger)]">{call.error}</p>
+            ) : (
+              <div className="grid gap-6 px-5 py-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)]">
+                <section>
+                  <h3 className="[font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--text-muted)]">Transcript</h3>
+                  <div className="mt-3 space-y-3">
+                    {(call.transcript ?? []).map((turn, index) => (
+                      <div key={`${turn.timeInCallSeconds ?? index}-${index}`}>
+                        <p className="[font:var(--text-caption)] uppercase text-[var(--text-muted)]">{turn.role}</p>
+                        <p className="mt-1 [font:var(--text-body-sm)] text-[var(--text-secondary)]">{turn.message}</p>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+                <section className="bg-[var(--bg-sunken)] p-4">
+                  <h3 className="[font:var(--text-body)] font-semibold text-[var(--text-heading)]">Analysis</h3>
+                  <p className="mt-2 [font:var(--text-body-sm)] text-[var(--text-secondary)]">{call.analysis?.summary}</p>
+                  {call.analysis?.themes.length ? (
+                    <div className="mt-4 flex flex-wrap gap-2">{call.analysis.themes.map((theme) => <Badge key={theme}>{theme}</Badge>)}</div>
+                  ) : null}
+                  <p className="mt-4 [font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--text-muted)]">{call.analysis?.completionAssessment}</p>
+                </section>
+              </div>
+            )}
+          </article>
+        ))}
+      </div>
+    </div>
   );
 }
 

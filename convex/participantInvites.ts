@@ -242,6 +242,13 @@ export const recordOutreach = internalMutation({
       metadata: { participantId: participant._id, email: args.email, call: args.call },
       createdAt: now,
     });
+    if (args.call.status === "initiated" && args.call.conversationId) {
+      await ctx.scheduler.runAfter(0, internal.callRecords.schedule, {
+        participantId: participant._id,
+        conversationId: args.call.conversationId,
+        callSid: args.call.callSid,
+      });
+    }
   },
 });
 
@@ -283,6 +290,13 @@ export const recordCallOutreach = internalMutation({
       metadata: { participantId: participant._id, call: args.call },
       createdAt: now,
     });
+    if (args.call.status === "initiated" && args.call.conversationId) {
+      await ctx.scheduler.runAfter(0, internal.callRecords.schedule, {
+        participantId: participant._id,
+        conversationId: args.call.conversationId,
+        callSid: args.call.callSid,
+      });
+    }
   },
 });
 
