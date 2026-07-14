@@ -1,6 +1,6 @@
-# Hermes Researcher
+# Meridian
 
-Hermes Researcher is an AI-assisted research operations platform that helps companies turn a business question into a designed, executed, and evidence-backed customer study.
+Meridian is an AI-assisted research operations platform that helps companies turn a business question into a designed, executed, and evidence-backed customer study.
 
 The intended workflow is:
 
@@ -42,6 +42,11 @@ Required Cloudflare Pages environment variables:
 
 - `VITE_CONVEX_URL`
 - `VITE_CLERK_PUBLISHABLE_KEY`
+
+Required Convex environment variables for the AI runtime:
+
+- `AI_GATEWAY_API_KEY`
+- `LINKUP_API_KEY` — enables the agent's source-citing `web_search` tool
 
 Deploy from the CLI:
 

@@ -10,9 +10,9 @@
 
 import type * as agentRuns from "../agentRuns.js";
 import type * as chatSessions from "../chatSessions.js";
-import type * as hermes from "../hermes.js";
-import type * as hermesData from "../hermesData.js";
 import type * as interviews from "../interviews.js";
+import type * as meridian from "../meridian.js";
+import type * as meridianData from "../meridianData.js";
 import type * as messages from "../messages.js";
 import type * as organizationMemories from "../organizationMemories.js";
 import type * as studies from "../studies.js";
@@ -27,9 +27,9 @@ import type {
 declare const fullApi: ApiFromModules<{
   agentRuns: typeof agentRuns;
   chatSessions: typeof chatSessions;
-  hermes: typeof hermes;
-  hermesData: typeof hermesData;
   interviews: typeof interviews;
+  meridian: typeof meridian;
+  meridianData: typeof meridianData;
   messages: typeof messages;
   organizationMemories: typeof organizationMemories;
   studies: typeof studies;

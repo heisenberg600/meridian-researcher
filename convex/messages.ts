@@ -59,7 +59,7 @@ export const sendUserMessage = mutation({
   handler: async (ctx, args) => {
     const { user, study, chatSession } = await requireChatAccess(ctx, args.chatSessionId);
     if (chatSession.activeAgentRunId) {
-      throw new Error("Hermes is still responding in this chat");
+      throw new Error("Meridian is still responding in this chat");
     }
 
     const content = args.content.trim();
@@ -113,7 +113,7 @@ export const sendUserMessage = mutation({
       activeAgentRunId: agentRunId,
       updatedAt: now,
     });
-    await ctx.scheduler.runAfter(0, internal.hermes.processMessage, {
+    await ctx.scheduler.runAfter(0, internal.meridian.processMessage, {
       agentRunId,
       assistantMessageId,
     });

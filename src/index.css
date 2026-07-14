@@ -2,6 +2,26 @@
 @import "../docs/ui-estimates/console-feature-pages/_ds/meridian-design-system-c43e081f-cf01-4e0e-8a12-54537493f16b/styles.css";
 
 :root {
+  /* shadcn semantic contract, backed by the Meridian token system */
+  --background: var(--bg-page);
+  --foreground: var(--text-body);
+  --card: var(--surface-card);
+  --card-foreground: var(--text-body);
+  --popover: var(--surface-overlay);
+  --popover-foreground: var(--text-body);
+  --primary: var(--accent);
+  --primary-foreground: #ffffff;
+  --secondary: var(--surface-card);
+  --secondary-foreground: var(--text-body);
+  --muted: var(--bg-sunken);
+  --muted-foreground: var(--text-muted);
+  --destructive: var(--status-danger);
+  --border: var(--border-default);
+  --input: var(--border-default);
+  --ring: var(--border-focus);
+  --red-700: color-mix(in srgb, var(--status-danger) 86%, black);
+  --red-800: color-mix(in srgb, var(--status-danger) 72%, black);
+
   color: var(--ink-700);
   background: var(--bg-page);
   font-family: var(--font-sans);
@@ -18,4 +38,79 @@ button,
 input,
 textarea {
   font: inherit;
+}
+
+.meridian-markdown {
+  font: var(--text-body);
+  color: var(--ink-700);
+}
+
+.meridian-markdown :where(p, ul, ol, blockquote, pre, table) {
+  margin-top: 0.75rem;
+}
+
+.meridian-markdown :where(p:first-child, ul:first-child, ol:first-child, blockquote:first-child, pre:first-child, table:first-child) {
+  margin-top: 0;
+}
+
+.meridian-markdown :where(h1, h2, h3, h4) {
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-heading);
+  font: var(--text-heading-sm);
+}
+
+.meridian-markdown :where(ul, ol) {
+  padding-left: 1.25rem;
+}
+
+.meridian-markdown ul {
+  list-style: disc;
+}
+
+.meridian-markdown ol {
+  list-style: decimal;
+}
+
+.meridian-markdown li + li {
+  margin-top: 0.25rem;
+}
+
+.meridian-markdown code {
+  border-radius: var(--radius-sm);
+  background: var(--ivory-200);
+  padding: 0.1rem 0.28rem;
+  font: var(--text-code);
+}
+
+.meridian-markdown pre {
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background: var(--ivory-200);
+  padding: 0.75rem;
+}
+
+.meridian-markdown pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.meridian-markdown blockquote {
+  border-left: 3px solid var(--accent);
+  padding-left: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.meridian-markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--text-body-sm);
+}
+
+.meridian-markdown th,
+.meridian-markdown td {
+  border: 1px solid var(--border-default);
+  padding: 0.45rem 0.55rem;
+  text-align: left;
 }

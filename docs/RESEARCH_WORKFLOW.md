@@ -2,7 +2,7 @@
 
 ## 1. Core model
 
-Hermes Researcher separates research into three primary agent roles:
+Meridian separates research into three primary agent roles:
 
 ```text
 Research Strategist

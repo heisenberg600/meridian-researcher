@@ -63,7 +63,7 @@ const invites: Record<string, InterviewInvite> = {
     ],
     respondentLabel: "Product and research leaders",
     estimatedMinutes: 7,
-    sponsor: "Hermes Researcher",
+    sponsor: "Meridian",
   },
 };
 
@@ -81,7 +81,7 @@ export function getInterviewInvite(inviteId: string): InterviewInvite {
       ],
       respondentLabel: "Invited participant",
       estimatedMinutes: 8,
-      sponsor: "Hermes Researcher",
+      sponsor: "Meridian",
     }
   );
 }
@@ -179,7 +179,7 @@ export function getNextInterviewStep(answers: InterviewAnswer[]): InterviewStep 
           ? "If every finding linked back to source evidence automatically, how valuable would that be?"
           : selected.includes("interviews")
             ? "If an adaptive interviewer handled neutral probing consistently, how valuable would that be?"
-            : "If Hermes helped turn fuzzy stakeholder questions into a clear research plan, how valuable would that be?";
+            : "If Meridian helped turn fuzzy stakeholder questions into a clear research plan, how valuable would that be?";
 
     return {
       id: "priority",

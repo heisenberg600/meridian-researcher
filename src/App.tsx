@@ -37,7 +37,7 @@ function Home() {
           onClick={() => navigate("/")}
           className="text-lg font-semibold tracking-tight"
         >
-          Hermes Researcher
+          Meridian
         </button>
         <div className="flex items-center gap-3">
           {!isSignedIn ? (
@@ -145,7 +145,7 @@ function PortalGate() {
       ) : (
         <main className="flex min-h-screen items-center justify-center bg-[#f8f7f3] px-6">
           <div className="max-w-md rounded-xl border border-black/10 bg-white p-8 text-center">
-            <h1 className="text-2xl font-semibold">Sign in to open Hermes</h1>
+            <h1 className="text-2xl font-semibold">Sign in to open Meridian</h1>
             <p className="mt-3 text-sm leading-6 text-[#686d63]">
               Your research workspace is protected by Clerk and synced to Convex.
             </p>

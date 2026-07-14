@@ -1,7 +1,7 @@
 import { mutation, query } from "./_generated/server";
 
 function displayNameFromIdentity(identity: { name?: string; email?: string }) {
-  return identity.name ?? identity.email ?? "Hermes user";
+  return identity.name ?? identity.email ?? "Meridian user";
 }
 
 export const current = query({

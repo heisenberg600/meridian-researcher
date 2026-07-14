@@ -2,13 +2,21 @@
 
 import { UserButton, useUser } from "@clerk/react";
 import { useMutation, useQuery } from "convex/react";
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import "streamdown/styles.css";
 import { api } from "../convex/_generated/api";
 import type { Doc, Id } from "../convex/_generated/dataModel";
 import { Badge, Button, Card, SectionHeader, TextInput, Textarea, cx } from "./components/meridian";
 
 type MainView = "studies" | "activity" | "settings";
 type StudyTab = "overview" | "chat" | "plan" | "calls" | "feedback" | "artifacts";
+type CurrentUserQuery =
+  | {
+      user?: { name?: string; email?: string } | null;
+      organization?: { name: string } | null;
+    }
+  | null
+  | undefined;
 
 const studyTabs: Array<{ id: StudyTab; label: string }> = [
   { id: "overview", label: "Overview" },
@@ -18,6 +26,10 @@ const studyTabs: Array<{ id: StudyTab; label: string }> = [
   { id: "feedback", label: "Feedback" },
   { id: "artifacts", label: "Artifacts" },
 ];
+
+const Streamdown = lazy(() =>
+  import("streamdown").then((module) => ({ default: module.Streamdown })),
+);
 
 export function Portal() {
   const { user } = useUser();
@@ -72,7 +84,7 @@ export function Portal() {
       setSelectedStudyId(result.studyId);
       setSelectedChatId(result.chatSessionId);
       setMainView("studies");
-      setStudyTab("overview");
+      setStudyTab("chat");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not create study");
     } finally {
@@ -105,88 +117,28 @@ export function Portal() {
   return (
     <main className="min-h-screen bg-[var(--bg-page)] text-[var(--ink-700)]">
       <div className="grid min-h-screen grid-cols-[240px_minmax(0,1fr)]">
-        <aside className="flex min-h-screen flex-col border-r border-[var(--border-default)] bg-[var(--surface-card)]">
-          <div className="px-5 pb-4 pt-6">
-            <button
-              type="button"
-              onClick={() => {
-                setMainView("studies");
-                setSelectedStudyId(null);
-                setStudyTab("overview");
-              }}
-              className="[font:var(--text-display-md)] tracking-[var(--tracking-display)] text-[var(--text-heading)]"
-            >
-              Hermes
-            </button>
-            <p className="mt-1 [font:var(--text-body-sm)] text-[var(--text-muted)]">
-              {current?.organization?.name ?? "Setting up workspace"}
-            </p>
-          </div>
-
-          <nav className="space-y-1 px-3">
-            <SidebarButton
-              active={mainView === "studies"}
-              label="Studies"
-              onClick={() => {
-                setMainView("studies");
-                setSelectedStudyId(null);
-              }}
-            />
-            <SidebarButton
-              active={mainView === "activity"}
-              label="Activity"
-              onClick={() => setMainView("activity")}
-            />
-            <SidebarButton
-              active={mainView === "settings"}
-              label="Org settings"
-              onClick={() => setMainView("settings")}
-            />
-          </nav>
-
-          <div className="mt-6 border-t border-[var(--border-default)] px-5 pt-5">
-            <div className="mb-3 flex items-center justify-between">
-              <p className="[font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--text-muted)]">
-                Recent studies
-              </p>
-              <span className="[font:var(--text-body-sm)] text-[var(--text-muted)]">
-                {studies?.length ?? 0}
-              </span>
-            </div>
-            <div className="space-y-2">
-              {studies === undefined ? (
-                <p className="[font:var(--text-body-sm)] text-[var(--text-muted)]">Loading...</p>
-              ) : studies.length === 0 ? (
-                <p className="[font:var(--text-body-sm)] text-[var(--text-muted)]">
-                  No studies yet.
-                </p>
-              ) : (
-                studies.slice(0, 5).map((study) => (
-                  <button
-                    key={study._id}
-                    type="button"
-                    onClick={() => openStudy(study._id)}
-                    className={cx(
-                      "w-full rounded-[var(--radius-md)] px-3 py-2 text-left transition-colors",
-                      selectedStudy?._id === study._id && mainView === "studies"
-                        ? "bg-[var(--accent-softer)] text-[var(--text-heading)]"
-                        : "text-[var(--text-secondary)] hover:bg-[var(--ivory-200)]",
-                    )}
-                  >
-                    <span className="block truncate [font:var(--text-body-sm)] font-semibold">
-                      {study.title}
-                    </span>
-                    <span className="mt-0.5 block capitalize [font:var(--text-caption)] text-[var(--text-muted)]">
-                      {formatStatus(study.status)}
-                    </span>
-                  </button>
-                ))
-              )}
-            </div>
-          </div>
-
-          <UserFooter user={user} fallbackName={current?.user?.name ?? current?.user?.email} />
-        </aside>
+        {selectedStudy && mainView === "studies" ? (
+          <StudySidebar
+            current={current}
+            selectedStudy={selectedStudy}
+            setSelectedStudyId={setSelectedStudyId}
+            setStudyTab={setStudyTab}
+            studyTab={studyTab}
+            user={user}
+          />
+        ) : (
+          <WorkspaceSidebar
+            current={current}
+            mainView={mainView}
+            openStudy={openStudy}
+            selectedStudy={selectedStudy}
+            setMainView={setMainView}
+            setSelectedStudyId={setSelectedStudyId}
+            setStudyTab={setStudyTab}
+            studies={studies}
+            user={user}
+          />
+        )}
 
         <section className="min-w-0 overflow-y-auto px-8 py-7">
           {mainView === "studies" ? (
@@ -199,7 +151,6 @@ export function Portal() {
                 selectedStudy={selectedStudy}
                 setMessageText={setMessageText}
                 setSelectedChatId={setSelectedChatId}
-                setStudyTab={setStudyTab}
                 studyTab={studyTab}
                 messageText={messageText}
                 isSending={isSending}
@@ -254,7 +205,7 @@ function StudiesHome({
       <SectionHeader
         eyebrow="Workspace"
         title="Studies"
-        description="Create a research study, brief Hermes, and move from strategy to calls, feedback, and evidence-backed artifacts."
+        description="Create a research study, brief Meridian, and move from strategy to calls, feedback, and evidence-backed artifacts."
       />
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
@@ -319,6 +270,174 @@ function StudiesHome({
   );
 }
 
+function WorkspaceSidebar({
+  current,
+  mainView,
+  openStudy,
+  selectedStudy,
+  setMainView,
+  setSelectedStudyId,
+  setStudyTab,
+  studies,
+  user,
+}: {
+  current: CurrentUserQuery;
+  mainView: MainView;
+  openStudy: (studyId: Id<"studies">, tab?: StudyTab) => void;
+  selectedStudy: Doc<"studies"> | null;
+  setMainView: (view: MainView) => void;
+  setSelectedStudyId: (studyId: Id<"studies"> | null) => void;
+  setStudyTab: (tab: StudyTab) => void;
+  studies: Array<Doc<"studies">> | undefined;
+  user: ReturnType<typeof useUser>["user"];
+}) {
+  return (
+    <aside className="flex min-h-screen flex-col border-r border-[var(--border-default)] bg-[var(--surface-card)]">
+      <div className="px-5 pb-4 pt-6">
+        <button
+          type="button"
+          onClick={() => {
+            setMainView("studies");
+            setSelectedStudyId(null);
+            setStudyTab("overview");
+          }}
+          className="[font:var(--text-display-md)] tracking-[var(--tracking-display)] text-[var(--text-heading)]"
+        >
+          Meridian
+        </button>
+        <p className="mt-1 [font:var(--text-body-sm)] text-[var(--text-muted)]">
+          {current?.organization?.name ?? "Setting up workspace"}
+        </p>
+      </div>
+
+      <nav className="space-y-1 px-3">
+        <SidebarButton
+          active={mainView === "studies"}
+          label="Studies"
+          onClick={() => {
+            setMainView("studies");
+            setSelectedStudyId(null);
+          }}
+        />
+        <SidebarButton
+          active={mainView === "activity"}
+          label="Activity"
+          onClick={() => setMainView("activity")}
+        />
+        <SidebarButton
+          active={mainView === "settings"}
+          label="Org settings"
+          onClick={() => setMainView("settings")}
+        />
+      </nav>
+
+      <div className="mt-6 border-t border-[var(--border-default)] px-5 pt-5">
+        <div className="mb-3 flex items-center justify-between">
+          <p className="[font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--text-muted)]">
+            Recent studies
+          </p>
+          <span className="[font:var(--text-body-sm)] text-[var(--text-muted)]">
+            {studies?.length ?? 0}
+          </span>
+        </div>
+        <div className="space-y-2">
+          {studies === undefined ? (
+            <p className="[font:var(--text-body-sm)] text-[var(--text-muted)]">Loading...</p>
+          ) : studies.length === 0 ? (
+            <p className="[font:var(--text-body-sm)] text-[var(--text-muted)]">No studies yet.</p>
+          ) : (
+            studies.slice(0, 5).map((study) => (
+              <button
+                key={study._id}
+                type="button"
+                onClick={() => openStudy(study._id)}
+                className={cx(
+                  "w-full rounded-[var(--radius-md)] px-3 py-2 text-left transition-colors",
+                  selectedStudy?._id === study._id && mainView === "studies"
+                    ? "bg-[var(--accent-softer)] text-[var(--text-heading)]"
+                    : "text-[var(--text-secondary)] hover:bg-[var(--ivory-200)]",
+                )}
+              >
+                <span className="block truncate [font:var(--text-body-sm)] font-semibold">
+                  {study.title}
+                </span>
+                <span className="mt-0.5 block capitalize [font:var(--text-caption)] text-[var(--text-muted)]">
+                  {formatStatus(study.status)}
+                </span>
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+
+      <UserFooter user={user} fallbackName={current?.user?.name ?? current?.user?.email} />
+    </aside>
+  );
+}
+
+function StudySidebar({
+  current,
+  selectedStudy,
+  setSelectedStudyId,
+  setStudyTab,
+  studyTab,
+  user,
+}: {
+  current: CurrentUserQuery;
+  selectedStudy: Doc<"studies">;
+  setSelectedStudyId: (studyId: Id<"studies"> | null) => void;
+  setStudyTab: (tab: StudyTab) => void;
+  studyTab: StudyTab;
+  user: ReturnType<typeof useUser>["user"];
+}) {
+  return (
+    <aside className="flex min-h-screen flex-col border-r border-[var(--border-default)] bg-[var(--surface-card)]">
+      <div className="border-b border-[var(--border-default)] px-5 py-5">
+        <button
+          type="button"
+          onClick={() => {
+            setSelectedStudyId(null);
+            setStudyTab("overview");
+          }}
+          className="[font:var(--text-body-sm)] text-[var(--text-muted)] hover:text-[var(--text-heading)]"
+        >
+          Back to studies
+        </button>
+        <h1 className="mt-4 line-clamp-3 [font:var(--text-heading-sm)] text-[var(--text-heading)]">
+          {selectedStudy.title}
+        </h1>
+        <p className="mt-2 line-clamp-4 [font:var(--text-body-sm)] text-[var(--text-secondary)]">
+          {selectedStudy.businessDecision}
+        </p>
+        <Badge tone="info" className="mt-4">
+          {formatStatus(selectedStudy.status)}
+        </Badge>
+      </div>
+
+      <nav className="mt-4 space-y-1 px-3">
+        {studyTabs.map((tab) => (
+          <SidebarButton
+            key={tab.id}
+            active={studyTab === tab.id}
+            label={tab.label}
+            onClick={() => setStudyTab(tab.id)}
+          />
+        ))}
+      </nav>
+
+      <div className="mt-auto border-t border-[var(--border-default)] px-5 py-4">
+        <p className="[font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--text-muted)]">
+          Workspace
+        </p>
+        <p className="mt-1 truncate [font:var(--text-body-sm)] text-[var(--text-secondary)]">
+          {current?.organization?.name ?? "Meridian"}
+        </p>
+      </div>
+      <UserFooter user={user} fallbackName={current?.user?.name ?? current?.user?.email} />
+    </aside>
+  );
+}
+
 function StudyDetail({
   chatSessions,
   isSending,
@@ -329,7 +448,6 @@ function StudyDetail({
   selectedStudy,
   setMessageText,
   setSelectedChatId,
-  setStudyTab,
   studyTab,
 }: {
   chatSessions: Array<Doc<"chatSessions">> | undefined;
@@ -341,7 +459,6 @@ function StudyDetail({
   selectedStudy: Doc<"studies">;
   setMessageText: (value: string) => void;
   setSelectedChatId: (id: Id<"chatSessions">) => void;
-  setStudyTab: (tab: StudyTab) => void;
   studyTab: StudyTab;
 }) {
   return (
@@ -352,24 +469,6 @@ function StudyDetail({
         description={selectedStudy.businessDecision}
         action={<Badge tone="info">{formatStatus(selectedStudy.status)}</Badge>}
       />
-
-      <div className="mt-6 flex flex-wrap gap-1 border-b border-[var(--border-default)]">
-        {studyTabs.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setStudyTab(tab.id)}
-            className={cx(
-              "-mb-px border-b-2 px-3 py-2 [font:var(--text-body-sm)] font-medium",
-              studyTab === tab.id
-                ? "border-[var(--accent)] text-[var(--text-heading)]"
-                : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-body)]",
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
 
       <div className="mt-6">
         {studyTab === "overview" ? <StudyOverview selectedStudy={selectedStudy} /> : null}
@@ -411,7 +510,7 @@ function StudyOverview({ selectedStudy }: { selectedStudy: Doc<"studies"> }) {
       <Card className="p-5">
         <h2 className="[font:var(--text-heading-sm)] text-[var(--text-heading)]">Next action</h2>
         <p className="mt-3 [font:var(--text-body-sm)] text-[var(--text-secondary)]">
-          Use chat to brief Hermes. The plan, calls, feedback, and artifacts tabs are ready for the
+          Use chat to brief Meridian. The plan, calls, feedback, and artifacts tabs are ready for the
           next backend tables.
         </p>
         <div className="mt-5 rounded-[var(--radius-md)] bg-[var(--accent-softer)] p-4 [font:var(--text-body-sm)] text-[var(--clay-800)]">
@@ -442,36 +541,7 @@ function StudyChat({
   setSelectedChatId: (id: Id<"chatSessions">) => void;
 }) {
   return (
-    <div className="grid gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
-      <Card className="p-4">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="[font:var(--text-heading-sm)] text-[var(--text-heading)]">Chats</h2>
-          <Badge>{chatSessions?.length ?? 0}</Badge>
-        </div>
-        <div className="space-y-2">
-          {chatSessions?.map((chat) => (
-            <button
-              key={chat._id}
-              type="button"
-              onClick={() => setSelectedChatId(chat._id)}
-              className={cx(
-                "w-full rounded-[var(--radius-md)] border p-3 text-left transition-colors",
-                selectedChat?._id === chat._id
-                  ? "border-[var(--accent)] bg-[var(--accent-softer)]"
-                  : "border-[var(--border-default)] bg-[var(--surface-card)] hover:bg-[var(--ivory-200)]",
-              )}
-            >
-              <span className="block [font:var(--text-body-sm)] font-semibold text-[var(--text-heading)]">
-                {chat.title}
-              </span>
-              <span className="mt-1 block capitalize [font:var(--text-caption)] text-[var(--text-muted)]">
-                {formatStatus(chat.purpose)} · {chat.status}
-              </span>
-            </button>
-          ))}
-        </div>
-      </Card>
-
+    <div>
       <Card className="flex min-h-[640px] flex-col overflow-hidden">
         <div className="flex items-center justify-between border-b border-[var(--border-default)] px-5 py-4">
           <div>
@@ -479,7 +549,8 @@ function StudyChat({
               {selectedChat?.title ?? "Chat"}
             </h2>
             <p className="[font:var(--text-body-sm)] text-[var(--text-muted)]">
-              Hermes strategy discussion · {messages?.length ?? 0} messages
+              Meridian strategy discussion · {messages?.length ?? 0} messages ·{" "}
+              {chatSessions?.length ?? 0} chats
             </p>
           </div>
           <AgentRunPill active={Boolean(selectedChat?.activeAgentRunId)} />
@@ -500,7 +571,7 @@ function StudyChat({
             <TextInput
               value={messageText}
               onChange={(event) => setMessageText(event.target.value)}
-              placeholder="Message Hermes..."
+              placeholder="Message Meridian..."
               disabled={!selectedChat || isSending}
             />
             <Button type="submit" disabled={!selectedChat || isSending || !messageText.trim()}>
@@ -509,6 +580,21 @@ function StudyChat({
           </div>
         </form>
       </Card>
+      {chatSessions && chatSessions.length > 1 ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {chatSessions.map((chat) => (
+            <Button
+              key={chat._id}
+              type="button"
+              size="sm"
+              variant={selectedChat?._id === chat._id ? "secondary" : "ghost"}
+              onClick={() => setSelectedChatId(chat._id)}
+            >
+              {chat.title}
+            </Button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -532,7 +618,7 @@ function OrgSettings({
       <SectionHeader
         eyebrow="Organization"
         title="Org settings"
-        description="Manage the shared context and operating defaults Hermes can use across studies."
+        description="Manage the shared context and operating defaults Meridian can use across studies."
       />
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
@@ -565,7 +651,7 @@ function OrgSettings({
                 Organization memories
               </h2>
               <p className="mt-1 [font:var(--text-body-sm)] text-[var(--text-secondary)]">
-                Durable context Hermes can recall across studies. For now, the agent can write
+                Durable context Meridian can recall across studies. For now, the agent can write
                 memories and you can archive them here.
               </p>
             </div>
@@ -577,7 +663,7 @@ function OrgSettings({
               <p className="[font:var(--text-body)] text-[var(--text-muted)]">Loading memories...</p>
             ) : memories.length === 0 ? (
               <div className="rounded-[var(--radius-md)] bg-[var(--ivory-100)] p-4 [font:var(--text-body-sm)] text-[var(--text-muted)]">
-                No organization memories yet. Hermes will save stable context when it helps future
+                No organization memories yet. Meridian will save stable context when it helps future
                 research.
               </div>
             ) : (
@@ -656,7 +742,7 @@ function PlanSkeleton() {
   return (
     <SkeletonGrid
       title="Research plan"
-      description="Hermes will draft objectives, respondent criteria, interview guide, and approval checkpoints here."
+      description="Meridian will draft objectives, respondent criteria, interview guide, and approval checkpoints here."
       items={["Objectives", "Audience", "Interview guide", "Approvals"]}
     />
   );
@@ -750,7 +836,7 @@ function UserFooter({
   fallbackName?: string;
   user: ReturnType<typeof useUser>["user"];
 }) {
-  const displayName = user?.fullName ?? fallbackName ?? "Hermes user";
+  const displayName = user?.fullName ?? fallbackName ?? "Meridian user";
   const email = user?.primaryEmailAddress?.emailAddress ?? undefined;
   const initials = displayName
     .split(" ")
@@ -809,7 +895,7 @@ function Metric({ label, value }: { label: string; value: string }) {
 function EmptyChat() {
   return (
     <div className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border-strong)] bg-[var(--surface-card)] p-6 text-center">
-      <h2 className="[font:var(--text-heading-sm)] text-[var(--text-heading)]">Brief Hermes</h2>
+      <h2 className="[font:var(--text-heading-sm)] text-[var(--text-heading)]">Brief Meridian</h2>
       <p className="mx-auto mt-2 max-w-lg [font:var(--text-body-sm)] text-[var(--text-secondary)]">
         Start with the business decision, what you already know, and what evidence would make the
         decision easier.
@@ -833,10 +919,18 @@ function ChatBubble({ message }: { message: Doc<"messages"> }) {
       >
         {!isUser ? (
           <p className="mb-1 [font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--text-muted)]">
-            Hermes
+            Meridian
           </p>
         ) : null}
-        {text}
+        {isUser ? (
+          <span className="whitespace-pre-wrap">{text}</span>
+        ) : (
+          <div className="meridian-markdown">
+            <Suspense fallback={<span className="whitespace-pre-wrap">{text}</span>}>
+              <Streamdown>{text}</Streamdown>
+            </Suspense>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -846,7 +940,7 @@ function AgentRunPill({ active }: { active: boolean }) {
   return active ? (
     <span className="inline-flex items-center gap-2 rounded-[var(--radius-full)] bg-[var(--accent-softer)] px-3 py-1 [font:var(--text-body-sm)] text-[var(--clay-800)]">
       <span className="h-2 w-2 rounded-full bg-[var(--accent)]" />
-      Hermes working
+      Meridian working
     </span>
   ) : (
     <Badge tone="success">Ready</Badge>
@@ -862,7 +956,7 @@ function renderMessageText(message: Doc<"messages">) {
       .join("");
 
   if (text) return text;
-  return message.status === "streaming" ? "Hermes is thinking..." : "";
+  return message.status === "streaming" ? "Meridian is thinking..." : "";
 }
 
 function formatStatus(value: string) {

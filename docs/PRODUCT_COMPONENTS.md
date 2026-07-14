@@ -2,7 +2,7 @@
 
 ## 1. Purpose
 
-Hermes Researcher helps a company define, run, and analyze customer research. It should behave like a supervised AI research team rather than only a survey builder, dialer, or transcript summarizer.
+Meridian helps a company define, run, and analyze customer research. It should behave like a supervised AI research team rather than only a survey builder, dialer, or transcript summarizer.
 
 The product begins with a commercial decision and ends with a recommendation backed by inspectable participant evidence.
 
@@ -329,7 +329,7 @@ The first version should prove one complete path for existing-customer qualitati
 
 ## 7. Product boundaries
 
-Hermes Researcher is not initially:
+Meridian is not initially:
 
 - A general-purpose mass-email or autodialing platform
 - A participant scraping tool

@@ -2,7 +2,7 @@
 
 ## 1. Goal
 
-Hermes Researcher should become an AI-powered product and market research company platform:
+Meridian should become an AI-powered product and market research company platform:
 
 ```text
 Business decision
@@ -83,7 +83,7 @@ Start with option 1 for local development. Keep the interface abstract so produc
 
 ## 5. Behavior Model: One Agent, Skill-Driven
 
-Hermes should have one user-facing agent. Internally, that agent can behave like a strategist, study designer, interviewer, analyst, or reviewer, but those are capabilities activated by skills and workflow state rather than separate visible modes.
+Meridian should have one user-facing agent. Internally, that agent can behave like a strategist, study designer, interviewer, analyst, or reviewer, but those are capabilities activated by skills and workflow state rather than separate visible modes.
 
 The agent's behavior should be determined by:
 
@@ -94,7 +94,7 @@ The agent's behavior should be determined by:
 - approval gates enforced by Convex mutations
 - files, notes, and outputs in the sandbox workspace
 
-This keeps the UI simple: the user talks to Hermes. Hermes chooses the right skill and tools based on where the study is.
+This keeps the UI simple: the user talks to Meridian. Meridian chooses the right skill and tools based on where the study is.
 
 ### Why skills first
 
@@ -177,7 +177,7 @@ Minimum Convex tables:
 
 ## 7. Internal Capabilities
 
-These are internal capabilities of the single Hermes agent, not separate user-facing agents.
+These are internal capabilities of the single Meridian agent, not separate user-facing agents.
 
 ### Research Strategy
 
@@ -383,7 +383,7 @@ Acceptance:
 
 Acceptance:
 
-- Hermes can answer using the active study skill and sandbox.
+- Meridian can answer using the active study skill and sandbox.
 - sandbox can create/read/checkpoint files.
 - all tool calls and costs appear in Convex.
 
@@ -471,6 +471,7 @@ Required environment variables:
 - `CONVEX_DEPLOYMENT`
 - `NEXT_PUBLIC_CONVEX_URL`
 - LLM provider keys
+- `LINKUP_API_KEY` for agent web search
 - auth provider configuration
 - optional external sandbox worker URL
 - optional email/voice provider keys in later phases
@@ -493,7 +494,7 @@ The dashboard URL is useful for inspection, but routine development should work 
 1. Scaffold Convex in this repo.
 2. Add schema for the first vertical slice.
 3. Implement study creation and real-time study workspace.
-4. Implement a minimal single Hermes agent with skill loading.
+4. Implement a minimal single Meridian agent with skill loading.
 5. Add bash sandbox smoke test.
 6. Create the first skill: `research-strategy`.
 7. Build Study Plan generation and approval gate.

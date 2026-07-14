@@ -68,6 +68,7 @@ const inviteValidator = v.object({
 
 const INTERVIEW_MODEL = "google/gemini-3.1-flash-lite";
 const AI_GATEWAY_BASE_URL = "https://ai-gateway.vercel.sh/v1";
+const ELEVENLABS_BASE_URL = "https://api.elevenlabs.io/v1";
 
 export const nextStep = action({
   args: {
@@ -89,7 +90,7 @@ export const nextStep = action({
           type: "complete" as const,
           prompt: "Thanks, that gives us a useful starting signal.",
           summary:
-            "Your response has been captured. In the full study workflow, Hermes will save these answers with the invite session and route them into analysis.",
+            "Your response has been captured. In the full study workflow, Meridian will save these answers with the invite session and route them into analysis.",
         },
         source: "gateway" as const,
         model,
@@ -118,7 +119,7 @@ export const nextStep = action({
             {
               role: "system",
               content: [
-                "You are Hermes, a neutral customer research interviewer.",
+                "You are Meridian, a neutral customer research interviewer.",
                 "Return only valid JSON for one next interview step. Do not include markdown.",
                 "Keep the question short, concrete, and unbiased.",
                 "Prefer answer controls over long free text.",
@@ -155,6 +156,66 @@ export const nextStep = action({
         warning: error instanceof Error ? error.message : "AI Gateway request failed.",
       };
     }
+  },
+});
+
+export const voiceToken = action({
+  args: {
+    invite: inviteValidator,
+    answers: v.array(answerValidator),
+    currentStep: v.optional(
+      v.object({
+        id: v.string(),
+        prompt: v.string(),
+        type: v.string(),
+      }),
+    ),
+  },
+  handler: async (_ctx, args) => {
+    const apiKey = process.env.ELEVENLABS_API_KEY;
+    const agentId = process.env.ELEVENLABS_AGENT_ID;
+
+    if (!apiKey || !agentId) {
+      throw new Error("Missing ELEVENLABS_API_KEY or ELEVENLABS_AGENT_ID in Convex environment.");
+    }
+
+    const url = new URL(`${ELEVENLABS_BASE_URL}/convai/conversation/token`);
+    url.searchParams.set("agent_id", agentId);
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "xi-api-key": apiKey,
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`ElevenLabs token request failed: ${response.status} ${errorText}`);
+    }
+
+    const payload = await response.json();
+    const token = payload?.token;
+
+    if (typeof token !== "string" || token.length === 0) {
+      throw new Error("ElevenLabs token response did not include a token.");
+    }
+
+    return {
+      token,
+      agentId,
+      dynamicVariables: {
+        invite_id: args.invite.id,
+        study_title: args.invite.studyTitle,
+        research_goal: args.invite.researchGoal,
+        learning_objectives: args.invite.learningObjectives.join("; "),
+        respondent_label: args.invite.respondentLabel,
+        current_question: args.currentStep?.prompt ?? "Start the interview with a brief greeting.",
+        current_step_id: args.currentStep?.id ?? "initial",
+        answer_count: args.answers.length,
+        answers_json: JSON.stringify(args.answers),
+      },
+    };
   },
 });
 
@@ -384,7 +445,7 @@ function getScriptedStep(answers: InterviewAnswer[]): InterviewStep {
         ? "If every finding linked back to source evidence automatically, how valuable would that be?"
         : selected.includes("interviews")
           ? "If an adaptive interviewer handled neutral probing consistently, how valuable would that be?"
-          : "If Hermes helped turn fuzzy stakeholder questions into a clear research plan, how valuable would that be?";
+          : "If Meridian helped turn fuzzy stakeholder questions into a clear research plan, how valuable would that be?";
 
     return {
       id: "priority",

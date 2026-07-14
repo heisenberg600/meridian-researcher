@@ -1,5 +1,6 @@
 import { useAction } from "convex/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { Conversation, Mode, Status } from "@elevenlabs/client";
 import { api } from "../convex/_generated/api";
 import {
   getAnswerLabel,
@@ -144,7 +145,15 @@ export function InterviewClient({ invite }: InterviewClientProps) {
             {!mode ? (
               <ModeSelect invite={invite} setMode={setMode} />
             ) : mode === "voice" ? (
-              <VoiceExperiment gateway={gateway} step={step} onUseChat={() => setMode("chat")} />
+              <VoiceExperiment
+                answers={answers}
+                gateway={gateway}
+                invite={invite}
+                isThinking={isThinking}
+                onUseChat={() => setMode("chat")}
+                step={step}
+                submitAnswer={submitAnswer}
+              />
             ) : (
               <div className="mx-auto w-full max-w-3xl">
                 <div className="mb-7 flex items-center gap-3">
@@ -486,23 +495,144 @@ function ContinueButton({ disabled, onClick }: { disabled: boolean; onClick?: ()
 }
 
 function VoiceExperiment({
+  answers,
   gateway,
+  invite,
+  isThinking,
   onUseChat,
   step,
+  submitAnswer,
 }: {
+  answers: InterviewAnswer[];
   gateway: GatewayState;
+  invite: InterviewInvite;
+  isThinking: boolean;
   onUseChat: () => void;
   step: InterviewStep | null;
+  submitAnswer: (value: string | string[]) => void;
 }) {
+  const createVoiceToken = useAction(api.interviews.voiceToken);
+  const conversationRef = useRef<Conversation | null>(null);
+  const [voiceStatus, setVoiceStatus] = useState<Status>("disconnected");
+  const [voiceMode, setVoiceMode] = useState<Mode>("listening");
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [isMuted, setIsMuted] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Array<{ role: "agent" | "user"; message: string }>>([]);
+
+  useEffect(() => {
+    return () => {
+      void conversationRef.current?.endSession();
+      conversationRef.current = null;
+    };
+  }, []);
+
+  async function startVoiceInterview() {
+    if (voiceStatus === "connecting" || voiceStatus === "connected") return;
+
+    setVoiceError(null);
+    setVoiceStatus("connecting");
+
+    try {
+      const { Conversation } = await import("@elevenlabs/client");
+      const currentStep =
+        step && step.type !== "complete"
+          ? {
+              id: step.id,
+              prompt: step.prompt,
+              type: step.type,
+            }
+          : undefined;
+      const session = await createVoiceToken({
+        invite,
+        answers,
+        currentStep,
+      });
+
+      const conversation = await Conversation.startSession({
+        conversationToken: session.token,
+        connectionType: "webrtc",
+        dynamicVariables: session.dynamicVariables,
+        clientTools: {
+          record_interview_answer: async (parameters: unknown) => {
+            const answer = normalizeVoiceToolAnswer(parameters);
+            if (!answer) return "No answer was provided.";
+
+            await submitAnswer(answer);
+            return "Answer captured. Continue with the next interview question.";
+          },
+        },
+        overrides: {
+          agent: {
+            firstMessage: step?.type === "complete" ? step.prompt : step?.prompt,
+          },
+        },
+        onConnect: ({ conversationId }) => {
+          setConversationId(conversationId);
+          setVoiceStatus("connected");
+        },
+        onDisconnect: () => {
+          conversationRef.current = null;
+          setVoiceStatus("disconnected");
+          setIsMuted(false);
+        },
+        onError: (message) => {
+          setVoiceError(message);
+          setVoiceStatus("disconnected");
+        },
+        onMessage: ({ role, message }) => {
+          setMessages((current) => [...current.slice(-5), { role, message }]);
+        },
+        onModeChange: ({ mode }) => {
+          setVoiceMode(mode);
+        },
+        onStatusChange: ({ status }) => {
+          setVoiceStatus(status);
+        },
+      });
+
+      conversationRef.current = conversation;
+    } catch (error) {
+      setVoiceStatus("disconnected");
+      setVoiceError(getVoiceErrorMessage(error));
+    }
+  }
+
+  async function stopVoiceInterview() {
+    await conversationRef.current?.endSession();
+    conversationRef.current = null;
+    setVoiceStatus("disconnected");
+    setIsMuted(false);
+  }
+
+  function toggleMute() {
+    const nextMuted = !isMuted;
+    conversationRef.current?.setMicMuted(nextMuted);
+    setIsMuted(nextMuted);
+  }
+
+  const isConnected = voiceStatus === "connected";
+  const isStarting = voiceStatus === "connecting";
+
   return (
     <div className="mx-auto w-full max-w-3xl">
-      <GatewayBadge gateway={gateway} isThinking={false} />
-      <h2 className="mt-5 text-5xl font-semibold leading-tight tracking-tight">
-        ElevenLabs will attach here.
+      <div className="flex flex-wrap items-center gap-3">
+        <GatewayBadge gateway={gateway} isThinking={isThinking} />
+        <span className="rounded-full border border-[var(--border-default)] bg-white px-3 py-1 text-xs font-medium text-[var(--text-secondary)]">
+          ElevenLabs {voiceStatus}
+        </span>
+        {isConnected ? (
+          <span className="rounded-full bg-[var(--accent-softer)] px-3 py-1 text-xs font-medium text-[var(--accent-active)]">
+            {voiceMode}
+          </span>
+        ) : null}
+      </div>
+      <h2 className="mt-5 text-[var(--text-heading)]" style={{ font: "var(--text-display-lg)" }}>
+        Voice interview
       </h2>
       <p className="mt-5 text-base leading-7 text-[var(--text-secondary)]">
-        The voice agent should call the same Convex gateway action as chat. It receives the invite
-        id and current answers, then asks the returned prompt aloud.
+        Start the ElevenLabs agent when you want to answer aloud. The agent receives this study
+        context and can call the browser-side capture tool to move the interview forward.
       </p>
       <div className="mt-8 rounded-lg border border-[var(--border-default)] bg-[var(--surface-card)] p-5">
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
@@ -512,13 +642,101 @@ function VoiceExperiment({
           {step?.prompt ?? "Preparing your first AI-generated voice prompt..."}
         </p>
       </div>
-      <button
-        type="button"
-        onClick={onUseChat}
-        className="mt-7 rounded-lg bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white hover:bg-[var(--accent)]"
-      >
-        Try chat flow
-      </button>
+
+      {voiceError ? (
+        <p className="mt-5 rounded-lg bg-[var(--status-warning-bg)] p-3 text-sm leading-6 text-[var(--status-warning)]">
+          {voiceError}
+        </p>
+      ) : null}
+
+      {conversationId ? (
+        <p className="mt-4 font-mono text-xs text-[var(--text-muted)]">Conversation {conversationId}</p>
+      ) : null}
+
+      {messages.length > 0 ? (
+        <div className="mt-6 space-y-2">
+          {messages.map((message, index) => (
+            <p
+              key={`${message.role}-${index}`}
+              className="rounded-lg bg-[var(--bg-sunken)] px-3 py-2 text-sm leading-6 text-[var(--text-secondary)]"
+            >
+              <span className="font-medium text-[var(--text-heading)]">{message.role}: </span>
+              {message.message}
+            </p>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="mt-7 flex flex-wrap gap-3">
+        {isConnected ? (
+          <>
+            <button
+              type="button"
+              onClick={toggleMute}
+              className="rounded-lg border border-[var(--border-default)] bg-white px-5 py-3 text-sm font-semibold text-[var(--text-heading)] hover:border-[var(--accent)]"
+            >
+              {isMuted ? "Unmute mic" : "Mute mic"}
+            </button>
+            <button
+              type="button"
+              onClick={() => void stopVoiceInterview()}
+              className="rounded-lg bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white hover:bg-[var(--accent)]"
+            >
+              End voice
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            disabled={isStarting || !step}
+            onClick={() => void startVoiceInterview()}
+            className="rounded-lg bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white hover:bg-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            {isStarting ? "Starting voice..." : "Start voice"}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onUseChat}
+          className="rounded-lg border border-[var(--border-default)] bg-white px-5 py-3 text-sm font-semibold text-[var(--text-heading)] hover:border-[var(--accent)]"
+        >
+          Use chat
+        </button>
+      </div>
     </div>
   );
+}
+
+function normalizeVoiceToolAnswer(parameters: unknown) {
+  if (!parameters || typeof parameters !== "object") {
+    return null;
+  }
+
+  const record = parameters as Record<string, unknown>;
+  const value = record.value ?? record.answer ?? record.response;
+
+  if (Array.isArray(value)) {
+    const values = value.filter((item): item is string => typeof item === "string" && item.length > 0);
+    return values.length > 0 ? values : null;
+  }
+
+  if (typeof value === "string" && value.trim().length > 0) {
+    return value.trim();
+  }
+
+  return null;
+}
+
+function getVoiceErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : "Unable to start ElevenLabs voice session.";
+
+  if (message.includes("Missing ELEVENLABS_API_KEY") || message.includes("ELEVENLABS_AGENT_ID")) {
+    return "ElevenLabs is not configured yet. Add ELEVENLABS_API_KEY and ELEVENLABS_AGENT_ID to the Convex environment to enable voice.";
+  }
+
+  if (message.includes("Permission denied") || message.includes("Microphone")) {
+    return "Microphone access was blocked. Allow microphone access in the browser to start the voice interview.";
+  }
+
+  return message;
 }

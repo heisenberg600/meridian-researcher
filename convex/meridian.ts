@@ -10,6 +10,7 @@ import { v } from "convex/values";
 
 const DEFAULT_MODEL = "google/gemini-3.1-flash-lite";
 const AI_GATEWAY_BASE_URL = "https://ai-gateway.vercel.sh/v1";
+const LINKUP_SEARCH_URL = "https://api.linkup.so/v1/search";
 const TEXT_FLUSH_INTERVAL_MS = 250;
 
 const memoryCategorySchema = z.enum([
@@ -28,23 +29,26 @@ export const processMessage = internalAction({
     assistantMessageId: v.id("messages"),
   },
   handler: async (ctx, args) => {
-    const context = await ctx.runQuery(internal.hermesData.getRunContext, {
+    const context = await ctx.runQuery(internal.meridianData.getRunContext, {
       agentRunId: args.agentRunId,
     });
-    const model = process.env.AI_GATEWAY_MODEL ?? process.env.HERMES_MODEL ?? DEFAULT_MODEL;
+    const model =
+      process.env.AI_GATEWAY_MODEL ??
+      process.env.MERIDIAN_MODEL ??
+      DEFAULT_MODEL;
     const apiKey =
       process.env.AI_GATEWAY_API_KEY ??
       process.env.VERCEL_AI_GATEWAY_API_KEY ??
       process.env.VERCEL_AI_GATEWAY_KEY;
 
-    await ctx.runMutation(internal.hermesData.setRunRunning, {
+    await ctx.runMutation(internal.meridianData.setRunRunning, {
       agentRunId: args.agentRunId,
       model,
     });
 
     if (!apiKey) {
       const text = [
-        "Hermes is wired to the backend, but the AI Gateway key is not configured yet.",
+        "Meridian is wired to the backend, but the AI Gateway key is not configured yet.",
         "Set `AI_GATEWAY_API_KEY` in Convex to enable live agent responses.",
       ].join(" ");
       await ctx.runMutation(internal.messages.appendTextDelta, {
@@ -55,7 +59,7 @@ export const processMessage = internalAction({
         messageId: args.assistantMessageId,
         status: "complete",
       });
-      await ctx.runMutation(internal.hermesData.completeRun, {
+      await ctx.runMutation(internal.meridianData.completeRun, {
         agentRunId: args.agentRunId,
         chatSessionId: context.chatSession._id,
       });
@@ -69,7 +73,7 @@ export const processMessage = internalAction({
         apiKey,
         includeUsage: true,
       });
-      const tools = buildHermesTools({
+      const tools = buildMeridianTools({
         ctx,
         organizationId: context.run.organizationId,
         studyId: context.run.studyId,
@@ -120,28 +124,28 @@ export const processMessage = internalAction({
         status: "complete",
         usage: { inputTokens, outputTokens, totalTokens },
       });
-      await ctx.runMutation(internal.hermesData.recordUsage, {
+      await ctx.runMutation(internal.meridianData.recordUsage, {
         organizationId: context.run.organizationId,
         studyId: context.run.studyId,
         agentRunId: args.agentRunId,
-        operation: "hermes.chat",
+        operation: "meridian.chat",
         model,
         inputTokens,
         outputTokens,
         totalTokens,
       });
-      await ctx.runMutation(internal.hermesData.completeRun, {
+      await ctx.runMutation(internal.meridianData.completeRun, {
         agentRunId: args.agentRunId,
         chatSessionId: context.chatSession._id,
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Hermes failed to respond.";
+      const message = error instanceof Error ? error.message : "Meridian failed to respond.";
       await ctx.runMutation(internal.messages.finalizeAssistantMessage, {
         messageId: args.assistantMessageId,
         status: "error",
-        errorText: `Hermes could not complete this response. ${message}`,
+        errorText: `Meridian could not complete this response. ${message}`,
       });
-      await ctx.runMutation(internal.hermesData.failRun, {
+      await ctx.runMutation(internal.meridianData.failRun, {
         agentRunId: args.agentRunId,
         chatSessionId: context.chatSession._id,
         error: message,
@@ -171,7 +175,7 @@ function textFromParts(parts: Array<Record<string, unknown>>) {
     .join("");
 }
 
-type HermesRunContext = {
+type MeridianRunContext = {
   run: Doc<"agentRuns">;
   study: Doc<"studies">;
   chatSession: Doc<"chatSessions">;
@@ -179,21 +183,31 @@ type HermesRunContext = {
   memories: Doc<"organizationMemories">[];
 };
 
-function buildSystemInstructions(context: HermesRunContext) {
+function buildSystemInstructions(context: MeridianRunContext) {
   const memories = context.memories
     .map(
       (memory) =>
         `- [${memory.category}] ${memory.key}: ${memory.value} (confidence ${memory.confidence})`,
     )
     .join("\n");
+  const completedUserMessageCount = context.messages.filter(
+    (message) => message.role === "user" && message.status === "complete",
+  ).length;
+  const isInitialStudyIntake = completedUserMessageCount === 0;
 
   return [
-    "You are Hermes, a supervised AI product and market research agent.",
-    "The user experiences one agent. Internally, behave as a research strategist when the study is in draft.",
-    "Help turn the business decision into a clear, approvable research plan. Ask concise clarifying questions only when needed.",
+    "You are Meridian, a supervised AI product and market research agent.",
+    "The user experiences one agent. Internally, behave as a research strategist while the study is in draft.",
+    "Your current objective is to gather enough context to produce an approvable study document.",
+    "The study document should eventually include: business decision, research goal, key hypotheses, learning objectives, target respondent profile, method recommendation, screener criteria, discussion guide outline, evidence standards, risks, and approval checklist.",
+    "Ask concise probing questions that close the highest-risk gaps before drafting the study document.",
     "Keep facts, assumptions, hypotheses, findings, and recommendations distinct.",
     "Do not claim fieldwork has happened unless evidence exists.",
     "Do not contact participants or imply outreach has started.",
+    "Do not draft the full study document until the user's goal, audience, decision stakes, and constraints are clear enough.",
+    isInitialStudyIntake
+      ? "This is the first assistant turn for a newly created study. Open with one short acknowledgement of the business decision, then ask 4-6 prioritized probing questions. Group them for easy answering. Do not mention implementation details or tools."
+      : "If enough context is available, summarize what is known, identify remaining gaps, and offer to draft the study document. Otherwise ask the next few highest-value questions.",
     "",
     "Organization memories:",
     memories || "- No active organization memories yet.",
@@ -209,7 +223,7 @@ function buildSystemInstructions(context: HermesRunContext) {
   ].join("\n");
 }
 
-function buildHermesTools(args: {
+function buildMeridianTools(args: {
   ctx: ActionCtx;
   organizationId: Id<"organizations">;
   studyId: Id<"studies">;
@@ -218,15 +232,79 @@ function buildHermesTools(args: {
   assistantMessageId: Id<"messages">;
 }) {
   return {
+    web_search: tool({
+      description:
+        "Search the public web with Linkup for current company, product, customer, competitor, market, or research context. Returns source titles, URLs, and excerpts that must be cited in the response.",
+      inputSchema: z.object({
+        query: z.string().min(3).max(1000).describe("A clear, context-rich natural language search query."),
+        depth: z
+          .enum(["fast", "standard", "deep"])
+          .default("standard")
+          .describe("Use fast for simple lookups, standard normally, and deep for complex multi-source research."),
+        includeDomains: z.array(z.string().min(1)).max(20).optional(),
+        excludeDomains: z.array(z.string().min(1)).max(20).optional(),
+        maxResults: z.number().int().min(1).max(10).default(5),
+      }),
+      execute: async (input) => {
+        const startedAt = Date.now();
+        try {
+          const apiKey = process.env.LINKUP_API_KEY;
+          if (!apiKey) throw new Error("LINKUP_API_KEY is not configured in Convex");
+
+          const response = await fetch(LINKUP_SEARCH_URL, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              q: input.query,
+              depth: input.depth,
+              outputType: "searchResults",
+              includeDomains: input.includeDomains,
+              excludeDomains: input.excludeDomains,
+              maxResults: input.maxResults,
+              includeImages: false,
+            }),
+          });
+
+          if (!response.ok) {
+            const detail = (await response.text()).slice(0, 500);
+            throw new Error(`Linkup search failed (${response.status}): ${detail}`);
+          }
+
+          const payload = (await response.json()) as {
+            results?: Array<{ name?: string; url?: string; content?: string; type?: string }>;
+          };
+          const output = {
+            query: input.query,
+            results: (payload.results ?? [])
+              .filter((result) => result.type !== "image" && result.url)
+              .slice(0, input.maxResults)
+              .map((result) => ({
+                title: result.name ?? "Untitled source",
+                url: result.url,
+                excerpt: (result.content ?? "").slice(0, 4000),
+              })),
+          };
+          await recordTool(args, "web_search", input, output, startedAt);
+          return output;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Linkup search failed";
+          await recordTool(args, "web_search", input, undefined, startedAt, message);
+          return { query: input.query, results: [], error: message };
+        }
+      },
+    }),
     remember_organization_context: tool({
       description:
-        "Save or update a durable organization memory that should help Hermes in future studies. Use only for stable facts, preferences, constraints, or research standards explicitly implied by the user.",
+        "Save or update a durable organization memory that should help Meridian in future studies. Use only for stable facts, preferences, constraints, or research standards explicitly implied by the user.",
       inputSchema: z.object({
         key: z.string().min(2).max(80).describe("Stable snake_case key for the memory."),
         value: z.string().min(3).max(1000).describe("The memory text to preserve."),
         category: memoryCategorySchema,
         importance: z.number().min(0).max(1).describe("How useful this is likely to be later."),
-        confidence: z.number().min(0).max(1).describe("How confident Hermes is that this memory is true."),
+        confidence: z.number().min(0).max(1).describe("How confident Meridian is that this memory is true."),
       }),
       execute: async (input) => {
         const startedAt = Date.now();
@@ -300,7 +378,7 @@ async function recordTool(
   startedAt: number,
   error?: string,
 ) {
-  await args.ctx.runMutation(internal.hermesData.recordToolEvent, {
+  await args.ctx.runMutation(internal.meridianData.recordToolEvent, {
     organizationId: args.organizationId,
     studyId: args.studyId,
     chatSessionId: args.chatSessionId,

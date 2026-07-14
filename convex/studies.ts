@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import type { QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 
@@ -81,6 +82,33 @@ export const create = mutation({
       updatedAt: now,
     });
 
+    const agentRunId = await ctx.db.insert("agentRuns", {
+      organizationId,
+      studyId,
+      chatSessionId,
+      status: "queued",
+      activeSkillNames: ["research-strategy"],
+      startedBy: user._id,
+      startedAt: now,
+    });
+
+    const assistantMessageId = await ctx.db.insert("messages", {
+      organizationId,
+      studyId,
+      chatSessionId,
+      role: "assistant",
+      parts: [],
+      status: "streaming",
+      order: 0,
+      agentRunId,
+      createdAt: now,
+    });
+
+    await ctx.db.patch(chatSessionId, {
+      activeAgentRunId: agentRunId,
+      updatedAt: now,
+    });
+
     await ctx.db.insert("auditEvents", {
       organizationId,
       studyId,
@@ -91,6 +119,11 @@ export const create = mutation({
       createdAt: now,
     });
 
-    return { studyId, chatSessionId };
+    await ctx.scheduler.runAfter(0, internal.meridian.processMessage, {
+      agentRunId,
+      assistantMessageId,
+    });
+
+    return { studyId, chatSessionId, agentRunId, assistantMessageId };
   },
 });
