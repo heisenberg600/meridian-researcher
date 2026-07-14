@@ -45,7 +45,7 @@ import { getUserFacingConvexError } from "./lib/utils";
 import { ParticipantImportWizard } from "./features/participants/import/ParticipantImportWizard";
 import { createImportReviewState, importReviewReducer } from "./features/participants/import/reviewState";
 import { parseParticipantWorkbook } from "./features/participants/import/workbook";
-import { getPlanApprovalUi, getQuestionnaireGenerationUi } from "./features/studies/planApproval";
+import { getParticipantReviewUi, getPlanApprovalUi, getQuestionnaireGenerationUi } from "./features/studies/planApproval";
 
 type MainView = "studies" | "activity" | "settings";
 type StudyTab =
@@ -728,7 +728,9 @@ function StudyDetail({
             <InterviewGuide selectedStudy={selectedStudy} onOpenPlan={() => openStudyTab("plan")} />
           </InterviewGuideErrorBoundary>
         ) : null}
-        {studyTab === "participants" ? <StudyParticipants selectedStudy={selectedStudy} /> : null}
+        {studyTab === "participants" ? (
+          <StudyParticipants selectedStudy={selectedStudy} onOpenQuestionnaire={() => openStudyTab("interview-guide")} />
+        ) : null}
         {studyTab === "calls" ? <StudyCalls selectedStudy={selectedStudy} /> : null}
         {studyTab === "feedback" ? <FeedbackSkeleton /> : null}
         {studyTab === "artifacts" ? <ArtifactsSkeleton /> : null}
@@ -1479,7 +1481,13 @@ const emptyParticipantForm: ParticipantFormState = {
   notes: "",
 };
 
-function StudyParticipants({ selectedStudy }: { selectedStudy: Doc<"studies"> }) {
+function StudyParticipants({
+  selectedStudy,
+  onOpenQuestionnaire,
+}: {
+  selectedStudy: Doc<"studies">;
+  onOpenQuestionnaire: () => void;
+}) {
   const convex = useConvex();
   const participants = useQuery(api.studyParticipants.listForStudy, {
     studyId: selectedStudy._id,
@@ -1549,6 +1557,8 @@ function StudyParticipants({ selectedStudy }: { selectedStudy: Doc<"studies"> })
     finally { setImportBusy(false); }
   }
 
+  const participantReviewUi = getParticipantReviewUi(selectedStudy.status);
+
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -1561,7 +1571,7 @@ function StudyParticipants({ selectedStudy }: { selectedStudy: Doc<"studies"> })
         <Badge tone="info">{participants?.length ?? 0} active</Badge>
       </div>
 
-      <div className="mt-6">
+      {participantReviewUi.canReview ? <div className="mt-6">
         <ParticipantImportWizard
           state={importState}
           busy={importBusy}
@@ -1588,7 +1598,24 @@ function StudyParticipants({ selectedStudy }: { selectedStudy: Doc<"studies"> })
           })}
           onManualAdd={() => document.getElementById("manual-participant-form")?.scrollIntoView({ behavior: "smooth" })}
         />
-      </div>
+      </div> : (
+        <Card className="mt-6 border-[var(--border-strong)] p-6">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 className="[font:var(--text-body)] font-semibold text-[var(--text-heading)]">
+                Interview guide approval required
+              </h2>
+              <p className="mt-1 [font:var(--text-body-sm)] text-[var(--text-secondary)]">
+                {participantReviewUi.message}
+              </p>
+            </div>
+            <Button type="button" onClick={onOpenQuestionnaire}>
+              <ListChecksIcon className="size-4" />
+              {participantReviewUi.actionLabel}
+            </Button>
+          </div>
+        </Card>
+      )}
 
       <div className="mt-6 grid items-start gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
         <Card className="p-5">

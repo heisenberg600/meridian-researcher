@@ -17,3 +17,14 @@ export function getQuestionnaireGenerationUi(status?: PlanStatus) {
     actionLabel: canGenerate ? "Generate from Study Plan" : "Review & Approve Study Plan",
   };
 }
+
+export function getParticipantReviewUi(studyStatus: string) {
+  const canReview = studyStatus === "questionnaire_approved" || studyStatus === "participants_under_review";
+  return {
+    canReview,
+    message: canReview
+      ? null
+      : "Approve the interview guide before importing or reviewing participants.",
+    actionLabel: "Open Interview Guide",
+  };
+}
