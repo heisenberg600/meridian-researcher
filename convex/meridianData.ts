@@ -29,7 +29,11 @@ export const getRunContext = internalQuery({
     if (!study) throw new Error("Study not found");
     if (!chatSession) throw new Error("Chat session not found");
 
-    return { run, study, chatSession, messages, memories };
+    const currentPlan = study.currentStudyPlanVersionId
+      ? await ctx.db.get(study.currentStudyPlanVersionId)
+      : null;
+
+    return { run, study, chatSession, messages, memories, currentPlan };
   },
 });
 
@@ -126,31 +130,42 @@ export const recordUsage = internalMutation({
   },
 });
 
-export const recordToolEvent = internalMutation({
+export const startToolEvent = internalMutation({
   args: {
     organizationId: v.id("organizations"),
     studyId: v.id("studies"),
     chatSessionId: v.id("chatSessions"),
     agentRunId: v.id("agentRuns"),
     toolName: v.string(),
-    status: v.union(v.literal("completed"), v.literal("failed")),
     input: v.optional(v.any()),
-    output: v.optional(v.any()),
-    error: v.optional(v.string()),
     startedAt: v.number(),
   },
   handler: async (ctx, args) => {
-    await ctx.db.insert("agentToolEvents", {
+    return await ctx.db.insert("agentToolEvents", {
       organizationId: args.organizationId,
       studyId: args.studyId,
       chatSessionId: args.chatSessionId,
       agentRunId: args.agentRunId,
       toolName: args.toolName,
-      status: args.status,
+      status: "started",
       input: args.input,
+      startedAt: args.startedAt,
+    });
+  },
+});
+
+export const finishToolEvent = internalMutation({
+  args: {
+    toolEventId: v.id("agentToolEvents"),
+    status: v.union(v.literal("completed"), v.literal("failed")),
+    output: v.optional(v.any()),
+    error: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.toolEventId, {
+      status: args.status,
       output: args.output,
       error: args.error,
-      startedAt: args.startedAt,
       completedAt: Date.now(),
     });
   },

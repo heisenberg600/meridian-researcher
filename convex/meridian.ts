@@ -268,6 +268,7 @@ type MeridianRunContext = {
   chatSession: Doc<"chatSessions">;
   messages: Doc<"messages">[];
   memories: Doc<"organizationMemories">[];
+  currentPlan: Doc<"studyPlanVersions"> | null;
 };
 
 function buildSystemInstructions(context: MeridianRunContext) {
@@ -281,20 +282,29 @@ function buildSystemInstructions(context: MeridianRunContext) {
     (message) => message.role === "user" && message.status === "complete",
   ).length;
   const isInitialStudyIntake = completedUserMessageCount === 0;
+  const currentPlan = context.currentPlan
+    ? [
+        `Current Study Plan: version ${context.currentPlan.version} (${context.currentPlan.status})`,
+        context.currentPlan.markdown,
+      ].join("\n")
+    : "Current Study Plan: No plan has been created yet.";
 
   return [
     "You are Meridian, a supervised AI product and market research agent.",
     "The user experiences one agent. Internally, behave as a research strategist while the study is in draft.",
-    "Your current objective is to gather enough context to produce an approvable study document.",
-    "The study document should eventually include: business decision, research goal, key hypotheses, learning objectives, target respondent profile, method recommendation, screener criteria, discussion guide outline, evidence standards, risks, and approval checklist.",
+    "Your current objective is to help the user create, read, and revise a canonical Study Plan.",
+    "The complete Study Plan belongs in the Plan tab, never inline in chat. Use update_study_plan to create or revise it, then give only a concise summary of what changed and any remaining questions.",
+    "When the user asks about the existing plan, answer from the Current Study Plan context and direct them to the Plan tab. Do not create a new version unless they request or provide a meaningful change.",
+    "The Study Plan must use clear Markdown headings and include: Decision & Context, Research Goal, Hypotheses, Learning Objectives, Target Respondents, Method & Sample, Screener Criteria, Discussion Guide Outline, Evidence & Synthesis Standards, Constraints & Risks, Execution Plan, Open Questions, and Approval Checklist.",
+    "Mark unknown information explicitly as an assumption, open question, or TBD. Never invent study constraints or respondent facts.",
     "Ask concise probing questions that close the highest-risk gaps before drafting the study document.",
     "Keep facts, assumptions, hypotheses, findings, and recommendations distinct.",
     "Do not claim fieldwork has happened unless evidence exists.",
     "Do not contact participants or imply outreach has started.",
-    "Do not draft the full study document until the user's goal, audience, decision stakes, and constraints are clear enough.",
+    "Do not mark the Study Plan ready for review until the user's goal, audience, decision stakes, and material constraints are clear enough. A partial draft may be saved earlier when it helps the user inspect progress.",
     isInitialStudyIntake
       ? "This is the first assistant turn for a newly created study. Open with one short acknowledgement of the business decision, then ask 4-6 prioritized probing questions. Group them for easy answering. Do not mention implementation details or tools."
-      : "If enough context is available, summarize what is known, identify remaining gaps, and offer to draft the study document. Otherwise ask the next few highest-value questions.",
+      : "If enough context is available, update the Study Plan with update_study_plan. Otherwise ask the next few highest-value questions. If a partial plan already exists, keep it synchronized when the user supplies meaningful corrections or additions.",
     "",
     "Organization memories:",
     memories || "- No active organization memories yet.",
@@ -303,6 +313,8 @@ function buildSystemInstructions(context: MeridianRunContext) {
     "Use remember_organization_context only for durable organization-level facts, preferences, constraints, product context, customer context, or research standards that will help future studies.",
     "Do not store secrets, credentials, health data, payment data, or incidental one-off chat details.",
     "Use forget_organization_memory when the user corrects or invalidates a prior memory.",
+    "",
+    currentPlan,
     "",
     `Study title: ${context.study.title}`,
     `Business decision: ${context.study.businessDecision}`,
@@ -334,6 +346,7 @@ function buildMeridianTools(args: {
       }),
       execute: async (input) => {
         const startedAt = Date.now();
+        const toolEventId = await startTool(args, "web_search", input, startedAt);
         try {
           const apiKey = process.env.LINKUP_API_KEY;
           if (!apiKey) throw new Error("LINKUP_API_KEY is not configured in Convex");
@@ -374,11 +387,11 @@ function buildMeridianTools(args: {
                 excerpt: (result.content ?? "").slice(0, 4000),
               })),
           };
-          await recordTool(args, "web_search", input, output, startedAt);
+          await finishTool(args, toolEventId, output);
           return output;
         } catch (error) {
           const message = error instanceof Error ? error.message : "Linkup search failed";
-          await recordTool(args, "web_search", input, undefined, startedAt, message);
+          await finishTool(args, toolEventId, undefined, message);
           return { query: input.query, results: [], error: message };
         }
       },
@@ -395,6 +408,12 @@ function buildMeridianTools(args: {
       }),
       execute: async (input) => {
         const startedAt = Date.now();
+        const toolEventId = await startTool(
+          args,
+          "remember_organization_context",
+          input,
+          startedAt,
+        );
         try {
           const memoryId = await args.ctx.runMutation(
             internal.organizationMemories.upsertFromAgent,
@@ -410,11 +429,11 @@ function buildMeridianTools(args: {
             },
           );
           const output = { status: "saved", memoryId };
-          await recordTool(args, "remember_organization_context", input, output, startedAt);
+          await finishTool(args, toolEventId, output);
           return output;
         } catch (error) {
           const message = error instanceof Error ? error.message : "Memory save failed";
-          await recordTool(args, "remember_organization_context", input, undefined, startedAt, message);
+          await finishTool(args, toolEventId, undefined, message);
           return { status: "failed", error: message };
         }
       },
@@ -428,6 +447,12 @@ function buildMeridianTools(args: {
       }),
       execute: async (input) => {
         const startedAt = Date.now();
+        const toolEventId = await startTool(
+          args,
+          "forget_organization_memory",
+          input,
+          startedAt,
+        );
         try {
           const memoryId = await args.ctx.runMutation(
             internal.organizationMemories.archiveFromAgent,
@@ -439,11 +464,42 @@ function buildMeridianTools(args: {
             },
           );
           const output = { status: memoryId ? "archived" : "not_found", memoryId };
-          await recordTool(args, "forget_organization_memory", input, output, startedAt);
+          await finishTool(args, toolEventId, output);
           return output;
         } catch (error) {
           const message = error instanceof Error ? error.message : "Memory archive failed";
-          await recordTool(args, "forget_organization_memory", input, undefined, startedAt, message);
+          await finishTool(args, toolEventId, undefined, message);
+          return { status: "failed", error: message };
+        }
+      },
+    }),
+    update_study_plan: tool({
+      description:
+        "Create or revise the canonical Study Plan shown in the Plan tab. Always provide the complete plan Markdown, preserving still-valid information from the current version. Use draft while material questions remain and ready_for_review only when the plan is approvable.",
+      inputSchema: z.object({
+        markdown: z.string().min(200).max(50_000),
+        readiness: z.enum(["draft", "ready_for_review"]),
+        changeSummary: z
+          .string()
+          .min(5)
+          .max(500)
+          .describe("A concise user-facing summary of what changed in this version."),
+      }),
+      execute: async (input) => {
+        const startedAt = Date.now();
+        const toolEventId = await startTool(args, "update_study_plan", input, startedAt);
+        try {
+          const output = await args.ctx.runMutation(internal.studyPlans.saveFromAgent, {
+            agentRunId: args.agentRunId,
+            markdown: input.markdown,
+            readiness: input.readiness,
+            changeSummary: input.changeSummary,
+          });
+          await finishTool(args, toolEventId, output);
+          return output;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Study Plan update failed";
+          await finishTool(args, toolEventId, undefined, message);
           return { status: "failed", error: message };
         }
       },
@@ -451,7 +507,7 @@ function buildMeridianTools(args: {
   };
 }
 
-async function recordTool(
+async function startTool(
   args: {
     ctx: ActionCtx;
     organizationId: Id<"organizations">;
@@ -461,20 +517,38 @@ async function recordTool(
   },
   toolName: string,
   input: unknown,
-  output: unknown,
   startedAt: number,
+): Promise<Id<"agentToolEvents"> | null> {
+  try {
+    return await args.ctx.runMutation(internal.meridianData.startToolEvent, {
+      organizationId: args.organizationId,
+      studyId: args.studyId,
+      chatSessionId: args.chatSessionId,
+      agentRunId: args.agentRunId,
+      toolName,
+      input,
+      startedAt,
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function finishTool(
+  args: { ctx: ActionCtx },
+  toolEventId: Id<"agentToolEvents"> | null,
+  output: unknown,
   error?: string,
 ) {
-  await args.ctx.runMutation(internal.meridianData.recordToolEvent, {
-    organizationId: args.organizationId,
-    studyId: args.studyId,
-    chatSessionId: args.chatSessionId,
-    agentRunId: args.agentRunId,
-    toolName,
-    status: error ? "failed" : "completed",
-    input,
-    output,
-    error,
-    startedAt,
-  });
+  if (!toolEventId) return;
+  try {
+    await args.ctx.runMutation(internal.meridianData.finishToolEvent, {
+      toolEventId,
+      status: error ? "failed" : "completed",
+      output,
+      error,
+    });
+  } catch {
+    // Observability must not interrupt the agent's work.
+  }
 }

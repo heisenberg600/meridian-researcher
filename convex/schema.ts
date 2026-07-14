@@ -142,7 +142,9 @@ export default defineSchema({
     error: v.optional(v.string()),
     startedAt: v.number(),
     completedAt: v.optional(v.number()),
-  }).index("by_run", ["agentRunId"]),
+  })
+    .index("by_run", ["agentRunId"])
+    .index("by_chat", ["chatSessionId"]),
 
   organizationMemories: defineTable({
     organizationId: v.id("organizations"),

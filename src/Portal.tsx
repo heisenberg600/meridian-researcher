@@ -3,7 +3,19 @@
 import { UserButton, useUser } from "@clerk/react";
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useMemo, useState } from "react";
-import { HistoryIcon, MessageSquareIcon, PlusIcon } from "lucide-react";
+import {
+  BrainIcon,
+  CheckCircle2Icon,
+  CircleAlertIcon,
+  DatabaseIcon,
+  FileTextIcon,
+  Globe2Icon,
+  HistoryIcon,
+  LoaderCircleIcon,
+  MessageSquareIcon,
+  PlusIcon,
+  Trash2Icon,
+} from "lucide-react";
 import "streamdown/styles.css";
 import { api } from "../convex/_generated/api";
 import type { Doc, Id } from "../convex/_generated/dataModel";
@@ -175,7 +187,7 @@ export function Portal() {
 
         <section
           className={cx(
-            "min-w-0",
+            "h-full min-h-0 min-w-0",
             selectedStudy && mainView === "studies" && studyTab === "chat"
               ? "overflow-hidden p-0"
               : "overflow-y-auto px-8 py-7",
@@ -193,6 +205,7 @@ export function Portal() {
                 selectedStudy={selectedStudy}
                 setMessageText={setMessageText}
                 setSelectedChatId={setSelectedChatId}
+                setStudyTab={setStudyTab}
                 studyTab={studyTab}
                 messageText={messageText}
                 isSending={isSending}
@@ -492,6 +505,7 @@ function StudyDetail({
   selectedStudy,
   setMessageText,
   setSelectedChatId,
+  setStudyTab,
   studyTab,
 }: {
   chatSessions: Array<Doc<"chatSessions">> | undefined;
@@ -505,6 +519,7 @@ function StudyDetail({
   selectedStudy: Doc<"studies">;
   setMessageText: (value: string) => void;
   setSelectedChatId: (id: Id<"chatSessions">) => void;
+  setStudyTab: (tab: StudyTab) => void;
   studyTab: StudyTab;
 }) {
   return (
@@ -525,7 +540,9 @@ function StudyDetail({
             setSelectedChatId={setSelectedChatId}
           />
         ) : null}
-        {studyTab === "plan" ? <PlanSkeleton /> : null}
+        {studyTab === "plan" ? (
+          <StudyPlan selectedStudy={selectedStudy} onOpenChat={() => setStudyTab("chat")} />
+        ) : null}
         {studyTab === "calls" ? <CallsSkeleton /> : null}
         {studyTab === "feedback" ? <FeedbackSkeleton /> : null}
         {studyTab === "artifacts" ? <ArtifactsSkeleton /> : null}
@@ -585,6 +602,11 @@ function StudyChat({
   setMessageText: (value: string) => void;
   setSelectedChatId: (id: Id<"chatSessions">) => void;
 }) {
+  const toolEvents = useQuery(
+    api.agentToolEvents.listForChat,
+    selectedChat ? { chatSessionId: selectedChat._id } : "skip",
+  );
+
   return (
     <div className="grid h-full min-h-0 grid-cols-[220px_minmax(0,1fr)] bg-[var(--bg-page)]">
       <aside className="flex min-h-0 flex-col border-r border-[var(--border-default)] bg-[var(--surface-card)]">
@@ -659,7 +681,19 @@ function StudyChat({
                   className="min-h-[60vh]"
                 />
               ) : (
-                messages.map((message) => <ChatBubble key={message._id} message={message} />)
+                messages.map((message) => (
+                  <ChatBubble
+                    key={message._id}
+                    message={message}
+                    toolEvents={
+                      message.agentRunId
+                        ? (toolEvents ?? []).filter(
+                            (event) => event.agentRunId === message.agentRunId,
+                          )
+                        : []
+                    }
+                  />
+                ))
               )}
             </ConversationContent>
             <ConversationScrollButton />
@@ -840,13 +874,119 @@ function ActivitySkeleton({ studies }: { studies: Array<Doc<"studies">> | undefi
   );
 }
 
-function PlanSkeleton() {
+function StudyPlan({
+  selectedStudy,
+  onOpenChat,
+}: {
+  selectedStudy: Doc<"studies">;
+  onOpenChat: () => void;
+}) {
+  const currentPlan = useQuery(api.studyPlans.currentForStudy, { studyId: selectedStudy._id });
+  const versions = useQuery(api.studyPlans.listVersions, { studyId: selectedStudy._id });
+  const [selectedVersionId, setSelectedVersionId] = useState<Id<"studyPlanVersions"> | null>(null);
+  const displayedPlan = useMemo(
+    () =>
+      (selectedVersionId
+        ? versions?.find((version) => version._id === selectedVersionId)
+        : currentPlan) ?? null,
+    [currentPlan, selectedVersionId, versions],
+  );
+
+  if (currentPlan === undefined || versions === undefined) {
+    return <p className="[font:var(--text-body)] text-[var(--text-muted)]">Loading Study Plan...</p>;
+  }
+
+  if (!currentPlan) {
+    return (
+      <div className="flex min-h-[520px] items-center justify-center border border-dashed border-[var(--border-strong)] bg-[var(--surface-card)] px-8 text-center">
+        <div className="max-w-md">
+          <FileTextIcon className="mx-auto size-6 text-[var(--text-muted)]" />
+          <h1 className="mt-4 [font:var(--text-heading-sm)] text-[var(--text-heading)]">
+            No Study Plan yet
+          </h1>
+          <p className="mt-2 [font:var(--text-body)] text-[var(--text-secondary)]">
+            Continue the strategy conversation. Meridian will save the plan here once there is
+            enough context, while keeping assumptions and open questions visible.
+          </p>
+          <Button type="button" onClick={onOpenChat} className="mt-5">
+            <MessageSquareIcon className="size-4" />
+            Continue in chat
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <SkeletonGrid
-      title="Research plan"
-      description="Meridian will draft objectives, respondent criteria, interview guide, and approval checkpoints here."
-      items={["Objectives", "Audience", "Interview guide", "Approvals"]}
-    />
+    <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_260px]">
+      <article className="min-w-0 border border-[var(--border-default)] bg-[var(--surface-card)]">
+        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--border-default)] px-7 py-5">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="[font:var(--text-heading-sm)] text-[var(--text-heading)]">
+                Study Plan
+              </h1>
+              {displayedPlan ? <Badge tone="info">Version {displayedPlan.version}</Badge> : null}
+              {displayedPlan ? <Badge>{formatStatus(displayedPlan.status)}</Badge> : null}
+            </div>
+            <p className="mt-2 [font:var(--text-body-sm)] text-[var(--text-muted)]">
+              {displayedPlan
+                ? `Created ${formatDate(displayedPlan.createdAt)}`
+                : "Select a version to inspect it."}
+            </p>
+          </div>
+          <Button type="button" variant="outline" onClick={onOpenChat}>
+            <MessageSquareIcon className="size-4" />
+            Update in chat
+          </Button>
+        </div>
+        <div className="px-7 py-7">
+          {displayedPlan ? (
+            <MessageResponse className="mx-auto max-w-3xl">{displayedPlan.markdown}</MessageResponse>
+          ) : null}
+        </div>
+      </article>
+
+      <aside className="border border-[var(--border-default)] bg-[var(--surface-card)]">
+        <div className="border-b border-[var(--border-default)] px-4 py-3">
+          <h2 className="[font:var(--text-body-sm)] font-semibold text-[var(--text-heading)]">
+            Version history
+          </h2>
+        </div>
+        <div className="p-2">
+          {versions.map((version) => {
+            const active = (selectedVersionId ?? currentPlan._id) === version._id;
+            return (
+              <button
+                key={version._id}
+                type="button"
+                onClick={() => setSelectedVersionId(version._id)}
+                className={cx(
+                  "w-full px-3 py-3 text-left transition-colors",
+                  active
+                    ? "bg-[var(--accent-softer)]"
+                    : "hover:bg-[var(--bg-sunken)]",
+                )}
+              >
+                <span className="flex items-center justify-between gap-3">
+                  <span className="[font:var(--text-body-sm)] font-semibold text-[var(--text-heading)]">
+                    Version {version.version}
+                  </span>
+                  {version._id === currentPlan._id ? (
+                    <span className="[font:var(--text-caption)] text-[var(--accent-active)]">
+                      Current
+                    </span>
+                  ) : null}
+                </span>
+                <span className="mt-1 block [font:var(--text-caption)] text-[var(--text-muted)]">
+                  {formatDate(version.createdAt)} · {formatStatus(version.status)}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </aside>
+    </div>
   );
 }
 
@@ -994,7 +1134,13 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ChatBubble({ message }: { message: Doc<"messages"> }) {
+function ChatBubble({
+  message,
+  toolEvents,
+}: {
+  message: Doc<"messages">;
+  toolEvents: Array<Doc<"agentToolEvents">>;
+}) {
   const text = renderMessageText(message);
   const isUser = message.role === "user";
   return (
@@ -1005,14 +1151,126 @@ function ChatBubble({ message }: { message: Doc<"messages"> }) {
             Meridian
           </p>
         ) : null}
+        {!isUser ? (
+          <AgentActivity events={toolEvents} isThinking={message.status === "streaming"} />
+        ) : null}
         {isUser ? (
           <span className="whitespace-pre-wrap">{text}</span>
-        ) : (
+        ) : text ? (
           <MessageResponse>{text}</MessageResponse>
-        )}
+        ) : null}
       </MessageContent>
     </Message>
   );
+}
+
+const toolDisplay = {
+  web_search: {
+    running: "Searching the web",
+    done: "Searched the web",
+    icon: Globe2Icon,
+  },
+  remember_organization_context: {
+    running: "Saving organization context",
+    done: "Saved organization context",
+    icon: DatabaseIcon,
+  },
+  forget_organization_memory: {
+    running: "Removing outdated context",
+    done: "Removed outdated context",
+    icon: Trash2Icon,
+  },
+  update_study_plan: {
+    running: "Updating the Study Plan",
+    done: "Updated the Study Plan",
+    icon: FileTextIcon,
+  },
+} as const;
+
+function AgentActivity({
+  events,
+  isThinking,
+}: {
+  events: Array<Doc<"agentToolEvents">>;
+  isThinking: boolean;
+}) {
+  if (events.length === 0 && !isThinking) return null;
+
+  return (
+    <div className="mb-3 space-y-1.5" aria-live="polite">
+      {events.map((event) => {
+        const display = toolDisplay[event.toolName as keyof typeof toolDisplay];
+        const ToolIcon = display?.icon ?? DatabaseIcon;
+        const running = event.status === "started";
+        const failed = event.status === "failed";
+        const label = failed
+          ? `${display?.running ?? humanizeToolName(event.toolName)} failed`
+          : running
+            ? (display?.running ?? humanizeToolName(event.toolName))
+            : (display?.done ?? `Used ${humanizeToolName(event.toolName)}`);
+        const detail = formatToolEventDetail(event);
+
+        return (
+          <details key={event._id} className="group/activity text-[var(--text-muted)]">
+            <summary className="flex w-fit cursor-pointer list-none items-center gap-2 py-0.5 [font:var(--text-body-sm)] hover:text-[var(--text-heading)]">
+              <span className="flex size-5 items-center justify-center">
+                <ToolIcon className="size-3.5" />
+              </span>
+              <span className={cx(running && "italic text-[var(--text-secondary)]")}>
+                {label}{running ? "..." : ""}
+              </span>
+              {running ? (
+                <LoaderCircleIcon className="size-3.5 animate-spin" />
+              ) : failed ? (
+                <CircleAlertIcon className="size-3.5 text-[var(--status-danger)]" />
+              ) : (
+                <CheckCircle2Icon className="size-3.5 text-[var(--status-success)]" />
+              )}
+            </summary>
+            {detail ? (
+              <div className="ml-7 mt-1 max-w-2xl border-l border-[var(--border-default)] pl-3 [font:var(--text-caption)] text-[var(--text-muted)]">
+                {detail}
+              </div>
+            ) : null}
+          </details>
+        );
+      })}
+      {isThinking ? (
+        <div className="flex items-center gap-2 py-0.5 [font:var(--text-body-sm)] italic text-[var(--text-secondary)]">
+          <span className="flex size-5 items-center justify-center">
+            <BrainIcon className="size-3.5" />
+          </span>
+          <span className="animate-pulse">Thinking through the next step...</span>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function humanizeToolName(name: string) {
+  return name.replaceAll("_", " ").replace(/^./, (character) => character.toUpperCase());
+}
+
+function formatToolEventDetail(event: Doc<"agentToolEvents">) {
+  const input = event.input as Record<string, unknown> | undefined;
+  if (event.error) return event.error;
+  if (event.toolName === "web_search" && typeof input?.query === "string") {
+    const output = event.output as { results?: unknown[] } | undefined;
+    const resultCount = output?.results?.length;
+    return resultCount === undefined
+      ? `Query: ${input.query}`
+      : `Query: ${input.query} · ${resultCount} source${resultCount === 1 ? "" : "s"}`;
+  }
+  if (typeof input?.key === "string") return `Memory: ${input.key}`;
+  if (event.toolName === "update_study_plan") {
+    const output = event.output as
+      | { version?: number; changeSummary?: string; status?: string }
+      | undefined;
+    if (output?.changeSummary) {
+      return `Version ${output.version ?? "new"} · ${output.changeSummary}`;
+    }
+  }
+  return null;
 }
 
 function AgentRunPill({ active }: { active: boolean }) {
@@ -1035,7 +1293,7 @@ function renderMessageText(message: Doc<"messages">) {
       .join("");
 
   if (text) return text;
-  return message.status === "streaming" ? "Meridian is thinking..." : "";
+  return "";
 }
 
 function formatStatus(value: string) {

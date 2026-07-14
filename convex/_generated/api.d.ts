@@ -9,6 +9,7 @@
  */
 
 import type * as agentRuns from "../agentRuns.js";
+import type * as agentToolEvents from "../agentToolEvents.js";
 import type * as chatSessions from "../chatSessions.js";
 import type * as interviews from "../interviews.js";
 import type * as meridian from "../meridian.js";
@@ -16,6 +17,7 @@ import type * as meridianData from "../meridianData.js";
 import type * as messages from "../messages.js";
 import type * as organizationMemories from "../organizationMemories.js";
 import type * as studies from "../studies.js";
+import type * as studyPlans from "../studyPlans.js";
 import type * as users from "../users.js";
 
 import type {
@@ -26,6 +28,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   agentRuns: typeof agentRuns;
+  agentToolEvents: typeof agentToolEvents;
   chatSessions: typeof chatSessions;
   interviews: typeof interviews;
   meridian: typeof meridian;
@@ -33,6 +36,7 @@ declare const fullApi: ApiFromModules<{
   messages: typeof messages;
   organizationMemories: typeof organizationMemories;
   studies: typeof studies;
+  studyPlans: typeof studyPlans;
   users: typeof users;
 }>;
 
