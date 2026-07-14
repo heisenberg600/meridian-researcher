@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
+import process from "node:process";
+import { fileURLToPath, URL } from "node:url";
 
 import { createReportDocument } from "../src/features/report/reportDocument.ts";
 import { renderReportPdf } from "../src/features/report/renderPdf.ts";

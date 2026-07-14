@@ -90,6 +90,9 @@ export const startAnalysis = action({
         outputTokens: usage.outputTokens,
         totalTokens: usage.totalTokens,
       });
+      if (settlement.finalDebit === undefined) {
+        throw new Error("Analysis credit settlement did not return a final debit");
+      }
       await ctx.runMutation(internal.analysisActions.completeAnalysis, {
         analysisRunId: started.analysisRunId,
         summary: analysis.summary,
