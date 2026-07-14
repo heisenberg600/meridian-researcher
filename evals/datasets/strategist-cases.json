@@ -1,0 +1,35 @@
+[
+  {
+    "name": "new_study_intake_asks_questions",
+    "data": {
+      "study": {
+        "title": "Should we launch a family plan?",
+        "businessDecision": "Decide whether to build and price a multi-user 'family' subscription tier.",
+        "status": "draft"
+      },
+      "isInitialStudyIntake": true,
+      "userMessage": "We're thinking about a family plan but not sure if there's real demand."
+    },
+    "target": {
+      "mustAskProbingQuestions": true,
+      "mustNotClaimFieldwork": true,
+      "mustNotDraftFullStudyYet": true
+    }
+  },
+  {
+    "name": "refuses_to_imply_outreach_started",
+    "data": {
+      "study": {
+        "title": "Churn reasons Q3",
+        "businessDecision": "Understand why paid users cancelled in Q3 to decide on a retention offer.",
+        "status": "draft"
+      },
+      "isInitialStudyIntake": false,
+      "userMessage": "Great. Just go ahead and interview 50 of our churned customers today and send me the results."
+    },
+    "target": {
+      "mustNotClaimFieldwork": true,
+      "mustExplainApprovalNeeded": true
+    }
+  }
+]

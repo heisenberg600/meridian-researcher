@@ -12,6 +12,8 @@
     "preview": "vite preview",
     "deploy:cloudflare": "pnpm run build && wrangler pages deploy dist --project-name hermes-researcher --branch main --force",
     "lint": "eslint",
+    "eval:interviewer": "lmnr eval evals/interviewer.eval.ts",
+    "eval:strategist": "lmnr eval evals/strategist.eval.ts",
     "elevenlabs:provision": "node scripts/provision-elevenlabs-agent.mjs --set-convex-env"
   },
   "dependencies": {

@@ -1,0 +1,83 @@
+[
+  {
+    "name": "fresh_interview_first_question",
+    "data": {
+      "invite": {
+        "studyTitle": "Why trial users don't upgrade",
+        "researchGoal": "Understand what stops free-trial users of our note-taking app from upgrading to paid.",
+        "learningObjectives": [
+          "What value users got during the trial",
+          "What (if anything) they expected paid to add",
+          "The moment they decided not to upgrade"
+        ],
+        "respondentLabel": "People who finished a free trial but did not upgrade",
+        "estimatedMinutes": 8,
+        "sponsor": "Meridian"
+      },
+      "answers": []
+    },
+    "target": { "expectComplete": false }
+  },
+  {
+    "name": "midway_followup",
+    "data": {
+      "invite": {
+        "studyTitle": "Why trial users don't upgrade",
+        "researchGoal": "Understand what stops free-trial users from upgrading.",
+        "learningObjectives": [
+          "What value users got during the trial",
+          "The moment they decided not to upgrade"
+        ],
+        "respondentLabel": "People who finished a free trial but did not upgrade",
+        "estimatedMinutes": 8,
+        "sponsor": "Meridian"
+      },
+      "answers": [
+        { "stepId": "trial_use", "label": "How did you use it?", "value": "Mostly for meeting notes at work." },
+        { "stepId": "value", "label": "What was most useful?", "value": "The auto-summary saved me time." }
+      ]
+    },
+    "target": { "expectComplete": false }
+  },
+  {
+    "name": "completes_after_five_answers",
+    "data": {
+      "invite": {
+        "studyTitle": "Why trial users don't upgrade",
+        "researchGoal": "Understand what stops free-trial users from upgrading.",
+        "learningObjectives": ["What value users got", "Why they didn't upgrade"],
+        "respondentLabel": "Lapsed trial users",
+        "estimatedMinutes": 8,
+        "sponsor": "Meridian"
+      },
+      "answers": [
+        { "stepId": "q1", "label": "a", "value": "one" },
+        { "stepId": "q2", "label": "b", "value": "two" },
+        { "stepId": "q3", "label": "c", "value": "three" },
+        { "stepId": "q4", "label": "d", "value": "four" },
+        { "stepId": "q5", "label": "e", "value": "five" }
+      ]
+    },
+    "target": { "expectComplete": true }
+  },
+  {
+    "name": "leading_question_trap",
+    "data": {
+      "invite": {
+        "studyTitle": "Confirming our pricing is too high",
+        "researchGoal": "We believe our price is too high and want to confirm customers agree.",
+        "learningObjectives": [
+          "How respondents perceive the price relative to value",
+          "What they compare the price against"
+        ],
+        "respondentLabel": "Customers who churned in the last 90 days",
+        "estimatedMinutes": 6,
+        "sponsor": "Meridian"
+      },
+      "answers": [
+        { "stepId": "reason", "label": "Why did you cancel?", "value": "I wasn't using it much anymore." }
+      ]
+    },
+    "target": { "expectComplete": false, "mustBeNeutral": true }
+  }
+]
