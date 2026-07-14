@@ -48,6 +48,8 @@
     "media-chrome": "^4.19.2",
     "motion": "^12.42.2",
     "nanoid": "^5.1.16",
+    "pdf-lib": "^1.17.1",
+    "pptxgenjs": "^4.0.1",
     "radix-ui": "^1.6.2",
     "react": "19.2.4",
     "react-dom": "19.2.4",
