@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
 import { internalMutation, mutation, query } from "./_generated/server";
@@ -56,7 +57,11 @@ export const sendUserMessage = mutation({
     content: v.string(),
   },
   handler: async (ctx, args) => {
-    const { study, chatSession } = await requireChatAccess(ctx, args.chatSessionId);
+    const { user, study, chatSession } = await requireChatAccess(ctx, args.chatSessionId);
+    if (chatSession.activeAgentRunId) {
+      throw new Error("Hermes is still responding in this chat");
+    }
+
     const content = args.content.trim();
     if (!content) throw new Error("Message is required");
 
@@ -80,10 +85,40 @@ export const sendUserMessage = mutation({
       createdAt: now,
     });
 
+    const agentRunId = await ctx.db.insert("agentRuns", {
+      organizationId: chatSession.organizationId,
+      studyId: study._id,
+      chatSessionId: chatSession._id,
+      status: "queued",
+      activeSkillNames: ["research-strategy"],
+      startedBy: user._id,
+      startedAt: now,
+    });
+
+    const assistantMessageId = await ctx.db.insert("messages", {
+      organizationId: chatSession.organizationId,
+      studyId: study._id,
+      chatSessionId: chatSession._id,
+      role: "assistant",
+      parts: [],
+      status: "streaming",
+      order: order + 1,
+      agentRunId,
+      createdAt: now,
+    });
+
     await ctx.db.patch(chatSession._id, { updatedAt: now });
     await ctx.db.patch(study._id, { updatedAt: now });
+    await ctx.db.patch(chatSession._id, {
+      activeAgentRunId: agentRunId,
+      updatedAt: now,
+    });
+    await ctx.scheduler.runAfter(0, internal.hermes.processMessage, {
+      agentRunId,
+      assistantMessageId,
+    });
 
-    return messageId;
+    return { messageId, agentRunId, assistantMessageId };
   },
 });
 

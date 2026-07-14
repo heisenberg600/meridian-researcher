@@ -9,6 +9,7 @@ const eslintConfig = defineConfig([
     ".next/**",
     "build/**",
     "dist/**",
+    "docs/ui-estimates/**",
     "convex/_generated/**",
     "node_modules/**",
   ]),

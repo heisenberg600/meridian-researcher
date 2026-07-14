@@ -15,7 +15,7 @@ type InterviewClientProps = {
 };
 
 type GatewayState = {
-  source: "local" | "scripted" | "gemini";
+  source: "local" | "scripted" | "gateway";
   model: string;
   warning?: string;
 };
@@ -24,55 +24,71 @@ export function InterviewClient({ invite }: InterviewClientProps) {
   const getAiStep = useAction(api.interviews.nextStep);
   const [mode, setMode] = useState<InterviewMode | null>(null);
   const [answers, setAnswers] = useState<InterviewAnswer[]>([]);
-  const [step, setStep] = useState<InterviewStep>(() => getNextInterviewStep([]));
+  const [step, setStep] = useState<InterviewStep | null>(null);
   const [gateway, setGateway] = useState<GatewayState>({
     source: "local",
-    model: "gemini-3.1-flash-lite",
+    model: "google/gemini-3.1-flash-lite",
   });
   const [isThinking, setIsThinking] = useState(false);
   const [draftText, setDraftText] = useState("");
   const [multiChoice, setMultiChoice] = useState<string[]>([]);
   const [scaleValue, setScaleValue] = useState("3");
 
-  const progress = step.type === "complete" ? 100 : Math.round((answers.length / 5) * 100);
+  const progress = step?.type === "complete" ? 100 : Math.round((answers.length / 5) * 100);
   const stepNumber = Math.min(answers.length + 1, 5);
 
-  const refreshStep = useCallback(
+  const loadStep = useCallback(
     async (nextAnswers: InterviewAnswer[]) => {
-      const localStep = getNextInterviewStep(nextAnswers);
-      setStep(localStep);
-      setIsThinking(true);
-
       try {
         const result = await getAiStep({
           invite,
           answers: nextAnswers,
         });
-        setStep(result.step as InterviewStep);
-        setGateway({
-          source: result.source,
-          model: result.model,
-          warning: result.warning,
-        });
+        return {
+          step: result.step as InterviewStep,
+          gateway: {
+            source: result.source,
+            model: result.model,
+            warning: result.warning,
+          } satisfies GatewayState,
+        };
       } catch (error) {
-        setGateway({
-          source: "local",
-          model: "gemini-3.1-flash-lite",
-          warning: error instanceof Error ? error.message : "AI gateway unavailable.",
-        });
-      } finally {
-        setIsThinking(false);
+        return {
+          step: getNextInterviewStep(nextAnswers),
+          gateway: {
+            source: "local",
+            model: "google/gemini-3.1-flash-lite",
+            warning: error instanceof Error ? error.message : "AI gateway unavailable.",
+          } satisfies GatewayState,
+        };
       }
     },
     [getAiStep, invite],
   );
 
   useEffect(() => {
-    void refreshStep([]);
-  }, [refreshStep]);
+    let isActive = true;
 
-  function submitAnswer(value: string | string[]) {
-    if (step.type === "complete" || isThinking) return;
+    async function loadInitialStep() {
+      setIsThinking(true);
+      const result = await loadStep([]);
+
+      if (isActive) {
+        setStep(result.step);
+        setGateway(result.gateway);
+        setIsThinking(false);
+      }
+    }
+
+    void loadInitialStep();
+
+    return () => {
+      isActive = false;
+    };
+  }, [loadStep]);
+
+  async function submitAnswer(value: string | string[]) {
+    if (!step || step.type === "complete" || isThinking) return;
 
     const nextAnswers = [
       ...answers,
@@ -83,15 +99,20 @@ export function InterviewClient({ invite }: InterviewClientProps) {
       },
     ];
 
+    setIsThinking(true);
+    const result = await loadStep(nextAnswers);
+
     setAnswers(nextAnswers);
+    setStep(result.step);
+    setGateway(result.gateway);
     setDraftText("");
     setMultiChoice([]);
     setScaleValue("3");
-    void refreshStep(nextAnswers);
+    setIsThinking(false);
   }
 
   return (
-    <main className="min-h-screen bg-[#f5f0e5] text-[#20231f]">
+    <main className="min-h-screen bg-[var(--bg-page)] text-[var(--ink-700)]">
       <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-5 py-5 md:px-8">
         <header className="flex items-center justify-between gap-4">
           <button
@@ -99,21 +120,21 @@ export function InterviewClient({ invite }: InterviewClientProps) {
             onClick={() => window.history.length > 1 ? window.history.back() : undefined}
             className="text-left"
           >
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#66745b]">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">
               {invite.sponsor}
             </p>
             <h1 className="mt-1 text-lg font-semibold tracking-tight">{invite.studyTitle}</h1>
           </button>
-          <div className="hidden items-center gap-3 text-sm text-[#62655e] sm:flex">
+          <div className="hidden items-center gap-3 text-sm text-[var(--text-secondary)] sm:flex">
             <span>{invite.respondentLabel}</span>
-            <span className="h-1 w-1 rounded-full bg-[#62655e]" />
+            <span className="h-1 w-1 rounded-full bg-[var(--text-muted)]" />
             <span>{invite.estimatedMinutes} min</span>
           </div>
         </header>
 
-        <div className="mt-5 h-1 rounded-full bg-black/10">
+        <div className="mt-5 h-1 rounded-full bg-[var(--ivory-300)]">
           <div
-            className="h-1 rounded-full bg-[#2e6f73] transition-all duration-500"
+            className="h-1 rounded-full bg-[var(--accent)] transition-all duration-500"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -127,17 +148,25 @@ export function InterviewClient({ invite }: InterviewClientProps) {
             ) : (
               <div className="mx-auto w-full max-w-3xl">
                 <div className="mb-7 flex items-center gap-3">
-                  <span className="font-mono text-sm text-[#8a6d4f]">
-                    {step.type === "complete" ? "done" : `${stepNumber.toString().padStart(2, "0")}`}
+                  <span className="font-mono text-sm text-[var(--accent)]">
+                    {step?.type === "complete"
+                      ? "done"
+                      : `${stepNumber.toString().padStart(2, "0")}`}
                   </span>
                   <GatewayBadge gateway={gateway} isThinking={isThinking} />
                 </div>
 
-                <h2 className="text-4xl font-semibold leading-tight tracking-tight text-[#1f211d] md:text-5xl">
-                  {step.prompt}
+                <h2
+                  className="text-[var(--text-heading)]"
+                  style={{
+                    font: "var(--text-display-lg)",
+                    letterSpacing: "var(--tracking-display)",
+                  }}
+                >
+                  {step?.prompt ?? "Preparing your first AI-generated question..."}
                 </h2>
-                {step.type !== "complete" && step.helper ? (
-                  <p className="mt-4 max-w-2xl text-base leading-7 text-[#62655e]">
+                {step && step.type !== "complete" && step.helper ? (
+                  <p className="mt-4 max-w-2xl text-base leading-7 text-[var(--text-secondary)]">
                     {step.helper}
                   </p>
                 ) : null}
@@ -159,21 +188,21 @@ export function InterviewClient({ invite }: InterviewClientProps) {
             )}
           </div>
 
-          <aside className="rounded-lg border border-black/10 bg-[#fffdf8] p-5 shadow-[0_18px_48px_rgba(42,39,31,0.08)]">
+          <aside className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--surface-card)] p-5 shadow-[var(--shadow-xs)]">
             <h2 className="text-sm font-semibold">Response capture</h2>
-            <p className="mt-2 text-sm leading-6 text-[#686d63]">
+            <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
               These are the structured fields the backend will persist against the invite session.
             </p>
 
             <div className="mt-5 space-y-3">
               {answers.length === 0 ? (
-                <p className="rounded-lg bg-[#f6f7f4] p-3 text-sm leading-6 text-[#686d63]">
+                <p className="rounded-lg bg-[var(--bg-sunken)] p-3 text-sm leading-6 text-[var(--text-secondary)]">
                   No answers yet.
                 </p>
               ) : (
                 answers.map((answer, index) => (
-                  <div key={`${answer.stepId}-${index}`} className="rounded-lg bg-[#f6f7f4] p-3">
-                    <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#777267]">
+                  <div key={`${answer.stepId}-${index}`} className="rounded-lg bg-[var(--bg-sunken)] p-3">
+                    <p className="text-xs font-medium uppercase tracking-[0.12em] text-[var(--text-muted)]">
                       {answer.stepId.replaceAll("_", " ")}
                     </p>
                     <p className="mt-1 text-sm leading-6">{answer.label}</p>
@@ -183,7 +212,7 @@ export function InterviewClient({ invite }: InterviewClientProps) {
             </div>
 
             {gateway.warning ? (
-              <p className="mt-5 rounded-lg bg-[#fff1df] p-3 text-xs leading-5 text-[#7a4b20]">
+              <p className="mt-5 rounded-lg bg-[var(--status-warning-bg)] p-3 text-xs leading-5 text-[var(--status-warning)]">
                 {gateway.warning}
               </p>
             ) : null}
@@ -203,13 +232,19 @@ function ModeSelect({
 }) {
   return (
     <div className="mx-auto w-full max-w-3xl">
-      <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#a0503e]">
+      <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">
         Public invite
       </p>
-      <h2 className="mt-4 text-5xl font-semibold leading-tight tracking-tight">
+      <h2
+        className="mt-4 text-[var(--text-heading)]"
+        style={{
+          font: "var(--text-display-xl)",
+          letterSpacing: "var(--tracking-display)",
+        }}
+      >
         Choose how you want to answer.
       </h2>
-      <p className="mt-5 max-w-2xl text-base leading-7 text-[#62655e]">
+      <p className="mt-5 max-w-2xl text-base leading-7 text-[var(--text-secondary)]">
         This interview takes about {invite.estimatedMinutes} minutes. Each answer changes the next
         prompt and is captured as structured research data.
       </p>
@@ -238,12 +273,12 @@ function GatewayBadge({
 }) {
   const label = isThinking
     ? "AI thinking"
-    : gateway.source === "gemini"
-      ? `Gemini ${gateway.model}`
+    : gateway.source === "gateway"
+      ? `AI Gateway ${gateway.model}`
       : `${gateway.source} fallback`;
 
   return (
-    <span className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-[#4e5549]">
+    <span className="rounded-full border border-[var(--border-default)] bg-white px-3 py-1 text-xs font-medium text-[var(--text-secondary)]">
       {label}
     </span>
   );
@@ -262,11 +297,11 @@ function ModeButton({
     <button
       type="button"
       onClick={onClick}
-      className="group min-h-[150px] rounded-lg border border-black/10 bg-[#fffdf8] p-5 text-left shadow-[0_18px_48px_rgba(42,39,31,0.08)] transition hover:border-[#2e6f73]/60 hover:bg-white"
+      className="group min-h-[150px] rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--surface-card)] p-5 text-left shadow-[var(--shadow-xs)] transition hover:border-[var(--accent)] hover:bg-white"
     >
       <span className="block text-2xl font-semibold tracking-tight">{label}</span>
-      <span className="mt-3 block text-sm leading-6 text-[#686d63]">{description}</span>
-      <span className="mt-6 inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#20231f] text-white transition group-hover:bg-[#2e6f73]">
+      <span className="mt-3 block text-sm leading-6 text-[var(--text-secondary)]">{description}</span>
+      <span className="mt-6 inline-flex h-9 w-9 items-center justify-center rounded-full bg-[var(--accent)] text-white transition group-hover:bg-[var(--accent)]">
         -&gt;
       </span>
     </button>
@@ -291,22 +326,31 @@ function StepInput({
   setDraftText: (value: string) => void;
   setMultiChoice: (value: string[]) => void;
   setScaleValue: (value: string) => void;
-  step: InterviewStep;
+  step: InterviewStep | null;
   submitAnswer: (value: string | string[]) => void;
 }) {
   if (isThinking) {
     return (
-      <div className="flex items-center gap-3 text-sm font-medium text-[#62655e]">
-        <span className="h-2 w-2 animate-pulse rounded-full bg-[#2e6f73]" />
+      <div className="flex items-center gap-3 text-sm font-medium text-[var(--text-secondary)]">
+        <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--accent)]" />
         Preparing the next question...
+      </div>
+    );
+  }
+
+  if (!step) {
+    return (
+      <div className="flex items-center gap-3 text-sm font-medium text-[var(--text-secondary)]">
+        <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--accent)]" />
+        Waiting for AI Gateway...
       </div>
     );
   }
 
   if (step.type === "complete") {
     return (
-      <div className="rounded-lg border border-black/10 bg-[#edf6f4] p-5">
-        <p className="text-base leading-7 text-[#59615a]">{step.summary}</p>
+      <div className="rounded-lg border border-[var(--border-default)] bg-[var(--accent-softer)] p-5">
+        <p className="text-base leading-7 text-[var(--text-secondary)]">{step.summary}</p>
       </div>
     );
   }
@@ -325,7 +369,7 @@ function StepInput({
           onChange={(event) => setDraftText(event.target.value)}
           placeholder={step.placeholder}
           rows={5}
-          className="w-full resize-none border-0 border-b-2 border-black/20 bg-transparent px-0 py-4 text-2xl leading-9 outline-none placeholder:text-[#aaa396] focus:border-[#2e6f73]"
+          className="w-full resize-none border-0 border-b-2 border-[var(--border-strong)] bg-transparent px-0 py-4 text-2xl leading-9 outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--accent)]"
         />
         <ContinueButton disabled={!draftText.trim()} />
       </form>
@@ -341,11 +385,11 @@ function StepInput({
           max={step.max}
           value={scaleValue}
           onChange={(event) => setScaleValue(event.target.value)}
-          className="w-full accent-[#2e6f73]"
+          className="w-full accent-[var(--accent)]"
         />
-        <div className="mt-4 flex items-center justify-between text-sm text-[#686d63]">
+        <div className="mt-4 flex items-center justify-between text-sm text-[var(--text-secondary)]">
           <span>{step.minLabel}</span>
-          <span className="rounded-lg bg-white px-4 py-2 text-xl font-semibold text-[#244f54]">
+          <span className="rounded-lg bg-white px-4 py-2 text-xl font-semibold text-[var(--accent-active)]">
             {scaleValue}
           </span>
           <span>{step.maxLabel}</span>
@@ -353,7 +397,7 @@ function StepInput({
         <button
           type="button"
           onClick={() => submitAnswer(scaleValue)}
-          className="mt-7 rounded-lg bg-[#20231f] px-5 py-3 text-sm font-semibold text-white hover:bg-[#2e6f73]"
+          className="mt-7 rounded-lg bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white hover:bg-[var(--accent)]"
         >
           Continue
         </button>
@@ -380,17 +424,17 @@ function StepInput({
                 }
                 className={`flex items-start gap-4 rounded-lg border p-4 text-left transition ${
                   active
-                    ? "border-[#2e6f73] bg-[#edf6f4]"
-                    : "border-black/10 bg-[#fffdf8] hover:border-[#2e6f73]/60 hover:bg-white"
+                    ? "border-[var(--accent)] bg-[var(--accent-softer)]"
+                    : "border-[var(--border-default)] bg-[var(--surface-card)] hover:border-[var(--accent)] hover:bg-white"
                 }`}
               >
-                <span className="font-mono text-sm text-[#8a6d4f]">
+                <span className="font-mono text-sm text-[var(--accent)]">
                   {(index + 1).toString().padStart(2, "0")}
                 </span>
                 <span>
                   <span className="block text-lg font-semibold">{option.label}</span>
                   {option.detail ? (
-                    <span className="mt-1 block text-sm leading-6 text-[#686d63]">
+                    <span className="mt-1 block text-sm leading-6 text-[var(--text-secondary)]">
                       {option.detail}
                     </span>
                   ) : null}
@@ -411,15 +455,15 @@ function StepInput({
           key={option.value}
           type="button"
           onClick={() => submitAnswer(option.value)}
-          className="flex items-start gap-4 rounded-lg border border-black/10 bg-[#fffdf8] p-4 text-left transition hover:border-[#2e6f73]/60 hover:bg-white"
+          className="flex items-start gap-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-card)] p-4 text-left transition hover:border-[var(--accent)] hover:bg-white"
         >
-          <span className="font-mono text-sm text-[#8a6d4f]">
+          <span className="font-mono text-sm text-[var(--accent)]">
             {(index + 1).toString().padStart(2, "0")}
           </span>
           <span>
             <span className="block text-lg font-semibold">{option.label}</span>
             {option.detail ? (
-              <span className="mt-1 block text-sm leading-6 text-[#686d63]">{option.detail}</span>
+              <span className="mt-1 block text-sm leading-6 text-[var(--text-secondary)]">{option.detail}</span>
             ) : null}
           </span>
         </button>
@@ -434,7 +478,7 @@ function ContinueButton({ disabled, onClick }: { disabled: boolean; onClick?: ()
       type={onClick ? "button" : "submit"}
       disabled={disabled}
       onClick={onClick}
-      className="mt-5 rounded-lg bg-[#20231f] px-5 py-3 text-sm font-semibold text-white hover:bg-[#2e6f73] disabled:cursor-not-allowed disabled:opacity-45"
+      className="mt-5 rounded-lg bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white hover:bg-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-45"
     >
       Continue
     </button>
@@ -448,7 +492,7 @@ function VoiceExperiment({
 }: {
   gateway: GatewayState;
   onUseChat: () => void;
-  step: InterviewStep;
+  step: InterviewStep | null;
 }) {
   return (
     <div className="mx-auto w-full max-w-3xl">
@@ -456,20 +500,22 @@ function VoiceExperiment({
       <h2 className="mt-5 text-5xl font-semibold leading-tight tracking-tight">
         ElevenLabs will attach here.
       </h2>
-      <p className="mt-5 text-base leading-7 text-[#62655e]">
+      <p className="mt-5 text-base leading-7 text-[var(--text-secondary)]">
         The voice agent should call the same Convex gateway action as chat. It receives the invite
         id and current answers, then asks the returned prompt aloud.
       </p>
-      <div className="mt-8 rounded-lg border border-black/10 bg-[#fffdf8] p-5">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#777267]">
+      <div className="mt-8 rounded-lg border border-[var(--border-default)] bg-[var(--surface-card)] p-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
           Current voice prompt
         </p>
-        <p className="mt-2 text-lg leading-8">{step.prompt}</p>
+        <p className="mt-2 text-lg leading-8">
+          {step?.prompt ?? "Preparing your first AI-generated voice prompt..."}
+        </p>
       </div>
       <button
         type="button"
         onClick={onUseChat}
-        className="mt-7 rounded-lg bg-[#20231f] px-5 py-3 text-sm font-semibold text-white hover:bg-[#2e6f73]"
+        className="mt-7 rounded-lg bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white hover:bg-[var(--accent)]"
       >
         Try chat flow
       </button>

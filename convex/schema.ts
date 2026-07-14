@@ -143,6 +143,34 @@ export default defineSchema({
     completedAt: v.optional(v.number()),
   }).index("by_run", ["agentRunId"]),
 
+  organizationMemories: defineTable({
+    organizationId: v.id("organizations"),
+    key: v.string(),
+    value: v.string(),
+    category: v.union(
+      v.literal("company"),
+      v.literal("product"),
+      v.literal("customer"),
+      v.literal("research"),
+      v.literal("preference"),
+      v.literal("constraint"),
+      v.literal("other"),
+    ),
+    status: v.union(v.literal("active"), v.literal("archived")),
+    importance: v.number(),
+    confidence: v.number(),
+    source: v.union(v.literal("user"), v.literal("agent"), v.literal("import")),
+    sourceMessageId: v.optional(v.id("messages")),
+    createdByAgentRunId: v.optional(v.id("agentRuns")),
+    updatedByAgentRunId: v.optional(v.id("agentRuns")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    lastUsedAt: v.optional(v.number()),
+  })
+    .index("by_organization", ["organizationId"])
+    .index("by_organization_and_status", ["organizationId", "status"])
+    .index("by_organization_and_key", ["organizationId", "key"]),
+
   studyPlanVersions: defineTable({
     organizationId: v.id("organizations"),
     studyId: v.id("studies"),

@@ -41,6 +41,8 @@ export type InterviewStep =
 export type InterviewInvite = {
   id: string;
   studyTitle: string;
+  researchGoal: string;
+  learningObjectives: string[];
   respondentLabel: string;
   estimatedMinutes: number;
   sponsor: string;
@@ -50,6 +52,15 @@ const invites: Record<string, InterviewInvite> = {
   demo: {
     id: "demo",
     studyTitle: "AI research workflow discovery",
+    researchGoal:
+      "Understand how product and research teams currently collect customer evidence, where their interview workflow breaks down, and what would make an AI interviewer trustworthy enough to use.",
+    learningObjectives: [
+      "Identify the respondent's role in research decisions.",
+      "Learn what decision or workflow they most recently needed customer evidence for.",
+      "Understand pain points across planning, recruiting, interviewing, and synthesis.",
+      "Measure willingness to use AI-generated interview questions and structured responses.",
+      "Capture openness to follow-up or deeper qualitative research.",
+    ],
     respondentLabel: "Product and research leaders",
     estimatedMinutes: 7,
     sponsor: "Hermes Researcher",
@@ -61,6 +72,13 @@ export function getInterviewInvite(inviteId: string): InterviewInvite {
     invites[inviteId] ?? {
       id: inviteId,
       studyTitle: "Customer discovery interview",
+      researchGoal:
+        "Collect structured customer discovery signal from an invited participant.",
+      learningObjectives: [
+        "Understand the participant's context.",
+        "Identify their most important needs and constraints.",
+        "Capture a clear next research direction.",
+      ],
       respondentLabel: "Invited participant",
       estimatedMinutes: 8,
       sponsor: "Hermes Researcher",

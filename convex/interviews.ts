@@ -59,10 +59,15 @@ const answerValidator = v.object({
 const inviteValidator = v.object({
   id: v.string(),
   studyTitle: v.string(),
+  researchGoal: v.string(),
+  learningObjectives: v.array(v.string()),
   respondentLabel: v.string(),
   estimatedMinutes: v.number(),
   sponsor: v.string(),
 });
+
+const INTERVIEW_MODEL = "google/gemini-3.1-flash-lite";
+const AI_GATEWAY_BASE_URL = "https://ai-gateway.vercel.sh/v1";
 
 export const nextStep = action({
   args: {
@@ -71,51 +76,75 @@ export const nextStep = action({
   },
   handler: async (_ctx, args) => {
     const fallbackStep = getScriptedStep(args.answers);
-    const apiKey = process.env.GEMINI_API_KEY;
-    const model = process.env.GEMINI_MODEL ?? "gemini-3.1-flash-lite";
+    const apiKey =
+      process.env.AI_GATEWAY_API_KEY ??
+      process.env.VERCEL_AI_GATEWAY_API_KEY ??
+      process.env.VERCEL_AI_GATEWAY_KEY;
+    const model = INTERVIEW_MODEL;
+
+    if (args.answers.length >= 5) {
+      return {
+        step: {
+          id: "complete",
+          type: "complete" as const,
+          prompt: "Thanks, that gives us a useful starting signal.",
+          summary:
+            "Your response has been captured. In the full study workflow, Hermes will save these answers with the invite session and route them into analysis.",
+        },
+        source: "gateway" as const,
+        model,
+      };
+    }
 
     if (!apiKey) {
       return {
         step: fallbackStep,
         source: "scripted" as const,
         model,
-        warning: "Missing GEMINI_API_KEY in Convex environment.",
+        warning: "Missing AI_GATEWAY_API_KEY in Convex environment.",
       };
     }
 
     try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [
-              {
-                role: "user",
-                parts: [{ text: buildPrompt(args.invite, args.answers, fallbackStep) }],
-              },
-            ],
-            generationConfig: {
-              responseMimeType: "application/json",
-              temperature: 0.4,
-            },
-          }),
+      const response = await fetch(`${AI_GATEWAY_BASE_URL}/chat/completions`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
         },
-      );
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: "system",
+              content: [
+                "You are Hermes, a neutral customer research interviewer.",
+                "Return only valid JSON for one next interview step. Do not include markdown.",
+                "Keep the question short, concrete, and unbiased.",
+                "Prefer answer controls over long free text.",
+              ].join(" "),
+            },
+            {
+              role: "user",
+              content: buildPrompt(args.invite, args.answers),
+            },
+          ],
+          temperature: 0.4,
+        }),
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`Gemini request failed: ${response.status} ${errorText}`);
+        throw new Error(`AI Gateway request failed: ${response.status} ${errorText}`);
       }
 
       const payload = await response.json();
-      const text = String(payload?.candidates?.[0]?.content?.parts?.[0]?.text ?? "");
+      const text = String(payload?.choices?.[0]?.message?.content ?? "");
       const step = parseStep(text);
 
       return {
         step,
-        source: "gemini" as const,
+        source: "gateway" as const,
         model,
       };
     } catch (error) {
@@ -123,7 +152,7 @@ export const nextStep = action({
         step: fallbackStep,
         source: "scripted" as const,
         model,
-        warning: error instanceof Error ? error.message : "Gemini gateway failed.",
+        warning: error instanceof Error ? error.message : "AI Gateway request failed.",
       };
     }
   },
@@ -132,16 +161,20 @@ export const nextStep = action({
 function buildPrompt(
   invite: {
     studyTitle: string;
+    researchGoal: string;
+    learningObjectives: string[];
     respondentLabel: string;
     estimatedMinutes: number;
   },
   answers: InterviewAnswer[],
-  fallbackStep: InterviewStep,
 ) {
   return [
-    "You are Hermes, a neutral customer research interviewer.",
     "Return only valid JSON for one next interview step. Do not include markdown.",
-    "Keep the question short, concrete, and unbiased. Prefer answer controls over long free text.",
+    "Generate both the next question and the possible answer controls from the research brief.",
+    "Do not copy or depend on a predefined script.",
+    "Keep the question short, concrete, and unbiased.",
+    "Prefer single_select, multi_select, or scale controls when useful; use text only when the answer needs open context.",
+    "Options must be mutually understandable, non-leading, and grounded in what the study wants to learn.",
     "Allowed step types:",
     "- single_select: id, type, prompt, optional helper, options[{value,label,detail}]",
     "- multi_select: id, type, prompt, optional helper, options[{value,label,detail}]",
@@ -150,12 +183,15 @@ function buildPrompt(
     "- complete: id, type, prompt, summary",
     "Use snake_case ids. Option values must be short snake_case strings.",
     "After 5 respondent answers, return a complete step.",
+    "Output shape must be a single JSON object, not wrapped in another field.",
     "",
     `Study title: ${invite.studyTitle}`,
+    `Research goal: ${invite.researchGoal}`,
+    `Learning objectives: ${JSON.stringify(invite.learningObjectives)}`,
     `Respondent group: ${invite.respondentLabel}`,
     `Target duration: ${invite.estimatedMinutes} minutes`,
     `Answers so far: ${JSON.stringify(answers)}`,
-    `If uncertain, adapt from this fallback step: ${JSON.stringify(fallbackStep)}`,
+    "Choose the next question that will maximize useful research signal while keeping the interview easy to answer.",
   ].join("\n");
 }
 
