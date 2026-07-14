@@ -164,6 +164,7 @@ export const getByToken = query({
       estimatedMinutes: guide.brief.estimatedMinutes,
       sponsor: "Meridian",
       preferredMode: participant.preferredMode,
+      consentStatus: participant.consentStatus,
     };
   },
 });

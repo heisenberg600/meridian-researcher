@@ -861,7 +861,12 @@ export default defineSchema({
     organizationId: v.id("organizations"),
     studyId: v.optional(v.id("studies")),
     actorUserId: v.optional(v.id("users")),
-    actorType: v.union(v.literal("user"), v.literal("agent"), v.literal("system")),
+    actorType: v.union(
+      v.literal("user"),
+      v.literal("agent"),
+      v.literal("system"),
+      v.literal("participant"),
+    ),
     eventType: v.string(),
     summary: v.string(),
     metadata: v.optional(v.any()),

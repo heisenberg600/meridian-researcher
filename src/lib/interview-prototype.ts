@@ -47,6 +47,7 @@ export type InterviewInvite = {
   estimatedMinutes: number;
   sponsor: string;
   preferredMode?: "form" | "voice" | "either";
+  consentStatus?: "unknown" | "pending" | "granted" | "declined";
 };
 
 const invites: Record<string, InterviewInvite> = {
@@ -66,6 +67,7 @@ const invites: Record<string, InterviewInvite> = {
     estimatedMinutes: 7,
     sponsor: "Meridian",
     preferredMode: "either",
+    consentStatus: "granted",
   },
 };
 

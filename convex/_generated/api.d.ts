@@ -17,6 +17,7 @@ import type * as chatSessions from "../chatSessions.js";
 import type * as interviewBriefs from "../interviewBriefs.js";
 import type * as interviews from "../interviews.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_interviewAccess from "../lib/interviewAccess.js";
 import type * as lib_outreach from "../lib/outreach.js";
 import type * as lib_workflow from "../lib/workflow.js";
 import type * as meridian from "../meridian.js";
@@ -48,6 +49,7 @@ declare const fullApi: ApiFromModules<{
   interviewBriefs: typeof interviewBriefs;
   interviews: typeof interviews;
   "lib/auth": typeof lib_auth;
+  "lib/interviewAccess": typeof lib_interviewAccess;
   "lib/outreach": typeof lib_outreach;
   "lib/workflow": typeof lib_workflow;
   meridian: typeof meridian;
