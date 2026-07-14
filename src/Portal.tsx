@@ -4,6 +4,7 @@ import { UserButton, useUser } from "@clerk/react";
 import { useAction, useConvex, useMutation, useQuery } from "convex/react";
 import { Component, useEffect, useMemo, useReducer, useState } from "react";
 import type { ErrorInfo, ReactNode } from "react";
+import { toast } from "sonner";
 import {
   BrainIcon,
   ArchiveIcon,
@@ -45,7 +46,13 @@ import { getUserFacingConvexError } from "./lib/utils";
 import { ParticipantImportWizard } from "./features/participants/import/ParticipantImportWizard";
 import { createImportReviewState, importReviewReducer } from "./features/participants/import/reviewState";
 import { parseParticipantWorkbook } from "./features/participants/import/workbook";
-import { getParticipantReviewUi, getPlanApprovalUi, getQuestionnaireGenerationUi } from "./features/studies/planApproval";
+import { getParticipantOutreachAvailability } from "./features/participants/outreachAvailability";
+import {
+  getInterviewGuideApprovalUi,
+  getParticipantReviewUi,
+  getPlanApprovalUi,
+  getQuestionnaireGenerationUi,
+} from "./features/studies/planApproval";
 
 type MainView = "studies" | "activity" | "settings";
 type StudyTab =
@@ -1133,6 +1140,7 @@ function StudyPlan({
 
   const approvalUi = getPlanApprovalUi(currentPlan.status);
   const currentPlanId = currentPlan._id;
+  const currentPlanVersion = currentPlan.version;
 
   async function handleApprovePlan() {
     setIsApproving(true);
@@ -1140,8 +1148,16 @@ function StudyPlan({
     try {
       await approvePlan({ planVersionId: currentPlanId });
       setSelectedVersionId(null);
+      toast.success("Study Plan approved", {
+        description: `Version ${currentPlanVersion} is now approved.`,
+      });
     } catch (cause) {
-      setApprovalError(getUserFacingConvexError(cause, "Could not approve the Study Plan. Refresh and try again."));
+      const message = getUserFacingConvexError(
+        cause,
+        "Could not approve the Study Plan. Refresh and try again.",
+      );
+      setApprovalError(message);
+      toast.error("Study Plan approval failed", { description: message });
     } finally {
       setIsApproving(false);
     }
@@ -1284,6 +1300,15 @@ function InterviewGuide({ selectedStudy, onOpenPlan }: { selectedStudy: Doc<"stu
         : currentGuide) ?? null,
     [currentGuide, selectedVersionId, versions],
   );
+  const guideApprovalUi = currentGuide
+    ? getInterviewGuideApprovalUi({
+        currentPlanId: currentPlan?._id,
+        guidePlanId: currentGuide.studyPlanVersionId,
+        guideStatus: currentGuide.status,
+        isCurrentGuide: displayedGuide?._id === currentGuide._id,
+        planStatus: currentPlan?.status,
+      })
+    : null;
 
   async function handleGenerate() {
     if (currentPlan?.status !== "approved") {
@@ -1303,13 +1328,26 @@ function InterviewGuide({ selectedStudy, onOpenPlan }: { selectedStudy: Doc<"stu
   }
 
   async function handleApprove() {
-    if (!currentGuide) return;
+    if (!currentGuide || !guideApprovalUi?.canApprove) {
+      setGuideError(
+        guideApprovalUi?.message ?? "The current interview guide is not ready for approval.",
+      );
+      return;
+    }
     setIsApproving(true);
     setGuideError(null);
     try {
       await approveGuide({ briefId: currentGuide._id });
+      toast.success("Interview guide approved", {
+        description: `Version ${currentGuide.version} is ready for participant review.`,
+      });
     } catch (cause) {
-      setGuideError(cause instanceof Error ? cause.message : "Could not approve interview guide");
+      const message = getUserFacingConvexError(
+        cause,
+        "Could not approve the interview guide. Refresh and try again.",
+      );
+      setGuideError(message);
+      toast.error("Interview guide approval failed", { description: message });
     } finally {
       setIsApproving(false);
     }
@@ -1337,15 +1375,26 @@ function InterviewGuide({ selectedStudy, onOpenPlan }: { selectedStudy: Doc<"stu
           {guideError ? (
             <p role="alert" className="mt-3 [font:var(--text-body-sm)] text-[var(--status-danger)]">{guideError}</p>
           ) : null}
-          <Button
-            type="button"
-            onClick={generationUi.canGenerate ? () => void handleGenerate() : onOpenPlan}
-            disabled={isGenerating}
-            className="mt-5"
-          >
-            {isGenerating ? <LoaderCircleIcon className="size-4 animate-spin" /> : generationUi.canGenerate ? <ListChecksIcon className="size-4" /> : <CheckCircle2Icon className="size-4" />}
-            {isGenerating ? "Generating…" : generationUi.actionLabel}
-          </Button>
+          <div className="mt-5 flex flex-wrap justify-center gap-2">
+            <Button
+              type="button"
+              onClick={() => void handleGenerate()}
+              disabled={isGenerating || !generationUi.canGenerate}
+            >
+              {isGenerating ? (
+                <LoaderCircleIcon className="size-4 animate-spin" />
+              ) : (
+                <ListChecksIcon className="size-4" />
+              )}
+              {isGenerating ? "Generating…" : generationUi.actionLabel}
+            </Button>
+            {generationUi.reviewLabel ? (
+              <Button type="button" variant="outline" onClick={onOpenPlan}>
+                <CheckCircle2Icon className="size-4" />
+                {generationUi.reviewLabel}
+              </Button>
+            ) : null}
+          </div>
         </div>
       </div>
     );
@@ -1369,18 +1418,38 @@ function InterviewGuide({ selectedStudy, onOpenPlan }: { selectedStudy: Doc<"stu
             ) : null}
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" onClick={() => void handleGenerate()} disabled={isGenerating}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void handleGenerate()}
+              disabled={isGenerating || currentPlan?.status !== "approved"}
+            >
               {isGenerating ? <LoaderCircleIcon className="size-4 animate-spin" /> : <PlusIcon className="size-4" />}
               New version
             </Button>
             {currentGuide.status !== "approved" && displayedGuide?._id === currentGuide._id ? (
-              <Button type="button" onClick={() => void handleApprove()} disabled={isApproving}>
+              <Button
+                type="button"
+                onClick={() => void handleApprove()}
+                disabled={isApproving || !guideApprovalUi?.canApprove}
+              >
                 <CheckCircle2Icon className="size-4" />
                 {isApproving ? "Approving..." : "Approve guide"}
               </Button>
             ) : null}
           </div>
         </div>
+
+        {guideApprovalUi?.message ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-default)] bg-[var(--status-warning-bg)] px-7 py-3">
+            <p className="[font:var(--text-body-sm)] text-[var(--status-warning)]">
+              {guideApprovalUi.message}
+            </p>
+            <Button type="button" size="sm" variant="outline" onClick={onOpenPlan}>
+              Review Study Plan
+            </Button>
+          </div>
+        ) : null}
 
         {guideError ? (
           <p className="border-b border-[var(--border-default)] px-7 py-3 [font:var(--text-body-sm)] text-[var(--status-danger)]">
@@ -1492,18 +1561,35 @@ function StudyParticipants({
   const participants = useQuery(api.studyParticipants.listForStudy, {
     studyId: selectedStudy._id,
   });
+  const outreachBatches = useQuery(api.outreachBatches.listForStudy, {
+    studyId: selectedStudy._id,
+  });
   const createParticipant = useMutation(api.studyParticipants.create);
   const updateParticipant = useMutation(api.studyParticipants.update);
   const archiveParticipant = useMutation(api.studyParticipants.archive);
   const createImport = useMutation(api.participantImports.createImport);
   const updateImportRow = useMutation(api.participantImports.updateRow);
   const approveImport = useMutation(api.participantImports.approveImport);
+  const approveManualSelection = useMutation(api.participantImports.approveManualSelection);
+  const createOutreachDraft = useMutation(api.outreachBatches.createDraft);
+  const submitOutreachForApproval = useMutation(api.outreachBatches.submitForApproval);
+  const approveOutreach = useMutation(api.outreachBatches.approve);
+  const launchOutreach = useAction(api.outreachBatches.launch);
   const [importState, dispatchImport] = useReducer(importReviewReducer, undefined, createImportReviewState);
   const [importBusy, setImportBusy] = useState(false);
   const [form, setForm] = useState<ParticipantFormState>(emptyParticipantForm);
   const [editingId, setEditingId] = useState<Id<"studyParticipants"> | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [participantError, setParticipantError] = useState<string | null>(null);
+  const [outreachBusy, setOutreachBusy] = useState(false);
+  const [outreachError, setOutreachError] = useState<string | null>(null);
+
+  const manualDraftParticipants = (participants ?? []).filter(
+    (participant) => !participant.importBatchId && participant.status === "draft",
+  );
+  const pendingOutreach = outreachBatches?.find(
+    (batch) => batch.status === "awaiting_approval" || batch.status === "approved",
+  ) ?? null;
 
   const setField = <Key extends keyof ParticipantFormState>(
     key: Key,
@@ -1553,8 +1639,109 @@ function StudyParticipants({
   async function runImport(action: () => Promise<void>) {
     setImportBusy(true);
     try { await action(); }
-    catch (error) { dispatchImport({ type: "failed", message: error instanceof Error ? error.message : "Participant import failed" }); }
+    catch (error) {
+      const message = error instanceof Error ? error.message : "Participant import failed";
+      dispatchImport({ type: "failed", message });
+      toast.error("Participant import failed", { description: message });
+    }
     finally { setImportBusy(false); }
+  }
+
+  async function handleApproveManualParticipants() {
+    if (manualDraftParticipants.length === 0) return;
+    setOutreachBusy(true);
+    setOutreachError(null);
+    try {
+      await approveManualSelection({
+        studyId: selectedStudy._id,
+        participantIds: manualDraftParticipants.map((participant) => participant._id),
+      });
+      toast.success("Participants approved", {
+        description: `${manualDraftParticipants.length} manually added participant${manualDraftParticipants.length === 1 ? " is" : "s are"} ready for outreach.`,
+      });
+    } catch (cause) {
+      const message = getUserFacingConvexError(cause, "Could not approve participants.");
+      setOutreachError(message);
+      toast.error("Participant approval failed", { description: message });
+    } finally {
+      setOutreachBusy(false);
+    }
+  }
+
+  async function handleTriggerOutreach(
+    participant: Doc<"studyParticipants">,
+    channel: "email" | "voice",
+  ) {
+    setOutreachBusy(true);
+    setOutreachError(null);
+    try {
+      const resumableBatch = outreachBatches?.find(
+        (batch) =>
+          (batch.status === "awaiting_approval" || batch.status === "approved") &&
+          batch.participantIds.includes(participant._id) &&
+          batch.channels.includes(channel),
+      );
+      if (resumableBatch) {
+        if (resumableBatch.status === "awaiting_approval") {
+          await approveOutreach({ outreachBatchId: resumableBatch._id });
+        }
+        await launchOutreach({ outreachBatchId: resumableBatch._id });
+        toast.success(channel === "email" ? "Email sent" : "Call started", {
+          description: `${participant.name} is receiving the ${channel === "email" ? "interview invitation" : "research call"}.`,
+        });
+        return;
+      }
+      let participantBatchId = participant.importBatchId;
+      if (!participantBatchId) {
+        const approval = await approveManualSelection({
+          studyId: selectedStudy._id,
+          participantIds: [participant._id],
+        });
+        participantBatchId = approval.batchId;
+      }
+      const outreachBatchId = await createOutreachDraft({
+        studyId: selectedStudy._id,
+        participantBatchId,
+        participantIds: [participant._id],
+        channels: [channel],
+      });
+      await submitOutreachForApproval({ outreachBatchId });
+      await approveOutreach({ outreachBatchId });
+      await launchOutreach({ outreachBatchId });
+      toast.success(channel === "email" ? "Email sent" : "Call started", {
+        description: `${participant.name} is receiving the ${channel === "email" ? "interview invitation" : "research call"}.`,
+      });
+    } catch (cause) {
+      const message = getUserFacingConvexError(
+        cause,
+        channel === "email" ? "Could not send the email." : "Could not start the call.",
+      );
+      setOutreachError(message);
+      toast.error(channel === "email" ? "Email failed" : "Call failed", { description: message });
+    } finally {
+      setOutreachBusy(false);
+    }
+  }
+
+  async function handleApproveAndSend() {
+    if (!pendingOutreach) return;
+    setOutreachBusy(true);
+    setOutreachError(null);
+    try {
+      if (pendingOutreach.status === "awaiting_approval") {
+        await approveOutreach({ outreachBatchId: pendingOutreach._id });
+      }
+      await launchOutreach({ outreachBatchId: pendingOutreach._id });
+      toast.success("Outreach launched", {
+        description: `${pendingOutreach.channels.includes("email") ? "Email" : "Phone call"} delivery has started.`,
+      });
+    } catch (cause) {
+      const message = getUserFacingConvexError(cause, "Could not launch outreach.");
+      setOutreachError(message);
+      toast.error("Outreach launch failed", { description: message });
+    } finally {
+      setOutreachBusy(false);
+    }
   }
 
   const participantReviewUi = getParticipantReviewUi(selectedStudy.status);
@@ -1570,6 +1757,46 @@ function StudyParticipants({
         </div>
         <Badge tone="info">{participants?.length ?? 0} active</Badge>
       </div>
+
+      {manualDraftParticipants.length > 0 ? (
+        <Card className="mt-6 flex flex-wrap items-center justify-between gap-4 border-[var(--border-strong)] p-5">
+          <div>
+            <h2 className="[font:var(--text-body)] font-semibold text-[var(--text-heading)]">
+              Approve manually added participants
+            </h2>
+            <p className="mt-1 [font:var(--text-body-sm)] text-[var(--text-secondary)]">
+              Approval validates contacts and unlocks controlled email and phone outreach.
+            </p>
+          </div>
+          <Button type="button" disabled={outreachBusy} onClick={() => void handleApproveManualParticipants()}>
+            <CheckCircle2Icon className="size-4" />
+            Approve {manualDraftParticipants.length} participant{manualDraftParticipants.length === 1 ? "" : "s"}
+          </Button>
+        </Card>
+      ) : null}
+
+      {pendingOutreach ? (
+        <Card className="mt-6 flex flex-wrap items-center justify-between gap-4 border-[var(--border-strong)] p-5">
+          <div>
+            <h2 className="[font:var(--text-body)] font-semibold text-[var(--text-heading)]">
+              {pendingOutreach.channels.includes("email") ? "Email ready to send" : "Call ready to start"}
+            </h2>
+            <p className="mt-1 [font:var(--text-body-sm)] text-[var(--text-secondary)]">
+              {pendingOutreach.channels.includes("email") ? "Email" : "Phone call"} to {pendingOutreach.participantIds.length} participant{pendingOutreach.participantIds.length === 1 ? "" : "s"}.
+            </p>
+          </div>
+          <Button type="button" disabled={outreachBusy} onClick={() => void handleApproveAndSend()}>
+            {outreachBusy ? <LoaderCircleIcon className="size-4 animate-spin" /> : <CheckCircle2Icon className="size-4" />}
+            {outreachBusy ? "Sending…" : pendingOutreach.channels.includes("email") ? "Send email" : "Start call"}
+          </Button>
+        </Card>
+      ) : null}
+
+      {outreachError ? (
+        <p role="alert" className="mt-4 [font:var(--text-body-sm)] text-[var(--status-danger)]">
+          {outreachError}
+        </p>
+      ) : null}
 
       {participantReviewUi.canReview ? <div className="mt-6">
         <ParticipantImportWizard
@@ -1595,10 +1822,13 @@ function StudyParticipants({
             if (!importState.batchId) throw new Error("Create an import review first");
             const result = await approveImport({ batchId: importState.batchId as Id<"participantImportBatches"> });
             dispatchImport({ type: "import_approved", participantCount: result.participantIds.length });
+            toast.success("Participants approved", {
+              description: `${result.participantIds.length} participant${result.participantIds.length === 1 ? "" : "s"} added to the study.`,
+            });
           })}
           onManualAdd={() => document.getElementById("manual-participant-form")?.scrollIntoView({ behavior: "smooth" })}
         />
-      </div> : (
+      </div> : participantReviewUi.message ? (
         <Card className="mt-6 border-[var(--border-strong)] p-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
@@ -1615,10 +1845,10 @@ function StudyParticipants({
             </Button>
           </div>
         </Card>
-      )}
+      ) : null}
 
-      <div className="mt-6 grid items-start gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
-        <Card className="p-5">
+      <div className="mt-6 grid min-w-0 items-start gap-6 2xl:grid-cols-[320px_minmax(0,1fr)]">
+        <Card className="p-4 sm:p-5">
           <div className="flex items-center gap-2">
             <UserPlusIcon className="size-4 text-[var(--text-muted)]" />
             <h2 className="[font:var(--text-body)] font-semibold text-[var(--text-heading)]">
@@ -1699,8 +1929,8 @@ function StudyParticipants({
           </form>
         </Card>
 
-        <div className="overflow-hidden border border-[var(--border-default)] bg-[var(--surface-card)]">
-          <div className="grid grid-cols-[minmax(160px,1.2fr)_minmax(140px,1fr)_100px_220px] gap-4 border-b border-[var(--border-default)] bg-[var(--bg-sunken)] px-4 py-2.5 [font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--text-muted)]">
+        <div className="min-w-0 overflow-hidden border border-[var(--border-default)] bg-[var(--surface-card)]">
+          <div className="hidden grid-cols-[minmax(160px,1.2fr)_minmax(120px,1fr)_80px_360px] gap-4 border-b border-[var(--border-default)] bg-[var(--bg-sunken)] px-4 py-2.5 [font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--text-muted)] 2xl:grid">
             <span>Participant</span>
             <span>Segment</span>
             <span>Mode</span>
@@ -1721,12 +1951,38 @@ function StudyParticipants({
               </p>
             </div>
           ) : (
-            participants.map((participant) => (
+            participants.map((participant) => {
+              const isInApprovedBatch = Boolean(
+                selectedStudy.currentApprovedParticipantBatchId &&
+                participant.importBatchId === selectedStudy.currentApprovedParticipantBatchId,
+              );
+              const emailAvailability = getParticipantOutreachAvailability({
+                channel: "email",
+                hasContact: Boolean(participant.email),
+                isInApprovedBatch,
+                isManualParticipant: !participant.importBatchId,
+                participantStatus: participant.status,
+                preferredMode: participant.preferredMode,
+                studyStatus: selectedStudy.status,
+              });
+              const callAvailability = getParticipantOutreachAvailability({
+                channel: "voice",
+                hasContact: Boolean(participant.phone),
+                isInApprovedBatch,
+                isManualParticipant: !participant.importBatchId,
+                participantStatus: participant.status,
+                preferredMode: participant.preferredMode,
+                studyStatus: selectedStudy.status,
+              });
+              return (
               <div
                 key={participant._id}
-                className="grid grid-cols-[minmax(160px,1.2fr)_minmax(140px,1fr)_100px_220px] items-center gap-4 border-b border-[var(--border-default)] px-4 py-3 last:border-b-0"
+                className="grid min-w-0 gap-4 border-b border-[var(--border-default)] p-4 last:border-b-0 2xl:grid-cols-[minmax(160px,1.2fr)_minmax(120px,1fr)_80px_360px] 2xl:items-center 2xl:px-4 2xl:py-3"
               >
                 <div className="min-w-0">
+                  <p className="mb-1 [font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--text-muted)] 2xl:hidden">
+                    Participant
+                  </p>
                   <p className="truncate [font:var(--text-body-sm)] font-semibold text-[var(--text-heading)]">
                     {participant.name}
                   </p>
@@ -1734,37 +1990,49 @@ function StudyParticipants({
                     {participant.email ?? participant.phone}
                   </p>
                 </div>
-                <div className="min-w-0">
-                  <p className="truncate [font:var(--text-body-sm)] text-[var(--text-secondary)]">
-                    {participant.segment ?? "Unassigned"}
-                  </p>
-                  <Badge className="mt-1">{formatStatus(participant.status)}</Badge>
+                <div className="grid min-w-0 grid-cols-2 gap-4 2xl:contents">
+                  <div className="min-w-0">
+                    <p className="mb-1 [font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--text-muted)] 2xl:hidden">
+                      Segment
+                    </p>
+                    <p className="truncate [font:var(--text-body-sm)] text-[var(--text-secondary)]">
+                      {participant.segment ?? "Unassigned"}
+                    </p>
+                    <Badge className="mt-1">{formatStatus(participant.status)}</Badge>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="mb-1 [font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--text-muted)] 2xl:hidden">
+                      Mode
+                    </p>
+                    <span className="[font:var(--text-body-sm)] capitalize text-[var(--text-secondary)]">
+                      {participant.preferredMode === "either" ? "Either" : participant.preferredMode}
+                    </span>
+                  </div>
                 </div>
-                <span className="[font:var(--text-body-sm)] capitalize text-[var(--text-secondary)]">
-                  {participant.preferredMode === "either" ? "Either" : participant.preferredMode}
-                </span>
-                <div className="flex justify-end gap-1">
+                <div className="flex min-w-0 flex-wrap justify-start gap-1 2xl:flex-nowrap 2xl:justify-end">
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
-                    disabled
-                    title="Approve and launch outreach from Fieldwork"
+                    disabled={outreachBusy || outreachBatches === undefined || !emailAvailability.enabled}
+                    title={emailAvailability.reason}
                     aria-label={`Email ${participant.name}`}
+                    onClick={() => void handleTriggerOutreach(participant, "email")}
                   >
                     <MailIcon className="size-4" />
-                    Email
+                    Send email
                   </Button>
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
-                    disabled
-                    title="Approve and launch outreach from Fieldwork"
+                    disabled={outreachBusy || outreachBatches === undefined || !callAvailability.enabled}
+                    title={callAvailability.reason}
                     aria-label={`Call ${participant.name}`}
+                    onClick={() => void handleTriggerOutreach(participant, "voice")}
                   >
                     <PhoneCallIcon className="size-4" />
-                    Call
+                    Start call
                   </Button>
                   <Button
                     type="button"
@@ -1788,7 +2056,8 @@ function StudyParticipants({
                   </Button>
                 </div>
               </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>

@@ -29,7 +29,7 @@ export function PromptInputTextarea({ className, style, ...props }: PromptInputT
         "min-h-10 resize-none border-0 bg-transparent p-0 shadow-none focus-visible:ring-0 focus-visible:shadow-none",
         className,
       )}
-      style={{ minHeight: "2.5rem", ...style }}
+      style={{ minHeight: "2.5rem", outline: "none", ...style }}
       rows={1}
       {...props}
     />

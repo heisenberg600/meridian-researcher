@@ -26,7 +26,7 @@ export function assertOutreachDraft(input: {
   participantCount: number;
   channels: readonly OutreachChannel[];
 }) {
-  if (input.studyStatus !== "fieldwork_ready") {
+  if (input.studyStatus !== "fieldwork_ready" && input.studyStatus !== "fieldwork_running") {
     throw new Error("Fieldwork must be ready before creating outreach");
   }
   if (input.questionnaireStatus !== "approved") {
@@ -145,7 +145,7 @@ export function assertOutreachLaunch(input: {
   studyStatus: string;
   outreachStatus: string;
 }) {
-  if (input.studyStatus !== "fieldwork_ready") {
+  if (input.studyStatus !== "fieldwork_ready" && input.studyStatus !== "fieldwork_running") {
     throw new Error("Fieldwork is not ready to launch");
   }
   if (input.outreachStatus !== "approved") {

@@ -27,6 +27,7 @@ import type * as knowledge from "../knowledge.js";
 import type * as knowledgeActions from "../knowledgeActions.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_billing from "../lib/billing.js";
+import type * as lib_initialStudyPrompt from "../lib/initialStudyPrompt.js";
 import type * as lib_interviewAccess from "../lib/interviewAccess.js";
 import type * as lib_outreach from "../lib/outreach.js";
 import type * as lib_workflow from "../lib/workflow.js";
@@ -76,6 +77,7 @@ declare const fullApi: ApiFromModules<{
   knowledgeActions: typeof knowledgeActions;
   "lib/auth": typeof lib_auth;
   "lib/billing": typeof lib_billing;
+  "lib/initialStudyPrompt": typeof lib_initialStudyPrompt;
   "lib/interviewAccess": typeof lib_interviewAccess;
   "lib/outreach": typeof lib_outreach;
   "lib/workflow": typeof lib_workflow;

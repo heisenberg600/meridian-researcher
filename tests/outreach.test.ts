@@ -25,6 +25,7 @@ const ready = {
 
 test("outreach drafts require approved research inputs", () => {
   assert.doesNotThrow(() => assertOutreachDraft(ready));
+  assert.doesNotThrow(() => assertOutreachDraft({ ...ready, studyStatus: "fieldwork_running" }));
   assert.doesNotThrow(() =>
     assertOutreachDraft({ ...ready, participantBatchStatus: undefined }),
   );
@@ -126,12 +127,15 @@ test("outreach cannot launch until the exact batch is approved", () => {
   assert.doesNotThrow(() =>
     assertOutreachLaunch({ studyStatus: "fieldwork_ready", outreachStatus: "approved" }),
   );
+  assert.doesNotThrow(() =>
+    assertOutreachLaunch({ studyStatus: "fieldwork_running", outreachStatus: "approved" }),
+  );
   assert.throws(
     () => assertOutreachLaunch({ studyStatus: "fieldwork_ready", outreachStatus: "awaiting_approval" }),
     /approved/i,
   );
   assert.throws(
-    () => assertOutreachLaunch({ studyStatus: "fieldwork_running", outreachStatus: "approved" }),
+    () => assertOutreachLaunch({ studyStatus: "questionnaire_approved", outreachStatus: "approved" }),
     /fieldwork/i,
   );
 });

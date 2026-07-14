@@ -8,6 +8,7 @@ import { z } from "zod";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { type ActionCtx, internalAction } from "./_generated/server";
+import { buildInitialStudyPrompt } from "./lib/initialStudyPrompt";
 import { v } from "convex/values";
 
 const DEFAULT_MODEL = "google/gemini-3.1-flash-lite";
@@ -167,7 +168,11 @@ async function executeMeridianRun(
       const result = streamText({
         model: provider.languageModel(model),
         instructions: buildSystemInstructions(context),
-        messages: buildModelMessages(context.messages, args.assistantMessageId),
+        messages: buildModelMessages(
+          context.messages,
+          args.assistantMessageId,
+          buildInitialStudyPrompt(context.study),
+        ),
         tools,
         stopWhen: stepCountIs(5),
         temperature: 0.35,
@@ -199,6 +204,8 @@ async function executeMeridianRun(
             await flushText();
             lastFlush = Date.now();
           }
+        } else if (part.type === "error") {
+          throw new Error(`AI Gateway stream failed: ${streamErrorMessage(part.error)}`);
         }
       }
       await flushText();
@@ -273,8 +280,9 @@ async function executeMeridianRun(
 function buildModelMessages(
   messages: Doc<"messages">[],
   assistantMessageId: Id<"messages">,
+  initialPrompt: string,
 ): ModelMessage[] {
-  return messages
+  const modelMessages = messages
     .filter((message) => message._id !== assistantMessageId)
     .filter((message) => message.status === "complete")
     .map((message) => ({
@@ -282,6 +290,16 @@ function buildModelMessages(
       content: message.content ?? textFromParts(message.parts),
     }))
     .filter((message) => message.content.trim().length > 0);
+
+  return modelMessages.length > 0
+    ? modelMessages
+    : [{ role: "user", content: initialPrompt }];
+}
+
+function streamErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) return error.message;
+  if (typeof error === "string" && error.trim()) return error;
+  return "The provider ended the stream with an unknown error.";
 }
 
 function textFromParts(parts: Array<Record<string, unknown>>) {

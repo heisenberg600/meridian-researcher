@@ -139,6 +139,15 @@ export const saveGenerated = internalMutation({
   handler: async (ctx, args) => {
     const study = await ctx.db.get(args.studyId);
     if (!study || study.organizationId !== args.organizationId) throw new Error("Study not found");
+    const plan = await ctx.db.get(args.studyPlanVersionId);
+    if (
+      !plan ||
+      plan.status !== "approved" ||
+      study.currentStudyPlanVersionId !== plan._id ||
+      study.status !== "plan_approved"
+    ) {
+      throw new Error("The current Study Plan must remain approved while generating the interview guide");
+    }
     const latest = await ctx.db
       .query("interviewBriefVersions")
       .withIndex("by_study", (q) => q.eq("studyId", args.studyId))
@@ -180,6 +189,20 @@ export const approve = mutation({
     const { user, study } = await requireStudyAccess(ctx, brief.studyId);
     if (study.currentInterviewBriefVersionId !== brief._id) {
       throw new Error("Only the current interview guide can be approved");
+    }
+    if (brief.status !== "awaiting_approval") {
+      throw new Error("Only an interview guide awaiting approval can be approved");
+    }
+    const plan = study.currentStudyPlanVersionId
+      ? await ctx.db.get(study.currentStudyPlanVersionId)
+      : null;
+    if (
+      !plan ||
+      plan.status !== "approved" ||
+      brief.studyPlanVersionId !== plan._id ||
+      study.status !== "plan_approved"
+    ) {
+      throw new Error("Approve the current Study Plan before approving the interview guide");
     }
     const now = Date.now();
     await ctx.db.patch(brief._id, { status: "approved", approvedBy: user._id, approvedAt: now });
