@@ -50,6 +50,7 @@ import { createMemoryAdapter } from "./features/context/convexAdapters";
 import { StudyMemoryPage } from "./features/memory/StudyMemoryPage";
 import { canonicalStudyTab, legacyStudyTab } from "./features/study-workflow/legacyRoute";
 import { AnalysisPage } from "./features/analysis/AnalysisPage";
+import { FieldworkPage } from "./features/fieldwork/FieldworkPage";
 
 type MainView = "studies" | "activity" | "settings";
 type StudyTab =
@@ -736,7 +737,7 @@ function StudyDetail({
           </InterviewGuideErrorBoundary>
         ) : null}
         {studyTab === "participants" ? <StudyParticipants selectedStudy={selectedStudy} /> : null}
-        {studyTab === "calls" ? <StudyCalls selectedStudy={selectedStudy} /> : null}
+        {studyTab === "calls" ? <StudyFieldworkRoute selectedStudy={selectedStudy} /> : null}
         {studyTab === "feedback" ? <StudyAnalysisRoute selectedStudy={selectedStudy} /> : null}
         {studyTab === "artifacts" ? <ArtifactsSkeleton /> : null}
         {studyTab === "memory" ? <StudyMemoryRoute selectedStudy={selectedStudy} /> : null}
@@ -1819,6 +1820,77 @@ function StudyMemoryRoute({ selectedStudy }: { selectedStudy: Doc<"studies"> }) 
       studyId={selectedStudy._id}
       studyName={selectedStudy.title}
     />
+  );
+}
+
+function StudyFieldworkRoute({ selectedStudy }: { selectedStudy: Doc<"studies"> }) {
+  const batches = useQuery(api.outreachBatches.listForStudy, { studyId: selectedStudy._id });
+  const batch = batches?.[0] ?? null;
+  const deliveries = useQuery(
+    api.outreachBatches.deliveriesForBatch,
+    batch ? { outreachBatchId: batch._id } : "skip",
+  );
+  const participants = useQuery(api.studyParticipants.listForStudy, {
+    studyId: selectedStudy._id,
+  });
+  const calls = useQuery(api.callRecords.listForStudy, { studyId: selectedStudy._id });
+  const approve = useMutation(api.outreachBatches.approve);
+  const launch = useAction(api.outreachBatches.launch);
+  const retry = useAction(api.outreachBatches.retryDelivery);
+
+  return (
+    <>
+    <FieldworkPage
+      batch={batch ? {
+        id: batch._id,
+        status: batch.status,
+        participantCount: batch.participantIds.length,
+        channels: batch.channels,
+        questionnaireVersion: 1,
+      } : null}
+      participants={(participants ?? []).map((participant) => {
+        const participantDeliveries = (deliveries ?? []).filter(
+          (delivery) => delivery.participantId === participant._id,
+        );
+        return {
+          id: participant._id,
+          name: participant.name,
+          segment: participant.segment,
+          status: participant.status,
+          consentStatus: participant.consentStatus,
+          channels: participant.preferredMode === "form"
+            ? ["email" as const]
+            : participant.preferredMode === "voice"
+              ? ["voice" as const]
+              : ["email" as const, "voice" as const],
+          deliveryStatus: participantDeliveries[0]?.status ?? "not_started",
+          retryDeliveryId: participantDeliveries.find((delivery) => delivery.retrySafe)?._id,
+        };
+      })}
+      responses={(calls ?? []).map((call) => ({
+        id: call._id,
+        participantId: call.participantId,
+        participantName: call.participant?.name ?? "Participant",
+        channel: "voice" as const,
+        status: call.status,
+        occurredAt: call.completedAt ?? call.createdAt,
+        summary: call.analysis?.summary,
+        transcript: call.transcript,
+      }))}
+      onApprove={async (id) => {
+        await approve({ outreachBatchId: id as Id<"outreachBatches"> });
+      }}
+      onLaunch={async (id) => {
+        await launch({ outreachBatchId: id as Id<"outreachBatches"> });
+      }}
+      onRetry={async (id) => {
+        await retry({ deliveryId: id as Id<"outreachDeliveries"> });
+      }}
+    />
+    <div className="mt-10 border-t border-[var(--border-default)] pt-8">
+      <StudyCalls selectedStudy={selectedStudy} />
+    </div>
+    </>
   );
 }
 
