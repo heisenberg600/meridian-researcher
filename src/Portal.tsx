@@ -1718,6 +1718,8 @@ function StudyParticipants({ selectedStudy }: { selectedStudy: Doc<"studies"> })
 
 function StudyCalls({ selectedStudy }: { selectedStudy: Doc<"studies"> }) {
   const calls = useQuery(api.callRecords.listForStudy, { studyId: selectedStudy._id });
+  const [selectedCallId, setSelectedCallId] = useState<Id<"interviewCallRecords"> | null>(null);
+  const selectedCall = calls?.find((call) => call._id === selectedCallId) ?? calls?.[0] ?? null;
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -1730,7 +1732,7 @@ function StudyCalls({ selectedStudy }: { selectedStudy: Doc<"studies"> }) {
         <Badge tone="info">{calls?.length ?? 0} calls</Badge>
       </div>
 
-      <div className="mt-6 space-y-4">
+      <div className="mt-6">
         {calls === undefined ? (
           <p className="[font:var(--text-body)] text-[var(--text-muted)]">Loading calls...</p>
         ) : calls.length === 0 ? (
@@ -1739,55 +1741,90 @@ function StudyCalls({ selectedStudy }: { selectedStudy: Doc<"studies"> }) {
             <h2 className="mt-3 [font:var(--text-body)] font-semibold text-[var(--text-heading)]">No calls yet</h2>
             <p className="mt-1 [font:var(--text-body-sm)] text-[var(--text-muted)]">Start a call from the Participants tab.</p>
           </div>
-        ) : calls.map((call) => (
-          <article key={call._id} className="border border-[var(--border-default)] bg-[var(--surface-card)]">
-            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--border-default)] px-5 py-4">
-              <div>
-                <h2 className="[font:var(--text-body)] font-semibold text-[var(--text-heading)]">
-                  {call.participant?.name ?? "Participant call"}
-                </h2>
-                <p className="mt-1 [font:var(--text-caption)] text-[var(--text-muted)]">
-                  {formatDate(call.createdAt)}
-                  {call.durationSeconds ? ` · ${Math.ceil(call.durationSeconds / 60)} min` : ""}
-                  {call.terminationReason ? ` · ${call.terminationReason}` : ""}
-                </p>
+        ) : selectedCall ? (
+          <div className="grid min-h-[620px] border border-[var(--border-default)] bg-[var(--surface-card)] lg:grid-cols-[300px_minmax(0,1fr)]">
+            <aside className="border-b border-[var(--border-default)] lg:border-b-0 lg:border-r">
+              <div className="border-b border-[var(--border-default)] px-4 py-3 [font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--text-muted)]">
+                Call history
               </div>
-              <Badge tone={call.status === "completed" ? "success" : call.status === "failed" ? "danger" : "info"}>
-                {formatStatus(call.status)}
-              </Badge>
-            </div>
-            {call.status === "scheduled" || call.status === "processing" ? (
-              <div className="flex items-center gap-3 px-5 py-5 [font:var(--text-body-sm)] text-[var(--text-secondary)]">
-                <LoaderCircleIcon className="size-4 animate-spin" />
-                Transcript ingestion scheduled{call.attempts ? ` · retry ${call.attempts}` : ""}
+              <div className="divide-y divide-[var(--border-default)]">
+                {calls.map((call) => (
+                  <button
+                    key={call._id}
+                    type="button"
+                    onClick={() => setSelectedCallId(call._id)}
+                    className={cx(
+                      "w-full px-4 py-4 text-left transition-colors",
+                      selectedCall._id === call._id ? "bg-[var(--accent-softer)]" : "hover:bg-[var(--bg-sunken)]",
+                    )}
+                  >
+                    <span className="flex items-start justify-between gap-3">
+                      <span className="min-w-0">
+                        <span className="block truncate [font:var(--text-body-sm)] font-semibold text-[var(--text-heading)]">
+                          {call.participant?.name ?? "Participant call"}
+                        </span>
+                        <span className="mt-1 block [font:var(--text-caption)] text-[var(--text-muted)]">
+                          {formatDate(call.createdAt)}{call.durationSeconds ? ` · ${Math.ceil(call.durationSeconds / 60)} min` : ""}
+                        </span>
+                      </span>
+                      <Badge tone={call.status === "completed" ? "success" : call.status === "failed" ? "danger" : "info"}>
+                        {formatStatus(call.status)}
+                      </Badge>
+                    </span>
+                  </button>
+                ))}
               </div>
-            ) : call.status === "failed" ? (
-              <p className="px-5 py-5 [font:var(--text-body-sm)] text-[var(--status-danger)]">{call.error}</p>
-            ) : (
-              <div className="grid gap-6 px-5 py-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)]">
-                <section>
-                  <h3 className="[font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--text-muted)]">Transcript</h3>
-                  <div className="mt-3 space-y-3">
-                    {(call.transcript ?? []).map((turn, index) => (
-                      <div key={`${turn.timeInCallSeconds ?? index}-${index}`}>
-                        <p className="[font:var(--text-caption)] uppercase text-[var(--text-muted)]">{turn.role}</p>
-                        <p className="mt-1 [font:var(--text-body-sm)] text-[var(--text-secondary)]">{turn.message}</p>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-                <section className="bg-[var(--bg-sunken)] p-4">
-                  <h3 className="[font:var(--text-body)] font-semibold text-[var(--text-heading)]">Analysis</h3>
-                  <p className="mt-2 [font:var(--text-body-sm)] text-[var(--text-secondary)]">{call.analysis?.summary}</p>
-                  {call.analysis?.themes.length ? (
-                    <div className="mt-4 flex flex-wrap gap-2">{call.analysis.themes.map((theme) => <Badge key={theme}>{theme}</Badge>)}</div>
-                  ) : null}
-                  <p className="mt-4 [font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--text-muted)]">{call.analysis?.completionAssessment}</p>
-                </section>
+            </aside>
+
+            <article className="min-w-0">
+              <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--border-default)] px-6 py-5">
+                <div>
+                  <h2 className="[font:var(--text-heading-sm)] text-[var(--text-heading)]">
+                    {selectedCall.participant?.name ?? "Participant call"}
+                  </h2>
+                  <p className="mt-1 [font:var(--text-caption)] text-[var(--text-muted)]">
+                    {formatDate(selectedCall.createdAt)}
+                    {selectedCall.durationSeconds ? ` · ${Math.ceil(selectedCall.durationSeconds / 60)} min` : ""}
+                    {selectedCall.terminationReason ? ` · ${selectedCall.terminationReason}` : ""}
+                  </p>
+                </div>
+                <Badge tone={selectedCall.status === "completed" ? "success" : selectedCall.status === "failed" ? "danger" : "info"}>
+                  {formatStatus(selectedCall.status)}
+                </Badge>
               </div>
-            )}
-          </article>
-        ))}
+              {selectedCall.status === "scheduled" || selectedCall.status === "processing" ? (
+                <div className="flex items-center gap-3 px-6 py-6 [font:var(--text-body-sm)] text-[var(--text-secondary)]">
+                  <LoaderCircleIcon className="size-4 animate-spin" />
+                  Transcript ingestion scheduled{selectedCall.attempts ? ` · retry ${selectedCall.attempts}` : ""}
+                </div>
+              ) : selectedCall.status === "failed" ? (
+                <p className="px-6 py-6 [font:var(--text-body-sm)] text-[var(--status-danger)]">{selectedCall.error}</p>
+              ) : (
+                <div className="grid gap-8 px-6 py-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+                  <section>
+                    <h3 className="[font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--text-muted)]">Transcript</h3>
+                    <div className="mt-4 space-y-4">
+                      {(selectedCall.transcript ?? []).map((turn, index) => (
+                        <div key={`${turn.timeInCallSeconds ?? index}-${index}`}>
+                          <p className="[font:var(--text-caption)] uppercase text-[var(--text-muted)]">{turn.role}</p>
+                          <p className="mt-1 [font:var(--text-body-sm)] text-[var(--text-secondary)]">{turn.message}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                  <section className="bg-[var(--bg-sunken)] p-4">
+                    <h3 className="[font:var(--text-body)] font-semibold text-[var(--text-heading)]">Analysis</h3>
+                    <p className="mt-2 [font:var(--text-body-sm)] text-[var(--text-secondary)]">{selectedCall.analysis?.summary}</p>
+                    {selectedCall.analysis?.themes.length ? (
+                      <div className="mt-4 flex flex-wrap gap-2">{selectedCall.analysis.themes.map((theme) => <Badge key={theme}>{theme}</Badge>)}</div>
+                    ) : null}
+                    <p className="mt-4 [font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)] text-[var(--text-muted)]">{selectedCall.analysis?.completionAssessment}</p>
+                  </section>
+                </div>
+              )}
+            </article>
+          </div>
+        ) : null}
       </div>
     </div>
   );
