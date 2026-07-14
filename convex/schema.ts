@@ -78,6 +78,7 @@ export default defineSchema({
       v.literal("analyzing"),
       v.literal("report_ready"),
       v.literal("completed"),
+      v.literal("failed"),
     ),
     currentStudyPlanVersionId: v.optional(v.id("studyPlanVersions")),
     currentInterviewBriefVersionId: v.optional(v.id("interviewBriefVersions")),
@@ -436,6 +437,16 @@ export default defineSchema({
     participantBatchId: v.id("participantImportBatches"),
     participantIds: v.array(v.id("studyParticipants")),
     channels: v.array(v.union(v.literal("email"), v.literal("voice"))),
+    studyPlanVersionId: v.optional(v.id("studyPlanVersions")),
+    approvedSnapshot: v.optional(v.object({
+      studyPlanVersionId: v.id("studyPlanVersions"),
+      questionnaireVersionId: v.id("interviewBriefVersions"),
+      participantBatchId: v.id("participantImportBatches"),
+      recipients: v.array(v.object({
+        participantId: v.id("studyParticipants"),
+        channels: v.array(v.union(v.literal("email"), v.literal("voice"))),
+      })),
+    })),
     status: v.union(
       v.literal("draft"),
       v.literal("awaiting_approval"),
@@ -453,6 +464,30 @@ export default defineSchema({
   })
     .index("by_study", ["studyId"])
     .index("by_study_status", ["studyId", "status"]),
+
+  outreachDeliveries: defineTable({
+    organizationId: v.id("organizations"),
+    studyId: v.id("studies"),
+    outreachBatchId: v.id("outreachBatches"),
+    participantId: v.id("studyParticipants"),
+    questionnaireVersionId: v.id("interviewBriefVersions"),
+    channel: v.union(v.literal("email"), v.literal("voice")),
+    deliveryKey: v.string(),
+    status: v.union(
+      v.literal("pending"), v.literal("reserved"), v.literal("dispatching"),
+      v.literal("accepted"), v.literal("failed"), v.literal("unknown"), v.literal("suppressed"),
+    ),
+    retrySafe: v.boolean(),
+    attempts: v.number(),
+    creditReservationId: v.optional(v.id("creditReservations")),
+    providerOperationId: v.optional(v.string()),
+    providerAcceptedAt: v.optional(v.number()),
+    error: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_batch", ["outreachBatchId"])
+    .index("by_delivery_key", ["deliveryKey"]),
 
   interviewSessions: defineTable({
     organizationId: v.optional(v.id("organizations")),
@@ -487,6 +522,9 @@ export default defineSchema({
     questionnaireVersionId: v.optional(v.id("interviewBriefVersions")),
     conversationId: v.string(),
     callSid: v.optional(v.string()),
+    outreachDeliveryId: v.optional(v.id("outreachDeliveries")),
+    creditReservationId: v.optional(v.id("creditReservations")),
+    creditsFinalizedAt: v.optional(v.number()),
     status: v.union(
       v.literal("scheduled"),
       v.literal("processing"),

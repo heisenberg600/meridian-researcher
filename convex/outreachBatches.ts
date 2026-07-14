@@ -1,9 +1,10 @@
 import { v } from "convex/values";
-import type { Id } from "./_generated/dataModel";
+import { api, internal } from "./_generated/api";
+import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
-import { mutation, query } from "./_generated/server";
+import { action, internalMutation, mutation, query } from "./_generated/server";
 import { requireStudyAccess } from "./lib/auth";
-import { assertOutreachDraft, assertOutreachLaunch } from "./lib/outreach";
+import { assertOutreachDraft, assertOutreachLaunch, createApprovedSnapshot, creditReservationForDelivery, deliveryIdempotencyKey, planDeliveryRetry } from "./lib/outreach";
 
 const channel = v.union(v.literal("email"), v.literal("voice"));
 
@@ -33,6 +34,10 @@ export const createDraft = mutation({
       : null;
     if (!questionnaire || questionnaire.studyId !== study._id) {
       throw new Error("An approved questionnaire is required before creating outreach");
+    }
+    const plan = await ctx.db.get(questionnaire.studyPlanVersionId);
+    if (!plan || plan.studyId !== study._id || plan.status !== "approved" || study.currentStudyPlanVersionId !== plan._id) {
+      throw new Error("The current approved study plan is required before creating outreach");
     }
 
     const participantBatch = await ctx.db.get(args.participantBatchId);
@@ -65,6 +70,7 @@ export const createDraft = mutation({
       participantBatchStatus: participantBatch.status,
       participantCount: participants.length,
       channels,
+      planStatus: plan.status,
     });
     for (const participant of participants) {
       const reachable =
@@ -81,6 +87,7 @@ export const createDraft = mutation({
       organizationId: study.organizationId,
       studyId: study._id,
       questionnaireVersionId: questionnaire._id,
+      studyPlanVersionId: plan._id,
       participantBatchId: participantBatch._id,
       participantIds,
       channels,
@@ -130,12 +137,34 @@ export const approve = mutation({
       throw new Error("Only outreach awaiting approval can be approved");
     }
     const now = Date.now();
+    const participants = await Promise.all(batch.participantIds.map((id) => ctx.db.get(id)));
+    if (participants.some((participant) => !participant)) throw new Error("Participant snapshot changed");
+    const snapshot = createApprovedSnapshot({
+      studyPlanVersionId: String(batch.studyPlanVersionId),
+      questionnaireVersionId: String(batch.questionnaireVersionId),
+      participantBatchId: String(batch.participantBatchId),
+      requestedChannels: batch.channels,
+      participants: participants.map((participant) => ({ id: String(participant!._id), email: participant!.email, phone: participant!.phone })),
+    });
     await ctx.db.patch(batch._id, {
       status: "approved",
+      approvedSnapshot: snapshot as typeof batch.approvedSnapshot,
       approvedBy: user._id,
       approvedAt: now,
       updatedAt: now,
     });
+    for (const recipient of snapshot.recipients) {
+      for (const selectedChannel of recipient.channels) {
+        const deliveryKey = deliveryIdempotencyKey(String(batch._id), recipient.participantId, selectedChannel);
+        const existing = await ctx.db.query("outreachDeliveries").withIndex("by_delivery_key", (q) => q.eq("deliveryKey", deliveryKey)).unique();
+        if (!existing) await ctx.db.insert("outreachDeliveries", {
+          organizationId: batch.organizationId, studyId: batch.studyId, outreachBatchId: batch._id,
+          participantId: recipient.participantId as Id<"studyParticipants">,
+          questionnaireVersionId: batch.questionnaireVersionId, channel: selectedChannel,
+          deliveryKey, status: "pending", retrySafe: true, attempts: 0, createdAt: now, updatedAt: now,
+        });
+      }
+    }
     await ctx.db.insert("approvals", {
       organizationId: study.organizationId,
       studyId: study._id,
@@ -157,49 +186,63 @@ export const approve = mutation({
   },
 });
 
-export const launch = mutation({
+export const launch = action({
   args: { outreachBatchId: v.id("outreachBatches") },
   handler: async (ctx, args) => {
-    const batch = await ctx.db.get(args.outreachBatchId);
-    if (!batch) throw new Error("Outreach batch not found");
-    const { user, study } = await requireStudyAccess(ctx, batch.studyId);
-    assertOutreachLaunch({ studyStatus: study.status, outreachStatus: batch.status });
-    const questionnaire = await ctx.db.get(batch.questionnaireVersionId);
-    if (
-      !questionnaire ||
-      questionnaire.status !== "approved" ||
-      study.currentInterviewBriefVersionId !== questionnaire._id
-    ) {
-      throw new Error("The approved questionnaire changed; create a new outreach batch");
-    }
-    if (batch.participantBatchId) {
-      const participantBatch = await ctx.db.get(batch.participantBatchId);
-      if (
-        !participantBatch ||
-        participantBatch.status !== "approved" ||
-        study.currentApprovedParticipantBatchId !== participantBatch._id
-      ) {
-        throw new Error("The approved participant batch changed; create a new outreach batch");
+    const prepared = await ctx.runMutation(internal.outreachBatches.prepareLaunch, args);
+    for (const delivery of prepared.deliveries) {
+      if (!delivery.creditReservationId) {
+        const spec = creditReservationForDelivery({ channel: delivery.channel, estimatedMinutes: prepared.estimatedMinutes });
+        const reservation = await ctx.runMutation(api.credits.reserveCredits, {
+          organizationId: prepared.organizationId, studyId: prepared.studyId,
+          operationId: delivery.deliveryKey, operation: spec.operation, maximumCredits: spec.maximumCredits,
+          idempotencyKey: `reserve:${delivery.deliveryKey}`, expiresAt: prepared.expiresAt,
+        });
+        await ctx.runMutation(internal.outreachBatches.attachReservation, { deliveryId: delivery._id, reservationId: reservation.reservationId });
       }
     }
-    const participants = await Promise.all(batch.participantIds.map((id) => ctx.db.get(id)));
-    if (participants.some((participant) => !participant || participant.status === "archived")) {
-      throw new Error("The participant selection changed; create a new outreach batch");
+    await ctx.runMutation(internal.outreachBatches.activateLaunch, args);
+    const deliveries = await ctx.runQuery(api.outreachBatches.deliveriesForBatch, args);
+    for (const delivery of deliveries) {
+      if (planDeliveryRetry(delivery) === "dispatch") {
+        if (delivery.channel === "email") await ctx.runAction(api.participantInvites.sendEmail, { participantId: delivery.participantId, outreachBatchId: args.outreachBatchId });
+        else await ctx.runAction(api.participantInvites.sendCall, { participantId: delivery.participantId, outreachBatchId: args.outreachBatchId });
+        const accepted = await ctx.runMutation(internal.outreachBatches.markAccepted, { deliveryId: delivery._id });
+        if (accepted?.channel === "email" && accepted.creditReservationId) await ctx.runMutation(internal.credits.reconcileUsage, { organizationId: accepted.organizationId, reservationId: accepted.creditReservationId, provider: "resend", providerOperationId: accepted.deliveryKey, nativeQuantity: 1, internalCostMicros: 0, model: "resend-email" });
+      }
     }
-    const now = Date.now();
-    await ctx.db.patch(batch._id, { status: "running", launchedAt: now, updatedAt: now });
-    await ctx.db.patch(study._id, { status: "fieldwork_running", updatedAt: now });
-    await recordAudit(ctx, {
-      organizationId: study.organizationId,
-      studyId: study._id,
-      actorUserId: user._id,
-      eventType: "outreach.launched",
-      summary: `Launched outreach to ${batch.participantIds.length} participants`,
-      metadata: { outreachBatchId: batch._id },
-    });
-    return batch._id;
+    return args.outreachBatchId;
   },
 });
+
+export const deliveriesForBatch = query({
+  args: { outreachBatchId: v.id("outreachBatches") },
+  handler: async (ctx, args) => {
+    const batch = await ctx.db.get(args.outreachBatchId); if (!batch) throw new Error("Outreach batch not found");
+    await requireStudyAccess(ctx, batch.studyId);
+    return await ctx.db.query("outreachDeliveries").withIndex("by_batch", (q) => q.eq("outreachBatchId", batch._id)).collect();
+  },
+});
+
+export const prepareLaunch = internalMutation({
+  args: { outreachBatchId: v.id("outreachBatches") },
+  handler: async (ctx, args) => {
+    const batch = await ctx.db.get(args.outreachBatchId); if (!batch?.approvedSnapshot) throw new Error("Approved outreach snapshot required");
+    const study = await ctx.db.get(batch.studyId); if (!study) throw new Error("Study not found");
+    if (batch.status !== "running") assertOutreachLaunch({ studyStatus: study.status, outreachStatus: batch.status });
+    const [plan, questionnaire, participantBatch] = await Promise.all([ctx.db.get(batch.approvedSnapshot.studyPlanVersionId), ctx.db.get(batch.approvedSnapshot.questionnaireVersionId), ctx.db.get(batch.approvedSnapshot.participantBatchId)]);
+    if (plan?.status !== "approved" || questionnaire?.status !== "approved" || participantBatch?.status !== "approved") throw new Error("Approved launch inputs changed");
+    const deliveries = await ctx.db.query("outreachDeliveries").withIndex("by_batch", (q) => q.eq("outreachBatchId", batch._id)).collect();
+    return { organizationId: batch.organizationId, studyId: batch.studyId, deliveries, estimatedMinutes: questionnaire.brief.estimatedMinutes, expiresAt: (batch.approvedAt ?? batch.updatedAt) + 24 * 60 * 60 * 1000 };
+  },
+});
+
+export const attachReservation = internalMutation({ args: { deliveryId: v.id("outreachDeliveries"), reservationId: v.id("creditReservations") }, handler: async (ctx, args) => { const delivery = await ctx.db.get(args.deliveryId); if (delivery && !delivery.creditReservationId) await ctx.db.patch(delivery._id, { creditReservationId: args.reservationId, status: "reserved", updatedAt: Date.now() }); } });
+export const activateLaunch = internalMutation({ args: { outreachBatchId: v.id("outreachBatches") }, handler: async (ctx, args) => { const batch = await ctx.db.get(args.outreachBatchId); if (!batch) throw new Error("Outreach batch not found"); const now = Date.now(); await ctx.db.patch(batch._id, { status: "running", launchedAt: batch.launchedAt ?? now, updatedAt: now }); await ctx.db.patch(batch.studyId, { status: "fieldwork_running", updatedAt: now }); } });
+export const markAccepted = internalMutation({ args: { deliveryId: v.id("outreachDeliveries") }, handler: async (ctx, args) => { const delivery = await ctx.db.get(args.deliveryId); if (!delivery || delivery.status === "accepted") return delivery; const now = Date.now(); await ctx.db.patch(delivery._id, { status: "accepted", attempts: delivery.attempts + 1, providerAcceptedAt: now, retrySafe: false, updatedAt: now }); return delivery; } });
+
+export const retryDelivery = action({ args: { deliveryId: v.id("outreachDeliveries") }, handler: async (ctx, args): Promise<Id<"outreachBatches">> => { const delivery: Doc<"outreachDeliveries"> = await ctx.runQuery(api.outreachBatches.deliveryForRetry, args); if (planDeliveryRetry(delivery) !== "dispatch") throw new Error("This delivery cannot be retried safely"); return await ctx.runAction(api.outreachBatches.launch, { outreachBatchId: delivery.outreachBatchId }); } });
+export const deliveryForRetry = query({ args: { deliveryId: v.id("outreachDeliveries") }, handler: async (ctx, args) => { const delivery = await ctx.db.get(args.deliveryId); if (!delivery) throw new Error("Delivery not found"); await requireStudyAccess(ctx, delivery.studyId); return delivery; } });
 
 async function recordAudit(
   ctx: MutationCtx,
