@@ -33,28 +33,7 @@ const payload = {
         prompt: buildPrompt(),
         llm: "gemini-2.0-flash",
         temperature: 0.4,
-        tools: [
-          {
-            type: "client",
-            name: "record_interview_answer",
-            description:
-              "Record the question you asked and the respondent's latest answer before choosing what to ask next.",
-            parameters: {
-              type: "object",
-              properties: {
-                question: {
-                  type: "string",
-                  description: "The exact interview question that this answer responds to.",
-                },
-                value: {
-                  type: "string",
-                  description: "A concise, faithful summary of the respondent's answer.",
-                },
-              },
-              required: ["question", "value"],
-            },
-          },
-        ],
+        tools: [],
       },
       disable_first_message_interruptions: false,
     },
@@ -134,7 +113,7 @@ function buildPrompt() {
     "Start broad, listen carefully, and ask a short follow-up when it could uncover a concrete example, motivation, constraint, or tradeoff.",
     "Do not follow a fixed questionnaire and do not announce question numbers or answer choices.",
     "Avoid repeating topics already covered in answers_json. Cover the learning objectives naturally within the available time.",
-    "When the respondent answers, call record_interview_answer with both your question and a concise, faithful answer summary before continuing.",
+    "After each answer, continue naturally with the most useful next question or short probe. Do not call client tools; the platform records the full transcript.",
     "Aim for roughly five substantive topics, adapting depth to the estimated time. When the objectives are sufficiently covered, briefly summarize what you heard, ask if anything important was missed, and thank the respondent.",
     "If the respondent asks to stop, thank them and end the call.",
     "Do not sell, persuade, diagnose, or ask for sensitive personal information.",

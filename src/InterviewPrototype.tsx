@@ -54,6 +54,7 @@ export function InterviewClient({ invite }: InterviewClientProps) {
   const [multiChoice, setMultiChoice] = useState<string[]>([]);
   const [scaleValue, setScaleValue] = useState("3");
   const [hasHydratedSession, setHasHydratedSession] = useState(false);
+  const hydrationStartedRef = useRef(false);
 
   const progress = step?.type === "complete" ? 100 : Math.round((answers.length / 5) * 100);
   const stepNumber = Math.min(answers.length + 1, 5);
@@ -88,26 +89,22 @@ export function InterviewClient({ invite }: InterviewClientProps) {
   );
 
   useEffect(() => {
-    if (savedSession === undefined || hasHydratedSession) return;
+    if (savedSession === undefined || hydrationStartedRef.current) return;
 
-    let isActive = true;
+    hydrationStartedRef.current = true;
     const savedAnswers = (savedSession?.answers ?? []) as InterviewAnswer[];
     setAnswers(savedAnswers);
     setMode(savedSession?.mode ?? (savedAnswers.length > 0 ? "chat" : null));
-    setHasHydratedSession(true);
     setIsThinking(true);
 
     void loadStep(savedAnswers).then((result) => {
-      if (!isActive) return;
       setStep(result.step);
       setGateway(result.gateway);
+      setHasHydratedSession(true);
       setIsThinking(false);
     });
 
-    return () => {
-      isActive = false;
-    };
-  }, [hasHydratedSession, loadStep, savedSession]);
+  }, [loadStep, savedSession]);
 
   async function submitAnswer(value: string | string[]) {
     if (!mode || !step || step.type === "complete" || isThinking) return;

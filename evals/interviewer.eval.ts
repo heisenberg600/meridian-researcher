@@ -85,8 +85,7 @@ evaluate({
       return isComplete === (target as CaseTarget).expectComplete ? 1 : 0;
     },
 
-    neutral_question: async (out, target) => {
-      const t = target as CaseTarget;
+    neutral_question: async (out) => {
       // Only judged where it matters (and skip the deliberate "complete" case).
       if (out.step?.type === "complete") return 1;
       if (!out.step) return 0;
