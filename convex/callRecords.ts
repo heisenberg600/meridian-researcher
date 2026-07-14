@@ -67,6 +67,45 @@ export const schedule = internalMutation({
   },
 });
 
+export const backfillAll = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const participants = await ctx.db.query("studyParticipants").collect();
+    let created = 0;
+    let skipped = 0;
+    for (const participant of participants) {
+      if (!participant.elevenLabsConversationId) continue;
+      const existing = await ctx.db
+        .query("interviewCallRecords")
+        .withIndex("by_conversation", (q) =>
+          q.eq("conversationId", participant.elevenLabsConversationId!),
+        )
+        .unique();
+      if (existing) {
+        skipped += 1;
+        continue;
+      }
+      const now = Date.now();
+      const callRecordId = await ctx.db.insert("interviewCallRecords", {
+        organizationId: participant.organizationId,
+        studyId: participant.studyId,
+        participantId: participant._id,
+        conversationId: participant.elevenLabsConversationId,
+        callSid: participant.telephonyCallSid,
+        status: "scheduled",
+        attempts: 0,
+        createdAt: participant.invitedAt ?? now,
+        updatedAt: now,
+      });
+      await ctx.scheduler.runAfter(0, internal.callRecords.pullAndAnalyze, {
+        callRecordId,
+      });
+      created += 1;
+    }
+    return { created, skipped };
+  },
+});
+
 export const getInternal = internalQuery({
   args: { callRecordId: v.id("interviewCallRecords") },
   handler: async (ctx, args) => await ctx.db.get(args.callRecordId),
