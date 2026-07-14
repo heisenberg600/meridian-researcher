@@ -73,3 +73,10 @@ test("billing persistence includes recovery and reconciliation fields", () => {
     }
   }
 });
+
+test("brand profiles persist every customer-editable report preference", () => {
+  const fields = tableFields("brandProfiles");
+  for (const field of ["logoName", "reportTitle", "headingFont", "bodyFont"]) {
+    assert.ok(fields.has(field), `brandProfiles must persist ${field}`);
+  }
+});
