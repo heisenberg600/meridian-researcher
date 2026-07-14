@@ -67,7 +67,7 @@ const invites: Record<string, InterviewInvite> = {
     estimatedMinutes: 7,
     sponsor: "Meridian",
     preferredMode: "either",
-    consentStatus: "granted",
+    consentStatus: "pending",
   },
 };
 
