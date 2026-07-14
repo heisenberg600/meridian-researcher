@@ -40,11 +40,26 @@ import {
   PromptInputToolbar,
   PromptInputTools,
 } from "./components/ai-elements/prompt-input";
-import { Badge, Button, Card, SectionHeader, TextInput, Textarea, cx } from "./components/meridian";
+import {
+  Badge,
+  Button,
+  Card,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  SectionHeader,
+  TextInput,
+  Textarea,
+  cx,
+} from "./components/meridian";
 import { getUserFacingConvexError } from "./lib/utils";
 import { ParticipantImportWizard } from "./features/participants/import/ParticipantImportWizard";
 import { createImportReviewState, importReviewReducer } from "./features/participants/import/reviewState";
 import { parseParticipantWorkbook } from "./features/participants/import/workbook";
+import { runParticipantQuickOutreach, type QuickOutreachChannel } from "./features/participants/quickOutreach";
 
 type MainView = "studies" | "activity" | "settings";
 type StudyTab =
@@ -1443,12 +1458,21 @@ function StudyParticipants({ selectedStudy }: { selectedStudy: Doc<"studies"> })
   const createImport = useMutation(api.participantImports.createImport);
   const updateImportRow = useMutation(api.participantImports.updateRow);
   const approveImport = useMutation(api.participantImports.approveImport);
+  const prepareOutreach = useMutation(api.outreachBatches.prepareSingleParticipant);
+  const sendParticipantEmail = useAction(api.participantInvites.sendEmail);
+  const callParticipant = useAction(api.participantInvites.sendCall);
   const [importState, dispatchImport] = useReducer(importReviewReducer, undefined, createImportReviewState);
   const [importBusy, setImportBusy] = useState(false);
   const [form, setForm] = useState<ParticipantFormState>(emptyParticipantForm);
   const [editingId, setEditingId] = useState<Id<"studyParticipants"> | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [participantError, setParticipantError] = useState<string | null>(null);
+  const [pendingOutreach, setPendingOutreach] = useState<{
+    participant: Doc<"studyParticipants">;
+    channel: QuickOutreachChannel;
+  } | null>(null);
+  const [sendingInviteId, setSendingInviteId] = useState<Id<"studyParticipants"> | null>(null);
+  const [outreachNotice, setOutreachNotice] = useState<{ tone: "success" | "error"; message: string } | null>(null);
 
   const setField = <Key extends keyof ParticipantFormState>(
     key: Key,
@@ -1502,6 +1526,44 @@ function StudyParticipants({ selectedStudy }: { selectedStudy: Doc<"studies"> })
     finally { setImportBusy(false); }
   }
 
+  async function confirmOutreach() {
+    if (!pendingOutreach) return;
+    const { participant, channel } = pendingOutreach;
+    setSendingInviteId(participant._id);
+    setOutreachNotice(null);
+    try {
+      const result = await runParticipantQuickOutreach({
+        participantId: participant._id,
+        channel,
+        prepare: (args) => prepareOutreach({
+          participantId: args.participantId as Id<"studyParticipants">,
+          channel: args.channel,
+          confirmed: args.confirmed,
+        }).then(({ outreachBatchId, reused }) => ({ outreachBatchId, reused })),
+        sendEmail: (args) => sendParticipantEmail({
+          participantId: args.participantId as Id<"studyParticipants">,
+          outreachBatchId: args.outreachBatchId as Id<"outreachBatches">,
+        }),
+        sendCall: (args) => callParticipant({
+          participantId: args.participantId as Id<"studyParticipants">,
+          outreachBatchId: args.outreachBatchId as Id<"outreachBatches">,
+        }),
+      });
+      setOutreachNotice({ tone: "success", message: `${result.message} ${participant.name}` });
+      setPendingOutreach(null);
+    } catch (cause) {
+      setOutreachNotice({
+        tone: "error",
+        message: getUserFacingConvexError(
+          cause,
+          `Could not start ${channel === "email" ? "email" : "call"} outreach. Check the approved Plan, interview guide, participant details, and provider configuration.`,
+        ),
+      });
+    } finally {
+      setSendingInviteId(null);
+    }
+  }
+
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -1542,6 +1604,20 @@ function StudyParticipants({ selectedStudy }: { selectedStudy: Doc<"studies"> })
           onManualAdd={() => document.getElementById("manual-participant-form")?.scrollIntoView({ behavior: "smooth" })}
         />
       </div>
+
+      {outreachNotice ? (
+        <p
+          role={outreachNotice.tone === "error" ? "alert" : "status"}
+          className={cx(
+            "mt-4 border px-4 py-3 [font:var(--text-body-sm)]",
+            outreachNotice.tone === "error"
+              ? "border-[var(--status-danger)] text-[var(--status-danger)]"
+              : "border-[var(--status-success)] text-[var(--status-success)]",
+          )}
+        >
+          {outreachNotice.message}
+        </p>
+      ) : null}
 
       <div className="mt-6 grid items-start gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
         <Card className="p-5">
@@ -1674,22 +1750,24 @@ function StudyParticipants({ selectedStudy }: { selectedStudy: Doc<"studies"> })
                     type="button"
                     size="sm"
                     variant="outline"
-                    disabled
-                    title="Approve and launch outreach from Fieldwork"
+                    disabled={!participant.email || sendingInviteId === participant._id}
+                    title={participant.email ? "Send interview invitation" : "Add an email first"}
                     aria-label={`Email ${participant.name}`}
+                    onClick={() => setPendingOutreach({ participant, channel: "email" })}
                   >
-                    <MailIcon className="size-4" />
+                    {sendingInviteId === participant._id ? <LoaderCircleIcon className="size-4 animate-spin" /> : <MailIcon className="size-4" />}
                     Email
                   </Button>
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
-                    disabled
-                    title="Approve and launch outreach from Fieldwork"
+                    disabled={!participant.phone || sendingInviteId === participant._id}
+                    title={participant.phone ? "Start outbound interview call" : "Add a phone first"}
                     aria-label={`Call ${participant.name}`}
+                    onClick={() => setPendingOutreach({ participant, channel: "call" })}
                   >
-                    <PhoneCallIcon className="size-4" />
+                    {sendingInviteId === participant._id ? <LoaderCircleIcon className="size-4 animate-spin" /> : <PhoneCallIcon className="size-4" />}
                     Call
                   </Button>
                   <Button
@@ -1718,6 +1796,28 @@ function StudyParticipants({ selectedStudy }: { selectedStudy: Doc<"studies"> })
           )}
         </div>
       </div>
+
+      <Dialog open={Boolean(pendingOutreach)} onOpenChange={(open) => { if (!open && !sendingInviteId) setPendingOutreach(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {pendingOutreach?.channel === "call" ? "Start Outbound Call?" : "Send Invitation Email?"}
+            </DialogTitle>
+            <DialogDescription>
+              Meridian will approve this participant for the current interview guide and contact {pendingOutreach?.participant.name ?? "this participant"} through {pendingOutreach?.channel === "call" ? "ElevenLabs" : "Resend"}. This is an external action.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setPendingOutreach(null)} disabled={Boolean(sendingInviteId)}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={() => void confirmOutreach()} disabled={Boolean(sendingInviteId)}>
+              {sendingInviteId ? <LoaderCircleIcon className="size-4 animate-spin" /> : pendingOutreach?.channel === "call" ? <PhoneCallIcon className="size-4" /> : <MailIcon className="size-4" />}
+              {sendingInviteId ? "Starting…" : pendingOutreach?.channel === "call" ? "Approve & Start Call" : "Approve & Send Email"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
