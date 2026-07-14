@@ -67,23 +67,8 @@ const invites: Record<string, InterviewInvite> = {
   },
 };
 
-export function getInterviewInvite(inviteId: string): InterviewInvite {
-  return (
-    invites[inviteId] ?? {
-      id: inviteId,
-      studyTitle: "Customer discovery interview",
-      researchGoal:
-        "Collect structured customer discovery signal from an invited participant.",
-      learningObjectives: [
-        "Understand the participant's context.",
-        "Identify their most important needs and constraints.",
-        "Capture a clear next research direction.",
-      ],
-      respondentLabel: "Invited participant",
-      estimatedMinutes: 8,
-      sponsor: "Meridian",
-    }
-  );
+export function getInterviewInvite(inviteId: string): InterviewInvite | null {
+  return invites[inviteId] ?? null;
 }
 
 export function getNextInterviewStep(answers: InterviewAnswer[]): InterviewStep {

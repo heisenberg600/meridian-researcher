@@ -6,7 +6,24 @@ import { getInterviewInvite } from "./lib/interview-prototype";
 import { navigate, usePathname } from "./lib/navigation";
 
 function PortalGate() {
-  const { isSignedIn } = useUser();
+  const { isLoaded, isSignedIn } = useUser();
+
+  if (!isLoaded) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#FAF9F6] px-6">
+        <div className="w-full max-w-md">
+          <p className="font-mono-ds text-[11px] uppercase tracking-[0.18em] text-[#A84A2F]">
+            Meridian
+          </p>
+          <div className="mt-6 space-y-3">
+            <div className="h-8 w-2/3 animate-pulse rounded bg-[#E7E0D2]" />
+            <div className="h-4 w-full animate-pulse rounded bg-[#EEE9DD]" />
+            <div className="h-4 w-4/5 animate-pulse rounded bg-[#EEE9DD]" />
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   if (isSignedIn) {
     return <Portal />;
@@ -57,8 +74,32 @@ export function App() {
   const pathname = usePathname();
   if (pathname.startsWith("/interview/")) {
     const inviteId = decodeURIComponent(pathname.split("/")[2] || "demo");
-    return <InterviewClient invite={getInterviewInvite(inviteId)} />;
+    const invite = getInterviewInvite(inviteId);
+    return invite ? <InterviewClient invite={invite} /> : <InvalidInvite />;
   }
 
   return pathname.startsWith("/portal") ? <PortalGate /> : <Landing />;
+}
+
+function InvalidInvite() {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-[#FAF9F6] px-6 text-[#171612]">
+      <div className="w-full max-w-md">
+        <p className="font-mono-ds text-[11px] uppercase tracking-[0.18em] text-[#A84A2F]">
+          Meridian
+        </p>
+        <h1 className="font-display mt-4 text-3xl font-medium">This invite is not available</h1>
+        <p className="mt-3 text-sm leading-6 text-[#57544C]">
+          The link may be expired, revoked, already completed, or mistyped.
+        </p>
+        <button
+          type="button"
+          onClick={() => navigate("/")}
+          className="mt-8 rounded-full bg-[#C2593B] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#A84A2F]"
+        >
+          Back to Meridian
+        </button>
+      </div>
+    </main>
+  );
 }

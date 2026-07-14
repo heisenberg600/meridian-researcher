@@ -231,6 +231,25 @@ export default defineSchema({
     .index("by_study", ["studyId"])
     .index("by_study_status", ["studyId", "status"]),
 
+  interviewSessions: defineTable({
+    inviteId: v.string(),
+    sessionKey: v.string(),
+    studyTitle: v.string(),
+    respondentLabel: v.string(),
+    mode: v.optional(v.union(v.literal("chat"), v.literal("voice"))),
+    answers: v.array(
+      v.object({
+        stepId: v.string(),
+        label: v.string(),
+        value: v.union(v.string(), v.array(v.string())),
+      }),
+    ),
+    status: v.union(v.literal("started"), v.literal("completed")),
+    startedAt: v.number(),
+    updatedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  }).index("by_invite_session", ["inviteId", "sessionKey"]),
+
   approvals: defineTable({
     organizationId: v.id("organizations"),
     studyId: v.id("studies"),

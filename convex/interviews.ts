@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { action } from "./_generated/server";
+import { action, mutation, query } from "./_generated/server";
 
 type InterviewAnswer = {
   stepId: string;
@@ -66,9 +66,75 @@ const inviteValidator = v.object({
   sponsor: v.string(),
 });
 
+const modeValidator = v.union(v.literal("chat"), v.literal("voice"));
+
 const INTERVIEW_MODEL = "google/gemini-3.1-flash-lite";
 const AI_GATEWAY_BASE_URL = "https://ai-gateway.vercel.sh/v1";
 const ELEVENLABS_BASE_URL = "https://api.elevenlabs.io/v1";
+
+export const sessionForInvite = query({
+  args: {
+    inviteId: v.string(),
+    sessionKey: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("interviewSessions")
+      .withIndex("by_invite_session", (q) =>
+        q.eq("inviteId", args.inviteId).eq("sessionKey", args.sessionKey),
+      )
+      .unique();
+  },
+});
+
+export const saveAnswer = mutation({
+  args: {
+    invite: inviteValidator,
+    sessionKey: v.string(),
+    mode: modeValidator,
+    answer: answerValidator,
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const existing = await ctx.db
+      .query("interviewSessions")
+      .withIndex("by_invite_session", (q) =>
+        q.eq("inviteId", args.invite.id).eq("sessionKey", args.sessionKey),
+      )
+      .unique();
+    const nextAnswerCount = (existing?.answers.length ?? 0) + 1;
+    const nextStatus = nextAnswerCount >= 5 ? "completed" : "started";
+
+    if (!existing) {
+      await ctx.db.insert("interviewSessions", {
+        inviteId: args.invite.id,
+        sessionKey: args.sessionKey,
+        studyTitle: args.invite.studyTitle,
+        respondentLabel: args.invite.respondentLabel,
+        mode: args.mode,
+        answers: [args.answer],
+        status: nextStatus,
+        startedAt: now,
+        updatedAt: now,
+        completedAt: nextStatus === "completed" ? now : undefined,
+      });
+      return null;
+    }
+
+    const answers = existing.answers.filter((answer) => answer.stepId !== args.answer.stepId);
+    answers.push(args.answer);
+    const status = answers.length >= 5 ? "completed" : "started";
+
+    await ctx.db.patch(existing._id, {
+      answers,
+      mode: args.mode,
+      status,
+      updatedAt: now,
+      completedAt: status === "completed" ? now : existing.completedAt,
+    });
+    return null;
+  },
+});
 
 export const nextStep = action({
   args: {

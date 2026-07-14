@@ -54,6 +54,10 @@ type CurrentUserQuery =
     }
   | null
   | undefined;
+type StudyFormErrors = {
+  businessDecision?: string;
+  title?: string;
+};
 
 const studyTabs: Array<{ id: StudyTab; label: string }> = [
   { id: "overview", label: "Overview" },
@@ -137,6 +141,7 @@ export function Portal() {
   const studies = useQuery(api.studies.listMine);
   const current = useQuery(api.users.current);
   const memories = useQuery(api.organizationMemories.listMine, { includeArchived: false });
+  const activityEvents = useQuery(api.activity.listMine);
   const initialRoute = useMemo(readPortalRoute, []);
 
   const [mainView, setMainView] = useState<MainView>(initialRoute.mainView);
@@ -154,6 +159,7 @@ export function Portal() {
   const [isCreatingChat, setIsCreatingChat] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [studyFormErrors, setStudyFormErrors] = useState<StudyFormErrors>({});
 
   const selectedStudy = useMemo(
     () => (selectedStudyId ? studies?.find((study) => study._id === selectedStudyId) ?? null : null),
@@ -205,11 +211,20 @@ export function Portal() {
   async function handleCreateStudy(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    const nextErrors: StudyFormErrors = {};
+    if (!title.trim()) nextErrors.title = "Enter a study title.";
+    if (!businessDecision.trim()) {
+      nextErrors.businessDecision = "Describe the decision this study should inform.";
+    }
+    setStudyFormErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
+
     setIsCreating(true);
     try {
       const result = await createStudy({ title, businessDecision });
       setTitle("");
       setBusinessDecision("");
+      setStudyFormErrors({});
       navigatePortal({
         mainView: "studies",
         selectedChatId: result.chatSessionId,
@@ -217,7 +232,7 @@ export function Portal() {
         studyTab: "chat",
       });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not create study");
+      setError(cause instanceof Error ? safeMutationError(cause.message) : "Could not create study.");
     } finally {
       setIsCreating(false);
     }
@@ -370,12 +385,15 @@ export function Portal() {
                 openStudy={openStudy}
                 setBusinessDecision={setBusinessDecision}
                 setTitle={setTitle}
+                studyFormErrors={studyFormErrors}
                 studies={studies}
                 title={title}
               />
             )
           ) : null}
-          {mainView === "activity" ? <ActivitySkeleton studies={studies} /> : null}
+          {mainView === "activity" ? (
+            <ActivityFeed activityEvents={activityEvents} studies={studies} />
+          ) : null}
           {mainView === "settings" ? (
             <OrgSettings memories={memories} archiveMemory={archiveMemory} current={current} />
           ) : null}
@@ -393,6 +411,7 @@ function StudiesHome({
   openStudy,
   setBusinessDecision,
   setTitle,
+  studyFormErrors,
   studies,
   title,
 }: {
@@ -403,6 +422,7 @@ function StudiesHome({
   openStudy: (studyId: Id<"studies">, tab?: StudyTab) => void;
   setBusinessDecision: (value: string) => void;
   setTitle: (value: string) => void;
+  studyFormErrors: StudyFormErrors;
   studies: Array<Doc<"studies">> | undefined;
   title: string;
 }) {
@@ -425,12 +445,22 @@ function StudiesHome({
               onChange={(event) => setTitle(event.target.value)}
               placeholder="Study title"
             />
+            {studyFormErrors.title ? (
+              <p className="[font:var(--text-caption)] text-[var(--status-danger)]">
+                {studyFormErrors.title}
+              </p>
+            ) : null}
             <Textarea
               value={businessDecision}
               onChange={(event) => setBusinessDecision(event.target.value)}
               placeholder="What decision should this research inform?"
               rows={5}
             />
+            {studyFormErrors.businessDecision ? (
+              <p className="[font:var(--text-caption)] text-[var(--status-danger)]">
+                {studyFormErrors.businessDecision}
+              </p>
+            ) : null}
             <Button type="submit" disabled={isCreating} className="w-full">
               {isCreating ? "Creating..." : "Create study"}
             </Button>
@@ -907,14 +937,20 @@ function OrgSettings({
               <button
                 key={item}
                 type="button"
+                disabled={index !== 0}
                 className={cx(
-                  "w-full rounded-[var(--radius-md)] px-3 py-2 text-left [font:var(--text-body-sm)]",
+                  "flex w-full items-center justify-between gap-3 rounded-[var(--radius-md)] px-3 py-2 text-left [font:var(--text-body-sm)]",
                   index === 0
                     ? "bg-[var(--accent-softer)] font-semibold text-[var(--text-heading)]"
-                    : "text-[var(--text-secondary)] hover:bg-[var(--ivory-200)]",
+                    : "cursor-not-allowed text-[var(--text-muted)] opacity-60",
                 )}
               >
-                {item}
+                <span>{item}</span>
+                {index !== 0 ? (
+                  <span className="[font:var(--text-caption)] uppercase tracking-[var(--tracking-caps)]">
+                    Soon
+                  </span>
+                ) : null}
               </button>
             ))}
           </div>
@@ -982,33 +1018,54 @@ function OrgSettings({
   );
 }
 
-function ActivitySkeleton({ studies }: { studies: Array<Doc<"studies">> | undefined }) {
+function ActivityFeed({
+  activityEvents,
+  studies,
+}: {
+  activityEvents: Array<Doc<"auditEvents">> | undefined;
+  studies: Array<Doc<"studies">> | undefined;
+}) {
+  const studyById = new Map((studies ?? []).map((study) => [study._id, study]));
+
   return (
     <div className="mx-auto w-full max-w-7xl">
       <SectionHeader
         eyebrow="Workspace"
         title="Activity"
-        description="A cross-study feed for responses, approvals, calls, completed research, and agent work that needs you."
+        description="Recent persisted workspace events from studies, plans, memories, and agent work."
       />
       <Card className="mt-8 divide-y divide-[var(--border-default)]">
-        {(studies ?? []).slice(0, 4).map((study) => (
-          <div key={study._id} className="flex items-center justify-between gap-4 p-5">
-            <div>
-              <h2 className="[font:var(--text-body)] font-semibold text-[var(--text-heading)]">
-                {study.title}
-              </h2>
-              <p className="mt-1 [font:var(--text-body-sm)] text-[var(--text-secondary)]">
-                Study updated {formatDate(study.updatedAt)}
-              </p>
-            </div>
-            <Badge>{formatStatus(study.status)}</Badge>
-          </div>
-        ))}
-        {studies?.length === 0 ? (
+        {activityEvents === undefined ? (
+          <p className="p-5 [font:var(--text-body)] text-[var(--text-muted)]">
+            Loading activity...
+          </p>
+        ) : activityEvents.length === 0 ? (
           <p className="p-5 [font:var(--text-body)] text-[var(--text-muted)]">
             No activity yet.
           </p>
-        ) : null}
+        ) : (
+          activityEvents.map((event) => (
+            <div key={event._id} className="flex items-center justify-between gap-4 p-5">
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="[font:var(--text-body)] font-semibold text-[var(--text-heading)]">
+                    {event.summary}
+                  </h2>
+                  <Badge>{formatStatus(event.eventType)}</Badge>
+                </div>
+                <p className="mt-1 [font:var(--text-body-sm)] text-[var(--text-secondary)]">
+                  {event.studyId && studyById.has(event.studyId)
+                    ? `${studyById.get(event.studyId)?.title} · `
+                    : ""}
+                  {formatDate(event.createdAt)}
+                </p>
+              </div>
+              <Badge tone={event.actorType === "agent" ? "info" : "neutral"}>
+                {event.actorType}
+              </Badge>
+            </div>
+          ))
+        )}
       </Card>
     </div>
   );
@@ -1378,8 +1435,8 @@ function CallsSkeleton() {
   return (
     <SkeletonGrid
       title="Calls"
-      description="This surface will track scheduled, live, and completed interviews with transcripts, recordings, costs, and summaries."
-      items={["Scheduled", "Live call", "Transcript", "Cost breakdown"]}
+      description="Interview operations will appear here once participants are invited and calls are connected."
+      items={["Scheduled calls", "Live sessions", "Transcripts", "Costs"]}
     />
   );
 }
@@ -1388,7 +1445,7 @@ function FeedbackSkeleton() {
   return (
     <SkeletonGrid
       title="Feedback"
-      description="Tagged respondent evidence, objections, quotes, and synthesis-ready observations will live here."
+      description="Respondent evidence will appear here after interviews produce persisted answers, quotes, and themes."
       items={["Quotes", "Themes", "Objections", "Evidence tags"]}
     />
   );
@@ -1398,7 +1455,7 @@ function ArtifactsSkeleton() {
   return (
     <SkeletonGrid
       title="Artifacts"
-      description="Reports, briefs, exports, source files, and generated research assets will collect here."
+      description="Generated reports, exports, and source files will collect here after the study has evidence to synthesize."
       items={["Reports", "Briefs", "Exports", "Sources"]}
     />
   );
@@ -1421,7 +1478,7 @@ function SkeletonGrid({
           <Card key={item} className="p-5">
             <h2 className="[font:var(--text-heading-sm)] text-[var(--text-heading)]">{item}</h2>
             <p className="mt-3 [font:var(--text-body-sm)] text-[var(--text-muted)]">
-              Skeleton ready for the next Convex model.
+              Not active for this study yet.
             </p>
           </Card>
         ))}
@@ -1689,4 +1746,14 @@ function formatDate(timestamp: number) {
     month: "short",
     day: "numeric",
   }).format(new Date(timestamp));
+}
+
+function safeMutationError(message: string) {
+  if (message.includes("Title and business decision are required")) {
+    return "Enter a study title and describe the decision this study should inform.";
+  }
+  if (message.includes("[CONVEX")) {
+    return "Meridian could not save that change. Please try again.";
+  }
+  return message || "Meridian could not save that change. Please try again.";
 }

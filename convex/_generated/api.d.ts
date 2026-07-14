@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as activity from "../activity.js";
 import type * as agentRuns from "../agentRuns.js";
 import type * as agentSkills from "../agentSkills.js";
 import type * as agentToolEvents from "../agentToolEvents.js";
@@ -30,6 +31,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  activity: typeof activity;
   agentRuns: typeof agentRuns;
   agentSkills: typeof agentSkills;
   agentToolEvents: typeof agentToolEvents;

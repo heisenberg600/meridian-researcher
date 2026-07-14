@@ -1,4 +1,4 @@
-import { useAction } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Conversation, Mode, Status } from "@elevenlabs/client";
 import { api } from "../convex/_generated/api";
@@ -21,8 +21,27 @@ type GatewayState = {
   warning?: string;
 };
 
+function getInterviewSessionKey(inviteId: string) {
+  const storageKey = `meridian:interview-session:${inviteId}`;
+  const existing = window.localStorage.getItem(storageKey);
+  if (existing) return existing;
+
+  const next =
+    typeof window.crypto?.randomUUID === "function"
+      ? window.crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  window.localStorage.setItem(storageKey, next);
+  return next;
+}
+
 export function InterviewClient({ invite }: InterviewClientProps) {
   const getAiStep = useAction(api.interviews.nextStep);
+  const saveAnswer = useMutation(api.interviews.saveAnswer);
+  const [sessionKey] = useState(() => getInterviewSessionKey(invite.id));
+  const savedSession = useQuery(api.interviews.sessionForInvite, {
+    inviteId: invite.id,
+    sessionKey,
+  });
   const [mode, setMode] = useState<InterviewMode | null>(null);
   const [answers, setAnswers] = useState<InterviewAnswer[]>([]);
   const [step, setStep] = useState<InterviewStep | null>(null);
@@ -34,6 +53,7 @@ export function InterviewClient({ invite }: InterviewClientProps) {
   const [draftText, setDraftText] = useState("");
   const [multiChoice, setMultiChoice] = useState<string[]>([]);
   const [scaleValue, setScaleValue] = useState("3");
+  const [hasHydratedSession, setHasHydratedSession] = useState(false);
 
   const progress = step?.type === "complete" ? 100 : Math.round((answers.length / 5) * 100);
   const stepNumber = Math.min(answers.length + 1, 5);
@@ -68,28 +88,29 @@ export function InterviewClient({ invite }: InterviewClientProps) {
   );
 
   useEffect(() => {
+    if (savedSession === undefined || hasHydratedSession) return;
+
     let isActive = true;
+    const savedAnswers = (savedSession?.answers ?? []) as InterviewAnswer[];
+    setAnswers(savedAnswers);
+    setMode(savedSession?.mode ?? (savedAnswers.length > 0 ? "chat" : null));
+    setHasHydratedSession(true);
+    setIsThinking(true);
 
-    async function loadInitialStep() {
-      setIsThinking(true);
-      const result = await loadStep([]);
-
-      if (isActive) {
-        setStep(result.step);
-        setGateway(result.gateway);
-        setIsThinking(false);
-      }
-    }
-
-    void loadInitialStep();
+    void loadStep(savedAnswers).then((result) => {
+      if (!isActive) return;
+      setStep(result.step);
+      setGateway(result.gateway);
+      setIsThinking(false);
+    });
 
     return () => {
       isActive = false;
     };
-  }, [loadStep]);
+  }, [hasHydratedSession, loadStep, savedSession]);
 
   async function submitAnswer(value: string | string[]) {
-    if (!step || step.type === "complete" || isThinking) return;
+    if (!mode || !step || step.type === "complete" || isThinking) return;
 
     const nextAnswers = [
       ...answers,
@@ -101,9 +122,15 @@ export function InterviewClient({ invite }: InterviewClientProps) {
     ];
 
     setIsThinking(true);
+    setAnswers(nextAnswers);
+    await saveAnswer({
+      invite,
+      sessionKey,
+      mode,
+      answer: nextAnswers[nextAnswers.length - 1],
+    });
     const result = await loadStep(nextAnswers);
 
-    setAnswers(nextAnswers);
     setStep(result.step);
     setGateway(result.gateway);
     setDraftText("");
@@ -113,14 +140,20 @@ export function InterviewClient({ invite }: InterviewClientProps) {
   }
 
   function recordVoiceAnswer(question: string, value: string) {
-    setAnswers((current) => [
-      ...current,
-      {
+    setAnswers((current) => {
+      const answer = {
         stepId: `voice-${current.length + 1}`,
         label: question,
         value,
-      },
-    ]);
+      };
+      void saveAnswer({
+        invite,
+        sessionKey,
+        mode: "voice",
+        answer,
+      });
+      return [...current, answer];
+    });
   }
 
   return (
@@ -153,7 +186,13 @@ export function InterviewClient({ invite }: InterviewClientProps) {
 
         <section className="grid flex-1 gap-8 py-8 lg:grid-cols-[1fr_340px]">
           <div className="flex min-h-[620px] flex-col justify-center">
-            {!mode ? (
+            {!hasHydratedSession ? (
+              <div className="mx-auto w-full max-w-3xl">
+                <p className="text-sm font-medium text-[var(--text-secondary)]">
+                  Loading interview...
+                </p>
+              </div>
+            ) : !mode ? (
               <ModeSelect invite={invite} setMode={setMode} />
             ) : mode === "voice" ? (
               <VoiceExperiment
@@ -272,9 +311,9 @@ function ModeSelect({
           onClick={() => setMode("chat")}
         />
         <ModeButton
-          description="Same flow, ready for ElevenLabs voice handoff."
+          description="Voice interviewing will be available after the ElevenLabs agent is configured."
+          disabled
           label="Voice"
-          onClick={() => setMode("voice")}
         />
       </div>
     </div>
@@ -303,24 +342,40 @@ function GatewayBadge({
 
 function ModeButton({
   description,
+  disabled,
   label,
   onClick,
 }: {
   description: string;
+  disabled?: boolean;
   label: string;
-  onClick: () => void;
+  onClick?: () => void;
 }) {
   return (
     <button
       type="button"
+      disabled={disabled}
       onClick={onClick}
-      className="group min-h-[150px] rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--surface-card)] p-5 text-left shadow-[var(--shadow-xs)] transition hover:border-[var(--accent)] hover:bg-white"
+      className={`group min-h-[150px] rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--surface-card)] p-5 text-left shadow-[var(--shadow-xs)] transition ${
+        disabled
+          ? "cursor-not-allowed opacity-60"
+          : "hover:border-[var(--accent)] hover:bg-white"
+      }`}
     >
-      <span className="block text-2xl font-semibold tracking-tight">{label}</span>
-      <span className="mt-3 block text-sm leading-6 text-[var(--text-secondary)]">{description}</span>
-      <span className="mt-6 inline-flex h-9 w-9 items-center justify-center rounded-full bg-[var(--accent)] text-white transition group-hover:bg-[var(--accent)]">
-        -&gt;
+      <span className="flex items-center justify-between gap-3 text-2xl font-semibold tracking-tight">
+        {label}
+        {disabled ? (
+          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
+            Soon
+          </span>
+        ) : null}
       </span>
+      <span className="mt-3 block text-sm leading-6 text-[var(--text-secondary)]">{description}</span>
+      {!disabled ? (
+        <span className="mt-6 inline-flex h-9 w-9 items-center justify-center rounded-full bg-[var(--accent)] text-white transition group-hover:bg-[var(--accent)]">
+          -&gt;
+        </span>
+      ) : null}
     </button>
   );
 }
