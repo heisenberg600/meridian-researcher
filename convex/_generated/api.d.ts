@@ -42,6 +42,8 @@ import type * as paymentWebhookActions from "../paymentWebhookActions.js";
 import type * as paymentWebhookHttp from "../paymentWebhookHttp.js";
 import type * as paymentWebhooks from "../paymentWebhooks.js";
 import type * as payments from "../payments.js";
+import type * as reportActions from "../reportActions.js";
+import type * as reports from "../reports.js";
 import type * as sandboxE2E from "../sandboxE2E.js";
 import type * as studies from "../studies.js";
 import type * as studyMemory from "../studyMemory.js";
@@ -91,6 +93,8 @@ declare const fullApi: ApiFromModules<{
   paymentWebhookHttp: typeof paymentWebhookHttp;
   paymentWebhooks: typeof paymentWebhooks;
   payments: typeof payments;
+  reportActions: typeof reportActions;
+  reports: typeof reports;
   sandboxE2E: typeof sandboxE2E;
   studies: typeof studies;
   studyMemory: typeof studyMemory;
